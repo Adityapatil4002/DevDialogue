@@ -1,0 +1,4 @@
+*.env
+config.json
+*.tfvars
+node_modules
