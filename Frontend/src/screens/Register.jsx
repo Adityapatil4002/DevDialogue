@@ -1,26 +1,15 @@
-import React, { use, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from '../Config/axios.js'
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
-  const navigate = useNavigate();
+const Register = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-
-  function submitHandler(e) { 
-    axios.post('/login', {
-      email,
-      password
-    }).then((res) => {
-      console.log(res.data)
-      navigate('/')
-    }).catch((err) => {
-      console.log(err.response.data)
-    })
-  }
-
-
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle login logic here
+    console.log({ email, password });
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-100">
@@ -28,7 +17,7 @@ const Login = () => {
         <h1 className="text-3xl font-bold text-center text-white">
           Login to DevDialogue
         </h1>
-        <form onSubmit={submitHandler} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
               htmlFor="email"
@@ -67,13 +56,16 @@ const Login = () => {
             type="submit"
             className="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
           >
-            Login
+            Register
           </button>
         </form>
         <p className="text-sm text-center text-gray-400">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-blue-400 hover:underline">
-            Create one
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-medium text-blue-400 hover:underline"
+          >
+            Login
           </Link>
         </p>
       </div>
@@ -81,4 +73,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;
