@@ -1,15 +1,26 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../Config/axios.js";
 
 const Register = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+    const [password, setPassword] = useState("");
+    
+    const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle login logic here
-    console.log({ email, password });
-  };
+
+    function submitHandler(e) { 
+        e.preventDefault()
+        axios.post('/user/register', {
+            email,
+            password
+        }).then((res) => {
+            console.log(res.data)
+            navigate('/')
+        }).catch((err) => {
+            console.log(err.response.data)
+        })
+    }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-100">
@@ -17,7 +28,7 @@ const Register = () => {
         <h1 className="text-3xl font-bold text-center text-white">
           Login to DevDialogue
         </h1>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={submitHandler} className="space-y-6">
           <div>
             <label
               htmlFor="email"
