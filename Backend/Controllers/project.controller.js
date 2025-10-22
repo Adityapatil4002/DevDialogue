@@ -1,5 +1,5 @@
 import projectModel from '../Models/project.model.js';
-import projectService from '../Services/project.service.js';
+import * as projectService from '../Services/project.service.js';
 import userModel from '../Models/user.model.js';
 import {validationResult} from 'express-validator';
 
