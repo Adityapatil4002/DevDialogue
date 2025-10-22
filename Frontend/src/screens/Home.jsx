@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react'
 import { UserContext } from '../Context/user.context'
+import axios from '../Config/axios'
 
 
 const Home = () => {
@@ -10,10 +11,13 @@ const Home = () => {
   function createProject(e) {
     e.preventDefault();
     console.log("Creating project:", projectName);
-    // Here you would typically handle the form submission,
-    // like sending the data to your backend.
-
-    // Close modal and reset form
+    axios.post('/project/create', {
+      name: projectName,
+    }).then((res) => {
+      console.log("Project created:", res.data);
+    }).catch((error) => {
+      console.log(error)
+    })
     setIsModalOpen(false);
     setProjectName('');
   }
