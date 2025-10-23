@@ -12,7 +12,12 @@ export const createUser = async ({ email, password }) => {
   return user;
 };
 
-// Group all functions under one object for default export
+export const getAllUsers = async ({ userId }) => {
+  const users = await userModel.find();
+  return users;
+};
+
+
 const userService = {
   createUser,
 };
