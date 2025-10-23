@@ -30,3 +30,23 @@ export const createProject = async (req, res) => {
 
     
 }
+
+export const getAllProjects = async (req, res) => {
+    try {
+        const loggedInUser = await userModel.findOne({
+            email: req.user.email
+        })
+
+        const alluserProjects = await projectService.
+            getAllProjectByUserId({
+                userId: loggedInUser._id
+            });
+        
+        return res.status(200).json({
+            projects: alluserProjects
+    })
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({ message: error.message });
+    }
+}
