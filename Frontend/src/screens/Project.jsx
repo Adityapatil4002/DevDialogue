@@ -54,7 +54,11 @@ const Project = () => {
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
           } top-0`}
         >
-          <header className="flex justify-end px-3 p-2 bg-slate-200 ">
+          <header className="flex justify-between items-center px-3 p-2 bg-slate-200 ">
+            <button className="flex gap-2">
+              <i className="ri-add-fill mr-1"></i>
+              <p>Add Collaborators</p>
+            </button>
             <button onClick={() => setisSidePanelOpen(false)} className="p-2 ">
               <i className="ri-close-fill"></i>
             </button>
@@ -70,7 +74,10 @@ const Project = () => {
             </div>
           </div>
         </div>
-      </section>
+          </section>
+          
+
+    
     </main>
   );
 };
