@@ -1,22 +1,24 @@
-import React, {useState} from 'react'
-import { useNavigate } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const Project = () => {
-    
-    const location = useLocation();
+  const location = useLocation();
 
-    const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
+  const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
 
-    console.log(location.state);
+  console.log(location.state);
 
   return (
     <main className="h-screen w-screen flex">
-      <section className="left relative flex flex-col h-full min-w-80 bg-slate-300">
+      {/* This parent <section> needs 'overflow-hidden' 
+        to hide the panel when it moves outside. 
+      */}
+      <section className="left relative flex flex-col h-full min-w-80 bg-slate-300 overflow-hidden">
         <header className="flex justify-end p-2 px-4 w-full bg-slate-100">
           <button
             onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-            lassName="p-2 "
+            className="p-2 " //
           >
             <i className="ri-group-fill"></i>
           </button>
@@ -49,7 +51,7 @@ const Project = () => {
 
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-all ${
-            isSidePanelOpen ? "translate-x-0" : "translate-x-full"
+            isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
           } top-0`}
         >
           <header className="flex justify-end px-3 p-2 bg-slate-200 ">
@@ -64,15 +66,13 @@ const Project = () => {
                 <i className="ri-user-fill absolute"></i>
               </div>
 
-                          <h1
-                            className='font-semibold text-lg'
-                          >username</h1>
+              <h1 className="font-semibold text-lg">username</h1>
             </div>
           </div>
         </div>
       </section>
     </main>
   );
-}
+};
 
-export default Project
+export default Project;
