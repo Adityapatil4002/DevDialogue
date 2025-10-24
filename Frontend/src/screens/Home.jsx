@@ -53,11 +53,21 @@ const Home = () => {
           project.map((proj) => (
             <div
               key={proj._id}
-              className="project p-4 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors"
+              className="project p-4 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors min-w-52 hover:bg-slate-200 cursor-pointer flex flex-col justify-between"
             >
               <h3 className="text-lg font-semibold text-gray-800">
                 {proj.name}
               </h3>
+              <div className="flex gap-2">
+                <p>
+                  <small>
+                    <i className="ri-user-line"></i>
+                  </small>
+                  <small>Collaborators:</small>
+                </p>
+
+                <small>{proj.users.length}</small>
+              </div>
             </div>
           ))}
       </div>
