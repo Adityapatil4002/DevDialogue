@@ -1,12 +1,16 @@
 import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../Context/user.context";
 import axios from "../Config/axios";
+import { useNavigate } from 'react-router-dom';
+
 
 const Home = () => {
   const { user } = useContext(UserContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
-  const [project, setProject] = useState([]); // Initial state is good!
+  const [project, setProject] = useState([]); 
+  const navigate = useNavigate();
+
 
   function createProject(e) {
     e.preventDefault();
@@ -48,11 +52,14 @@ const Home = () => {
           <i className="ri-add-line mr-2"></i>
           Create New Project
         </button>
-        {/* Add a check for 'project' to be safe */}
         {project &&
           project.map((proj) => (
             <div
               key={proj._id}
+              onClick={() => {
+                navigate('/project', {
+                state: {project}
+              })}}
               className="project p-4 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors min-w-52 hover:bg-slate-200 cursor-pointer flex flex-col justify-between"
             >
               <h3 className="text-lg font-semibold text-gray-800">
