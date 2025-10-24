@@ -71,7 +71,7 @@ export const addUserToProject = async (req, res) => {
 
       return res.status(200).json({
         project,
-        
+
       })
 
 
@@ -81,3 +81,27 @@ export const addUserToProject = async (req, res) => {
     
     }
 }
+
+export const getProjectById = async (req, res) => {
+  const { projectId } = req.params; // The ID from the URL
+
+  try {
+
+    const userId = req.user._id;
+
+    const project = await projectService.getProjectById(projectId, userId);
+
+    if (!project) {
+      return res
+        .status(404)
+        .json({ message: "Project not found or you do not have access" });
+    }
+
+    return res.status(200).json({
+      project,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ message: error.message });
+  }
+};
