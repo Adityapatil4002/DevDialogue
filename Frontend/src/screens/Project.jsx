@@ -1,37 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-
-// --- Mock User Data (Replace with API call) ---
-const MOCK_USERS = [
-  { _id: "1", email: "brenda@example.com" },
-  { _id: "2", email: "carlos@example.com" },
-  { _id: "3", email: "devin@example.com" },
-  { _id: "4", email: "aditya@example.com" },
-  { _id: "5", email: "sara@example.com" },
-  { _id: "6", email: "mike@example.com" },
-  { _id: "7", email: "jessica@example.com" },
-];
-// ---------------------------------------------
+import axios from "../Config/axios";
 
 const Project = () => {
   const location = useLocation();
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
 
-  // --- State for the new modal ---
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]); // Stores an array of user IDs
+    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [users, setUsers] = useState([]);
 
-  // --- Fetch users when modal opens (or on component load) ---
   useEffect(() => {
-    // TODO: Replace this with your actual API call
-    // axios.get('/user/all').then(res => setAllUsers(res.data.users));
-    setAllUsers(MOCK_USERS);
+    axios.get('/user/all').then(res => setAllUsers(res.data.users)).catch(err => console.log(err));
+    setAllUsers([]);
   }, []);
 
-  // --- Helper function to add/remove users from the selected list ---
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
       if (prevSelected.includes(userId)) {
@@ -49,11 +35,9 @@ const Project = () => {
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- Placeholder for final submission ---
   const handleSubmitCollaborators = () => {
     console.log("Adding these user IDs to the project:", selectedUsers);
-    // TODO: Call your API here
-    // axios.put('/project/add-user', { projectId: '...', users: selectedUsers });
+    axios.put('/project/add-user', { projectId: '...', users: selectedUsers });
     setAddUserModalOpen(false);
     setSelectedUsers([]);
     setSearchTerm("");
