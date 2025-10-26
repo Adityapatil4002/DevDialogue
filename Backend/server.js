@@ -5,7 +5,8 @@ import app from "./app.js";
 import connect from "./db/db.js";
 import {Server} from "socket.io";
 import jwt from "jsonwebtoken";
-
+import mongoose from "mongoose";
+import projectModel from "./Models/project.model.js";
 
 const port = process.env.PORT || 3000;
 
@@ -16,9 +17,17 @@ const io = new Server(server, {
   }
 });
 
-io.use((socket, next) => {
+io.use(async(socket, next) => {
   try {
     const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
+    const projectId = socket.handshake.query.projectId;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return next(new Error("Invalid projectId"));
+    }
+
+    socket.projectId = await projectModel.findById(projectId);
+
     if (!token) {
       return next(new Error("Authentication error: Token not provided"));
     }
