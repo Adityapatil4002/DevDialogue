@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import axios from "../Config/axios";
+import { set } from "mongoose";
 
 const Project = () => {
   const location = useLocation();
@@ -10,10 +11,19 @@ const Project = () => {
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-    const [selectedUsers, setSelectedUsers] = useState([]);
-    const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [project, setProject] = useState(location.state.project);
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
+
+    axios.get(`/project/get-project/${location.state.project._id}`).then(res => {
+      console.log(res.data.project);
+      setProject(res.data.project);
+
+    })
+
+
     axios.get('/user/all').then(res => setAllUsers(res.data.users)).catch(err => console.log(err));
     setAllUsers([]);
   }, []);
@@ -30,7 +40,6 @@ const Project = () => {
     });
   };
 
-  // --- Filter users based on search term ---
   const filteredUsers = allUsers.filter((user) =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -102,12 +111,9 @@ const Project = () => {
           </header>
 
           <div className="users flex flex-col gap-2">
-            <div className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-2 items-center">
-              <div className="aspect-square rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600">
-                <i className="ri-user-fill absolute"></i>
-              </div>
-              <h1 className="font-semibold text-lg">username</h1>
-            </div>
+
+            {}
+
           </div>
         </div>
       </section>
