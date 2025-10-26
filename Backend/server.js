@@ -49,6 +49,15 @@ io.on('connection', socket => {
 
   console.log('New user connected');
 
+  socket.join(socket.projectId._id.toString());
+
+  socket.on('project-message', data => {
+    socket.broadcast.to(socket.projectId._id.toString()).emit('project-message', data);
+  
+  })
+
+
+
   socket.on('event', data => { });
   socket.on('disconnect', () => { });
 });

@@ -1,38 +1,38 @@
-import React, { useState, useEffect } from "react";
-// Import useParams
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../Config/axios";
 import { initializeSocket, recieveMessage, sendMessage } from "../Config/socket";
+import { UserContext } from "../Context/user.context.jsx";
+import { set } from "mongoose";
+
 
 const Project = () => {
   const location = useLocation();
-  // --- Get projectId from URL ---
-  const { projectId } = useParams(); // e.g., if your route is /project/:projectId
-
+  const { projectId } = useParams(); 
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
-
-  // --- Initialize project state to null, add loading/error state ---
-  const [project, setProject] = useState(null); // Initialize as null
+  const [project, setProject] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState("")
+  const { user } = useContext(UserContext);
 
   useEffect(() => {
 
     initializeSocket(project._id);
 
+    recieveMessage('project-message', data => {
+      console.log(data);
+    })
 
 
-
-    // Only fetch if projectId is valid
     if (projectId) {
       setLoading(true);
-      setError(null); // Reset error state on new fetch
+      setError(null); 
 
-      // --- Fetch project data using projectId from URL ---
       axios
         .get(`/project/get-project/${projectId}`)
         .then((res) => {
@@ -40,13 +40,12 @@ const Project = () => {
         })
         .catch((err) => {
           console.error("Error fetching project:", err);
-          setError("Failed to load project details."); // Set error message
+          setError("Failed to load project details."); 
         })
         .finally(() => {
-          setLoading(false); // Stop loading regardless of success/failure
+          setLoading(false); 
         });
 
-      // --- Fetch all users for the modal ---
       axios
         .get("/user/all")
         .then((res) => setAllUsers(res.data.users))
@@ -55,7 +54,7 @@ const Project = () => {
       setError("No Project ID found in URL.");
       setLoading(false);
     }
-  }, [projectId]); // Depend on projectId from URL
+  }, [projectId]); 
 
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
@@ -100,7 +99,14 @@ const Project = () => {
     setSearchTerm("");
   };
 
-  // --- Handle Loading and Error States ---
+  const send = () => {
+    sendMessage('project-message', {
+      message,
+      sender: user._id
+    })
+    setMessage("");
+  })
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -116,11 +122,8 @@ const Project = () => {
       </div>
     );
   }
-  // --- End Loading/Error Handling ---
 
   return (
-    // ... rest of your JSX remains largely the same ...
-    // Make sure to use 'project' state safely now that it might initially be null
     <main className="h-screen w-screen flex">
       <section className="left relative flex flex-col h-full min-w-80 bg-slate-300 overflow-hidden">
         {/* Header */}
@@ -139,11 +142,8 @@ const Project = () => {
 
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col">
-          {/* Messages */}
           <div className="message-box p-1 flex-grow flex flex-col gap-1 overflow-y-auto">
             {" "}
-            {/* Added overflow */}
-            {/* Example Messages - Replace with actual messages later */}
             <div className="message max-w-xs md:max-w-md flex flex-col p-2 bg-slate-50 w-fit rounded-md shadow">
               <small className="opacity-65 text-sm font-medium text-blue-600">
                 brenda@example.com
@@ -181,11 +181,16 @@ const Project = () => {
           {/* Input */}
           <div className="inputField w-full flex border-t border-slate-400">
             <input
+              value={message}
+              onChange = {(e) => setMessage(e.target.value)}
+            
               className="p-3 px-4 border-none outline-none flex-grow bg-slate-200 text-gray-800 placeholder-gray-500"
               type="text"
               placeholder="Enter message..."
             />
-            <button className="px-5 bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+            <button
+              onClick={send}
+              className="px-5 bg-blue-600 text-white hover:bg-blue-700 transition-colors">
               <i className="ri-send-plane-fill"></i>
             </button>
           </div>
@@ -257,7 +262,7 @@ const Project = () => {
         </div>
       </section>
 
-      {/* --- Add User Modal --- */}
+        {/* user modal*/}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4">
           <div
