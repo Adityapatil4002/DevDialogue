@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 // Import useParams
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../Config/axios";
+import { initializeSocket } from "../Config/socket";
 
 const Project = () => {
   const location = useLocation();
@@ -20,6 +21,12 @@ const Project = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+
+    initializeSocket();
+
+
+
+
     // Only fetch if projectId is valid
     if (projectId) {
       setLoading(true);
