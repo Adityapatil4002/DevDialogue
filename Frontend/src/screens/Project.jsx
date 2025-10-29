@@ -1,60 +1,100 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../Config/axios";
-import { initializeSocket, recieveMessage, sendMessage } from "../Config/socket";
+import {
+  initializeSocket,
+  recieveMessage,
+  sendMessage,
+} from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
-import { set } from "mongoose";
-
 
 const Project = () => {
   const location = useLocation();
-  const { projectId } = useParams(); 
+  const { projectId } = useParams();
+  const { user } = useContext(UserContext); // Get logged-in user context
+
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [project, setProject] = useState(null); 
+  const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState("")
-  const { user } = useContext(UserContext);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]); // State to hold chat messages
 
+  // Effect for fetching data AND initializing socket
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
+    let socketInitialized = false; // Flag to track socket init
 
-    initializeSocket(project._id);
+    const fetchProjectAndUsers = async () => {
+      if (!projectId) {
+        setError("No Project ID found in URL.");
+        setLoading(false);
+        return;
+      }
 
-    recieveMessage('project-message', data => {
-      console.log(data);
-    })
-
-
-    if (projectId) {
       setLoading(true);
-      setError(null); 
+      setError(null);
 
-      axios
-        .get(`/project/get-project/${projectId}`)
-        .then((res) => {
-          setProject(res.data.project);
-        })
-        .catch((err) => {
-          console.error("Error fetching project:", err);
-          setError("Failed to load project details."); 
-        })
-        .finally(() => {
-          setLoading(false); 
-        });
+      try {
+        // Fetch project details first
+        const projectRes = await axios.get(`/project/get-project/${projectId}`);
+        if (isMounted && projectRes.data.project) {
+          const fetchedProject = projectRes.data.project;
+          setProject(fetchedProject); // Set project state first
 
-      axios
-        .get("/user/all")
-        .then((res) => setAllUsers(res.data.users))
-        .catch((err) => console.log("Error fetching users:", err));
-    } else {
-      setError("No Project ID found in URL.");
-      setLoading(false);
-    }
-  }, [projectId]); 
+          // --- FIX: Initialize Socket AFTER getting project ID ---
+          initializeSocket(projectId);
+          socketInitialized = true;
+          // Removed: joinRoom(projectId); // Remove if you don't have this function
+
+          // Set up listener only once after initializing
+          recieveMessage("project-message", (data) => {
+            console.log("Received message:", data);
+            // Update messages state safely
+            if (isMounted) {
+              setMessages((prev) => [...prev, data]);
+            }
+          });
+          // --- END FIX ---
+        } else if (isMounted) {
+          setError("Project not found or failed to load.");
+        }
+
+        // Fetch all users for the modal (can run in parallel or after)
+        const usersRes = await axios.get("/user/all");
+        if (isMounted) {
+          setAllUsers(usersRes.data.users);
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        if (isMounted) {
+          setError("Failed to load project details or users.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProjectAndUsers();
+
+    // --- FIX: Cleanup function ---
+    return () => {
+      isMounted = false; // Set flag on unmount
+      if (socketInitialized) {
+        // Removed: leaveRoom(projectId); // Remove if you don't have this function
+        // Consider disconnecting if leaving the project page entirely
+        // disconnectSocket(); // Remove if you don't have this function
+      }
+      // If your recieveMessage returns a cleanup function, call it here
+    };
+    // --- END FIX ---
+  }, [projectId]); // Depend only on projectId
 
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
@@ -66,32 +106,31 @@ const Project = () => {
     });
   };
 
-  const filteredUsers = allUsers.filter((user) =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = allUsers.filter(
+    (u) =>
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      u._id !== user?._id // Exclude self
   );
 
   const handleSubmitCollaborators = () => {
     console.log("Adding these user IDs to the project:", selectedUsers);
-
-    // --- Use projectId from URL params ---
     console.log("Using projectId:", projectId);
 
     if (!projectId) {
       console.error("Cannot add collaborators: Project ID is missing.");
-      return; // Prevent API call if ID is missing
+      return;
     }
 
     axios
       .put("/project/add-user", {
-        projectId: projectId, // Use ID from URL
+        projectId: projectId,
         users: selectedUsers,
       })
       .then((res) => {
-        setProject(res.data.project); // Update state with the returned project
+        setProject(res.data.project);
       })
       .catch((err) => {
         console.error("Error adding collaborators:", err);
-        // You might want to show an error message to the user here
       });
 
     setAddUserModalOpen(false);
@@ -100,13 +139,29 @@ const Project = () => {
   };
 
   const send = () => {
-    sendMessage('project-message', {
-      message,
-      sender: user._id
-    })
+    // --- FIX: Add checks for user and user._id ---
+    if (!message.trim() || !user?._id || !projectId) {
+      console.log(
+        "Cannot send message: Missing message, logged-in user ID, or project ID"
+      );
+      return;
+    }
+    // --- END FIX ---
+    const messageData = {
+      projectId: projectId,
+      message: message,
+      sender: {
+        _id: user._id,
+        email: user.email, // Assuming user object from context has email
+      },
+    };
+    sendMessage("project-message", messageData);
+    // Add message optimistically to UI
+    setMessages((prev) => [...prev, { ...messageData, isOptimistic: true }]);
     setMessage("");
-  })
+  };
 
+  // --- Loading and Error Handling ---
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -114,99 +169,119 @@ const Project = () => {
       </div>
     );
   }
-
   if (error || !project) {
     return (
       <div className="flex justify-center items-center h-screen text-red-500">
-        {error || "Project not found."}
+        {error || "Project could not be loaded."}
       </div>
     );
   }
+  // ---
 
   return (
+    // ... rest of your JSX remains the same ...
     <main className="h-screen w-screen flex">
-      <section className="left relative flex flex-col h-full min-w-80 bg-slate-300 overflow-hidden">
+      <section className="left relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[450px] bg-slate-300 overflow-hidden border-r border-slate-400">
+        {" "}
+        {/* Responsive width */}
         {/* Header */}
-        <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100">
-          {/* Display Project Name if available */}
-          <h1 className="text-lg font-semibold">
-            {project ? project.name : "Project"}
+        <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 border-b border-slate-200">
+          <h1 className="text-lg font-semibold truncate" title={project.name}>
+            {" "}
+            {/* Added truncate */}
+            {project.name}
           </h1>
           <button
             onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-            className="p-2 "
+            className="p-2 rounded hover:bg-slate-200 transition-colors"
           >
-            <i className="ri-group-fill"></i>
+            <i className="ri-group-fill text-xl"></i> {/* Increased size */}
           </button>
         </header>
-
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col">
-          <div className="message-box p-1 flex-grow flex flex-col gap-1 overflow-y-auto">
+          {/* Message Box */}
+          <div className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
             {" "}
-            <div className="message max-w-xs md:max-w-md flex flex-col p-2 bg-slate-50 w-fit rounded-md shadow">
-              <small className="opacity-65 text-sm font-medium text-blue-600">
-                brenda@example.com
-              </small>
-              <p className="text-sm text-gray-800">
-                Hey Carlos, did you see the latest design mockups?
-              </p>
-              <small className="text-xs text-gray-400 self-end mt-1">
-                1:15 PM
-              </small>
-            </div>
-            <div className="ml-auto max-w-xs md:max-w-md message flex flex-col p-2 bg-blue-500 text-white w-fit rounded-md shadow">
-              <small className="opacity-80 text-sm font-medium">
-                carlos@example.com
-              </small>
-              <p className="text-sm">
-                Yeah, just looked at them. They look great!
-              </p>
-              <small className="text-xs text-blue-100 self-end mt-1">
-                1:16 PM
-              </small>
-            </div>
-            <div className="message max-w-xs md:max-w-md flex flex-col p-2 bg-slate-50 w-fit rounded-md shadow">
-              <small className="opacity-65 text-sm font-medium text-purple-600">
-                devin@example.com
-              </small>
-              <p className="text-sm text-gray-800">
-                Agreed! The color scheme is much better now.
-              </p>
-              <small className="text-xs text-gray-400 self-end mt-1">
-                1:17 PM
-              </small>
-            </div>
+            {/* Adjusted padding/gap */}
+            {/* Map over actual messages */}
+            {messages.map((msg, index) => (
+              <div
+                key={msg._id || `optimistic-${index}`}
+                className={`flex ${
+                  msg.sender._id === user?._id ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`message max-w-xs md:max-w-md flex flex-col p-2 rounded-lg shadow ${
+                    msg.sender._id === user?._id
+                      ? "bg-blue-500 text-white"
+                      : "bg-slate-50"
+                  }`}
+                >
+                  {/* Show sender email only if it's not the current user */}
+                  {msg.sender._id !== user?._id && (
+                    <small className="opacity-80 text-xs font-medium text-blue-600 mb-1">
+                      {msg.sender.email || "Unknown User"}
+                    </small>
+                  )}
+                  <p className="text-sm">{msg.message}</p>
+                  <small
+                    className={`text-xs self-end mt-1 ${
+                      msg.sender._id === user?._id
+                        ? "text-blue-100 opacity-70"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {/* Format timestamp later */}
+                    {new Date().toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    {msg.isOptimistic && (
+                      <span className="ml-1 opacity-50">(Sending...)</span>
+                    )}
+                  </small>
+                </div>
+              </div>
+            ))}
+            {/* Add placeholder if no messages */}
+            {messages.length === 0 && (
+              <div className="text-center text-gray-500 mt-10">
+                No messages yet.
+              </div>
+            )}
           </div>
           {/* Input */}
           <div className="inputField w-full flex border-t border-slate-400">
             <input
               value={message}
-              onChange = {(e) => setMessage(e.target.value)}
-            
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && send()} // Send on Enter key
               className="p-3 px-4 border-none outline-none flex-grow bg-slate-200 text-gray-800 placeholder-gray-500"
               type="text"
               placeholder="Enter message..."
             />
             <button
               onClick={send}
-              className="px-5 bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+              className="px-5 bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+              disabled={!message.trim()} // Disable if message is empty
+            >
               <i className="ri-send-plane-fill"></i>
             </button>
           </div>
         </div>
-
         {/* --- Side Panel --- */}
         <div
-          className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-all duration-300 ease-in-out ${
-            // Added duration
+          className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-transform duration-300 ease-in-out ${
+            // Use transform
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
-          } top-0 z-10`} // Added z-index
+          } top-0 z-10`}
         >
           <header className="flex justify-between items-center px-3 p-2 bg-slate-200 border-b border-slate-300">
             <button
               onClick={() => setAddUserModalOpen(true)}
-              className="flex items-center gap-2 p-2 rounded hover:bg-slate-300 transition-colors" // Style button
+              className="flex items-center gap-2 p-2 rounded hover:bg-slate-300 transition-colors"
             >
               <i className="ri-add-fill mr-1"></i>
               <p className="font-medium">Add Collaborators</p>
@@ -218,41 +293,30 @@ const Project = () => {
               <i className="ri-close-fill text-xl"></i>
             </button>
           </header>
-
           <div className="users flex-grow flex flex-col gap-1 p-2 overflow-y-auto">
-            {" "}
-            {/* Added padding & overflow */}
             <h3 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">
               Collaborators
             </h3>
-            {/* Use project state */}
             {project &&
               project.users &&
-              project.users.map((user) => {
+              project.users.map((u) => {
+                // Renamed loop variable to avoid conflict
                 return (
                   <div
-                    key={user._id}
+                    key={u._id}
                     className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-3 items-center rounded-md transition-colors"
                   >
-                    {" "}
-                    {/* Increased gap */}
-                    {/* Avatar */}
                     <div className="relative flex-shrink-0 aspect-square rounded-full w-10 h-10 flex items-center justify-center text-white bg-slate-600">
-                      {/* Simple Initial */}
                       <span className="text-lg font-bold uppercase">
-                        {user.email ? user.email[0] : "?"}
+                        {u.email ? u.email[0] : "?"}
                       </span>
-                      {/* <i className="ri-user-fill absolute text-xl"></i> */}
                     </div>
-                    {/* Email */}
                     <h1 className="font-medium text-gray-800 truncate">
-                      {user.email}
-                    </h1>{" "}
-                    {/* Added truncate */}
+                      {u.email}
+                    </h1>
                   </div>
                 );
               })}
-            {/* Add a message if no users */}
             {project && project.users && project.users.length === 0 && (
               <p className="text-center text-gray-500 mt-4">
                 No collaborators yet.
@@ -262,15 +326,16 @@ const Project = () => {
         </div>
       </section>
 
-        {/* user modal*/}
+      {/* --- Add User Modal --- */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4">
           <div
-            className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md flex flex-col" // Added flex-col
+            className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md flex flex-col max-h-[90vh]" // Added max-h
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-4 border-b">
+            <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
+              {" "}
+              {/* flex-shrink-0 */}
               <h2 className="text-xl font-bold text-gray-800">
                 Add Collaborators
               </h2>
@@ -281,12 +346,9 @@ const Project = () => {
                 <i className="ri-close-line text-2xl"></i>
               </button>
             </div>
-
-            {/* Modal Body */}
-            <div className="p-4 flex-grow">
+            <div className="p-4 flex-grow overflow-y-auto">
               {" "}
-              {/* Added flex-grow */}
-              {/* Search Input */}
+              {/* Added overflow-y-auto */}
               <div className="mb-4">
                 <label
                   htmlFor="userSearch"
@@ -303,26 +365,25 @@ const Project = () => {
                   placeholder="Start typing an email..."
                 />
               </div>
-              {/* User List */}
-              <ul className="h-64 overflow-y-auto border rounded-md">
+              <ul className="h-64 border rounded-md overflow-y-auto">
+                {" "}
+                {/* Ensure list itself scrolls */}
                 {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => {
-                    // Prevent adding users already in the project
+                  filteredUsers.map((modalUser) => {
+                    // Renamed loop variable
                     const alreadyInProject = project?.users?.some(
-                      (pUser) => pUser._id === user._id
+                      (pUser) => pUser._id === modalUser._id
                     );
-                    const isSelected = selectedUsers.includes(user._id);
-
+                    const isSelected = selectedUsers.includes(modalUser._id);
                     return (
                       <li
-                        key={user._id}
-                        // Disable clicking if user is already in project
+                        key={modalUser._id}
                         onClick={() =>
-                          !alreadyInProject && handleUserSelect(user._id)
+                          !alreadyInProject && handleUserSelect(modalUser._id)
                         }
                         className={`flex justify-between items-center p-3 ${
                           alreadyInProject
-                            ? "bg-slate-100 text-gray-400 cursor-not-allowed" // Style for existing users
+                            ? "bg-slate-100 text-gray-400 cursor-not-allowed"
                             : isSelected
                             ? "bg-blue-100 cursor-pointer"
                             : "hover:bg-slate-100 cursor-pointer"
@@ -333,7 +394,7 @@ const Project = () => {
                             alreadyInProject ? "" : "text-gray-700"
                           }`}
                         >
-                          {user.email}
+                          {modalUser.email}
                           {alreadyInProject && (
                             <span className="text-xs ml-2">
                               (Already added)
@@ -353,24 +414,24 @@ const Project = () => {
                 )}
               </ul>
             </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end p-4 border-t bg-slate-50 rounded-b-lg">
+            <div className="flex justify-end p-4 border-t bg-slate-50 rounded-b-lg flex-shrink-0">
               {" "}
-              {/* Added bg color */}
+              {/* flex-shrink-0 */}
               <button
                 onClick={() => setAddUserModalOpen(false)}
                 type="button"
-                className="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded border border-gray-300 mr-3 transition-colors" // Adjusted style
+                className="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded border border-gray-300 mr-3 transition-colors"
               >
-                Cancel
+                {" "}
+                Cancel{" "}
               </button>
               <button
                 onClick={handleSubmitCollaborators}
                 type="button"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed transition-colors" // Added disabled cursor
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={selectedUsers.length === 0}
               >
+                {" "}
                 Add{" "}
                 {selectedUsers.length > 0 ? `(${selectedUsers.length})` : ""}
               </button>
