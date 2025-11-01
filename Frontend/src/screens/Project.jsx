@@ -22,12 +22,14 @@ const Project = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]); // State to hold chat messages
+  const [messages, setMessages] = useState([]); 
+  const messageBox = React.createRef();
 
-  // Effect for fetching data AND initializing socket
+
+
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
-    let socketInitialized = false; // Flag to track socket init
+    let isMounted = true; 
+    let socketInitialized = false; 
 
     const fetchProjectAndUsers = async () => {
       if (!projectId) {
@@ -40,31 +42,24 @@ const Project = () => {
       setError(null);
 
       try {
-        // Fetch project details first
         const projectRes = await axios.get(`/project/get-project/${projectId}`);
         if (isMounted && projectRes.data.project) {
           const fetchedProject = projectRes.data.project;
-          setProject(fetchedProject); // Set project state first
-
-          // --- FIX: Initialize Socket AFTER getting project ID ---
+          setProject(fetchedProject); 
           initializeSocket(projectId);
           socketInitialized = true;
-          // Removed: joinRoom(projectId); // Remove if you don't have this function
 
-          // Set up listener only once after initializing
           recieveMessage("project-message", (data) => {
             console.log("Received message:", data);
-            // Update messages state safely
+            appendIncomingMessage(data);
             if (isMounted) {
               setMessages((prev) => [...prev, data]);
             }
           });
-          // --- END FIX ---
         } else if (isMounted) {
           setError("Project not found or failed to load.");
         }
 
-        // Fetch all users for the modal (can run in parallel or after)
         const usersRes = await axios.get("/user/all");
         if (isMounted) {
           setAllUsers(usersRes.data.users);
@@ -83,18 +78,12 @@ const Project = () => {
 
     fetchProjectAndUsers();
 
-    // --- FIX: Cleanup function ---
     return () => {
-      isMounted = false; // Set flag on unmount
+      isMounted = false; 
       if (socketInitialized) {
-        // Removed: leaveRoom(projectId); // Remove if you don't have this function
-        // Consider disconnecting if leaving the project page entirely
-        // disconnectSocket(); // Remove if you don't have this function
       }
-      // If your recieveMessage returns a cleanup function, call it here
     };
-    // --- END FIX ---
-  }, [projectId]); // Depend only on projectId
+  }, [projectId]); 
 
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
@@ -109,7 +98,7 @@ const Project = () => {
   const filteredUsers = allUsers.filter(
     (u) =>
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      u._id !== user?._id // Exclude self
+      u._id !== user?._id 
   );
 
   const handleSubmitCollaborators = () => {
@@ -139,29 +128,28 @@ const Project = () => {
   };
 
   const send = () => {
-    // --- FIX: Add checks for user and user._id ---
     if (!message.trim() || !user?._id || !projectId) {
       console.log(
         "Cannot send message: Missing message, logged-in user ID, or project ID"
       );
       return;
     }
-    // --- END FIX ---
     const messageData = {
       projectId: projectId,
       message: message,
       sender: {
         _id: user._id,
-        email: user.email, // Assuming user object from context has email
+        email: user.email, 
       },
     };
-    sendMessage("project-message", messageData);
-    // Add message optimistically to UI
+    sendMessage("project-message", messageData, {
+      message: message,
+      sender: user,
+    });
     setMessages((prev) => [...prev, { ...messageData, isOptimistic: true }]);
     setMessage("");
   };
 
-  // --- Loading and Error Handling ---
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -176,10 +164,34 @@ const Project = () => {
       </div>
     );
   }
-  // ---
+
+  function appendIncomingMessage(messageObject) {
+
+    const messageBox = document.querySelector(".message-box");
+
+
+    const message = document.createElement("div");
+    message.classList.add(
+      "message",
+      "flex",
+      "flex-col",
+      "max-w-xs",
+      "md:max-w-md",
+      "p-2",
+      "rounded-lg",
+      "shadow",)
+    message.innerHTML = `
+    <small class = "opacity-80 text-xs font-medium text-blue-600 mb-1">${messageObject.sender.email}</small>
+    <p class="text-sm">${messageObject.message}</p>`
+
+    messageBox.appendChild(message);
+
+  }
+
+
+
 
   return (
-    // ... rest of your JSX remains the same ...
     <main className="h-screen w-screen flex">
       <section className="left relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[450px] bg-slate-300 overflow-hidden border-r border-slate-400">
         {" "}
@@ -201,10 +213,10 @@ const Project = () => {
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col">
           {/* Message Box */}
-          <div className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
+          <div
+            ref={messageBox}
+            className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
             {" "}
-            {/* Adjusted padding/gap */}
-            {/* Map over actual messages */}
             {messages.map((msg, index) => (
               <div
                 key={msg._id || `optimistic-${index}`}

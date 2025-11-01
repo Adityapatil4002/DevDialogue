@@ -28,10 +28,8 @@ io.use(async (socket, next) => {
       return next(new Error("Invalid projectId"));
     }
 
-    // Store the ID as a string for consistency
     socket.projectIdString = projectId.toString();
 
-    // Check if project exists
     const project = await projectModel.findById(projectId);
     if (!project) {
       return next(new Error("Project not found"));
@@ -63,28 +61,26 @@ io.use(async (socket, next) => {
 });
 
 io.on("connection", (socket) => {
+
+  socket.roomId = socket.projectIdString;
+
   console.log(
     `New user connected: ${socket.user.email} to project ${socket.projectIdString}`
   );
 
-  // Join the room using the stored string
-  socket.join(socket.projectIdString);
+  socket.join(socket.roomId);
 
-  // --- THIS IS THE FIX ---
   socket.on("project-message", (data) => {
-    // Add this log so you can see it arrive!
     console.log(
       `Message received for project ${socket.projectIdString}:`,
       data.message
     );
 
-    // Use io.to() to send to EVERYONE in the room (including sender)
-    io.to(socket.projectIdString).emit("project-message", {
+    socket.broadcast.to(socket.roomId).emit("project-message", {
       ...data,
-      timestamp: new Date(), // Add a server timestamp
+      timestamp: new Date(), 
     });
   });
-  // --- END OF FIX ---
 
   socket.on("disconnect", (reason) => {
     console.log(`User disconnected: ${socket.user.email}. Reason: ${reason}`);
