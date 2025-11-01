@@ -13,7 +13,7 @@ const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "*", // Or your frontend URL
   },
 });
 
@@ -25,14 +25,17 @@ io.use(async (socket, next) => {
     const projectId = socket.handshake.query.projectId;
 
     if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
-      return next(new Error("Invalid projectId format"));
+      return next(new Error("Invalid projectId"));
     }
 
-    const projectExists = await projectModel.findById(projectId).lean(); // Use lean for read-only check
-    if (!projectExists) {
+    // Store the ID as a string for consistency
+    socket.projectIdString = projectId.toString();
+
+    // Check if project exists
+    const project = await projectModel.findById(projectId);
+    if (!project) {
       return next(new Error("Project not found"));
     }
-    socket.projectIdString = projectId.toString();
 
     if (!token) {
       return next(new Error("Authentication error: Token not provided"));
@@ -42,53 +45,49 @@ io.use(async (socket, next) => {
     if (!decoded || !decoded._id) {
       return next(new Error("Authentication error: Invalid token"));
     }
-    socket.user = decoded; 
+
+    // Check if user is part of the project
+    const isUserInProject = project.users.some(
+      (userId) => userId.toString() === decoded._id
+    );
+    if (!isUserInProject) {
+      return next(new Error("Authentication error: User not in project"));
+    }
+
+    socket.user = decoded;
+    next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return next(new Error("Authentication error: Token expired"));
-    }
-    if (error.name === "JsonWebTokenError") {
-      return next(new Error("Authentication error: Invalid token"));
-    }
-    console.error("Socket Auth Error:", error); 
-    next(new Error("Authentication error")); 
+    console.error("Socket Auth Error:", error.message);
+    next(new Error("Authentication error")); // Send generic error to client
   }
 });
 
 io.on("connection", (socket) => {
   console.log(
-    `User connected: ${socket.user.email} to project ${socket.projectIdString}`
+    `New user connected: ${socket.user.email} to project ${socket.projectIdString}`
   );
 
+  // Join the room using the stored string
   socket.join(socket.projectIdString);
 
+  // --- THIS IS THE FIX ---
   socket.on("project-message", (data) => {
-    // Log received message for debugging
-    console.log(`Message received in room ${socket.projectIdString}:`, data);
+    // Add this log so you can see it arrive!
+    console.log(
+      `Message received for project ${socket.projectIdString}:`,
+      data.message
+    );
 
-    if (
-      !data ||
-      typeof data.message !== "string" ||
-      !data.sender ||
-      typeof data.sender.email !== "string"
-    ) {
-      console.error("Invalid message format received:", data);
-      return;
-    }
-
+    // Use io.to() to send to EVERYONE in the room (including sender)
     io.to(socket.projectIdString).emit("project-message", {
       ...data,
-      timestamp: new Date(), 
+      timestamp: new Date(), // Add a server timestamp
     });
-  }); 
+  });
+  // --- END OF FIX ---
 
   socket.on("disconnect", (reason) => {
     console.log(`User disconnected: ${socket.user.email}. Reason: ${reason}`);
-    
-  });
-
-  socket.on("error", (error) => {
-    console.error(`Socket error for user ${socket.user?.email}:`, error);
   });
 });
 
