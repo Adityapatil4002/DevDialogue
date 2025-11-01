@@ -1,4 +1,5 @@
-import React, { useContext, useDebugValue } from 'react'
+import React, { use, useContext, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../Context/user.context';
 
 const UserAuth = ({ children }) => {
@@ -6,24 +7,24 @@ const UserAuth = ({ children }) => {
     const { user } = useContext(UserContext);
     const [loading, setLoading] = useState(true);
     const token = localStorage.getItem("token");
-
-    if (user) {
-        setLoading(false);
-    }
-
-    
-
-    if (loading) {
-        return <div>Loading...</div>
-    }
+    const navigate = useNavigate();
+   
     useEffect(() => {
+         if (user) {
+           setLoading(false);
+        }
+        
         if (!token) {
-            Navigate('/login');
+            navigate('/login');
         }
         if (!user) {
-            Navigate('login');
+            navigate('login');
         }
-    })
+    }, []);
+
+     if (loading) {
+       return <div>Loading...</div>;
+     }
 
     return <>
         {children}
