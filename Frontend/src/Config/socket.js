@@ -3,12 +3,13 @@ import socket from "socket.io-client";
 let socketInstance = null;
 
 export const initializeSocket = (projectId) => {
-  // Prevent creating multiple socket instances if already initialized
+  // --- FIX: Prevent re-initializing if socket already exists ---
   if (socketInstance) {
-    console.warn("Socket may already be initialized. Re-initializing.");
-    // Consider disconnecting the old one if re-initialization is intentional
-    // socketInstance.disconnect();
+    console.warn("Socket instance already exists.");
+    // Just return the existing instance
+    return socketInstance;
   }
+  // --- END FIX ---
 
   console.log("Initializing socket for project:", projectId);
   socketInstance = socket(import.meta.env.VITE_API_URL, {
@@ -20,7 +21,6 @@ export const initializeSocket = (projectId) => {
     },
   });
 
-  // Minimal required listeners or logging if desired
   socketInstance.on("connect", () => {
     console.log("Socket minimally connected:", socketInstance.id);
   });
@@ -32,19 +32,22 @@ export const initializeSocket = (projectId) => {
   return socketInstance;
 };
 
-// --- THIS IS THE MINIMAL FIX ---
 export const recieveMessage = (eventName, cb) => {
   if (!socketInstance) {
     console.error("Cannot receive message: Socket not initialized.");
     return; // Guard clause if socket not initialized
   }
 
-  // Pass the callback function 'cb' directly to the listener
   socketInstance.on(eventName, cb);
 
-  // No return cleanup function in minimal version
+  // --- FIX: Return a cleanup function ---
+  // This allows React's useEffect to remove the listener on unmount
+  return () => {
+    console.log(`Removing listener for: ${eventName}`);
+    socketInstance.off(eventName, cb);
+  };
+  // --- END FIX ---
 };
-// --- END OF MINIMAL FIX ---
 
 export const sendMessage = (eventName, data) => {
   if (!socketInstance) {
@@ -55,4 +58,11 @@ export const sendMessage = (eventName, data) => {
   socketInstance.emit(eventName, data);
 };
 
-// No extra join/leave/disconnect functions in minimal version
+// --- ADDED: A function to properly disconnect the socket ---
+export const disconnectSocket = () => {
+  if (socketInstance) {
+    console.log("Disconnecting socket...");
+    socketInstance.disconnect();
+    socketInstance = null;
+  }
+};

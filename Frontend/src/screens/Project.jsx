@@ -5,6 +5,7 @@ import {
   initializeSocket,
   recieveMessage,
   sendMessage,
+  disconnectSocket, // Import the new disconnect function
 } from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
 
@@ -22,14 +23,12 @@ const Project = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]); 
-  const messageBox = React.createRef();
-
-
+  const [messages, setMessages] = useState([]);
+  // Removed: messageBox ref (no longer needed)
 
   useEffect(() => {
-    let isMounted = true; 
-    let socketInitialized = false; 
+    let isMounted = true;
+    let cleanupMessageListener = null; // To store the cleanup function
 
     const fetchProjectAndUsers = async () => {
       if (!projectId) {
@@ -45,17 +44,48 @@ const Project = () => {
         const projectRes = await axios.get(`/project/get-project/${projectId}`);
         if (isMounted && projectRes.data.project) {
           const fetchedProject = projectRes.data.project;
-          setProject(fetchedProject); 
-          initializeSocket(projectId);
-          socketInitialized = true;
+          setProject(fetchedProject);
+          initializeSocket(projectId); // This will now only run once
 
-          recieveMessage("project-message", (data) => {
+          // --- FIX: Store the returned cleanup function ---
+          cleanupMessageListener = recieveMessage("project-message", (data) => {
             console.log("Received message:", data);
-            appendIncomingMessage(data);
+            // Removed: appendIncomingMessage(data);
             if (isMounted) {
-              setMessages((prev) => [...prev, data]);
+              // Update state based on received data
+              setMessages((prev) => {
+                // Check if message (by timestamp or optimistic flag) already exists
+                // This is a safeguard if server emits back to sender
+                const exists = prev.some(
+                  (m) =>
+                    (m.isOptimistic &&
+                      m.message === data.message &&
+                      m.sender._id === data.sender._id) || // Check optimistic
+                    m.timestamp === data.timestamp // Check timestamp
+                );
+
+                // If it's an optimistic message, replace it with the server version
+                if (exists && data.sender._id === user?._id) {
+                  return prev.map((m) =>
+                    m.isOptimistic &&
+                    m.message === data.message &&
+                    m.sender._id === data.sender._id
+                      ? data // Replace optimistic with server data
+                      : m
+                  );
+                }
+
+                // If it's a new incoming message, add it
+                if (!exists) {
+                  return [...prev, data];
+                }
+
+                // Otherwise, it's a duplicate, return previous state
+                return prev;
+              });
             }
           });
+          // --- END FIX ---
         } else if (isMounted) {
           setError("Project not found or failed to load.");
         }
@@ -78,13 +108,18 @@ const Project = () => {
 
     fetchProjectAndUsers();
 
+    // --- FIX: Use the cleanup function on unmount ---
     return () => {
-      isMounted = false; 
-      if (socketInitialized) {
+      isMounted = false;
+      if (cleanupMessageListener) {
+        cleanupMessageListener(); // Remove the 'project-message' listener
       }
+      disconnectSocket(); // Disconnect socket and clear instance
     };
-  }, [projectId]); 
+    // --- END FIX ---
+  }, [projectId, user?._id]); // Add user._id as dependency for message logic
 
+  // ... (handleUserSelect and other functions remain the same) ...
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
       if (prevSelected.includes(userId)) {
@@ -98,7 +133,7 @@ const Project = () => {
   const filteredUsers = allUsers.filter(
     (u) =>
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      u._id !== user?._id 
+      u._id !== user?._id
   );
 
   const handleSubmitCollaborators = () => {
@@ -139,14 +174,24 @@ const Project = () => {
       message: message,
       sender: {
         _id: user._id,
-        email: user.email, 
+        email: user.email,
       },
     };
-    sendMessage("project-message", messageData, {
-      message: message,
-      sender: user,
-    });
-    setMessages((prev) => [...prev, { ...messageData, isOptimistic: true }]);
+    sendMessage("project-message", messageData); // Send to server
+
+    // --- FIX: REMOVED manual DOM append ---
+    // Removed: appendoutgoingMessage(messageData);
+
+    // ONLY update React state
+    // Add a temporary timestamp for optimistic rendering
+    setMessages((prev) => [
+      ...prev,
+      {
+        ...messageData,
+        isOptimistic: true,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
     setMessage("");
   };
 
@@ -165,61 +210,37 @@ const Project = () => {
     );
   }
 
-  function appendIncomingMessage(messageObject) {
-
-    const messageBox = document.querySelector(".message-box");
-
-
-    const message = document.createElement("div");
-    message.classList.add(
-      "message",
-      "flex",
-      "flex-col",
-      "max-w-xs",
-      "md:max-w-md",
-      "p-2",
-      "rounded-lg",
-      "shadow",)
-    message.innerHTML = `
-    <small class = "opacity-80 text-xs font-medium text-blue-600 mb-1">${messageObject.sender.email}</small>
-    <p class="text-sm">${messageObject.message}</p>`
-
-    messageBox.appendChild(message);
-
-  }
-
-
-
+  // --- FIX: Removed the append... functions ---
+  // Removed: function appendIncomingMessage(messageObject) { ... }
+  // Removed: function appendoutgoingMessage(messageObject) { ... }
+  // --- END FIX ---
 
   return (
     <main className="h-screen w-screen flex">
       <section className="left relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[450px] bg-slate-300 overflow-hidden border-r border-slate-400">
-        {" "}
-        {/* Responsive width */}
-        {/* Header */}
         <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 border-b border-slate-200">
           <h1 className="text-lg font-semibold truncate" title={project.name}>
-            {" "}
-            {/* Added truncate */}
             {project.name}
           </h1>
           <button
             onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
             className="p-2 rounded hover:bg-slate-200 transition-colors"
           >
-            <i className="ri-group-fill text-xl"></i> {/* Increased size */}
+            <i className="ri-group-fill text-xl"></i>
           </button>
         </header>
+
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col">
-          {/* Message Box */}
+          {/* Message Box - Now 100% controlled by React state */}
           <div
-            ref={messageBox}
-            className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
-            {" "}
+            // Removed: ref={messageBox}
+            className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto"
+          >
+            {/* Map over actual messages from state */}
             {messages.map((msg, index) => (
               <div
-                key={msg._id || `optimistic-${index}`}
+                key={msg.timestamp || `optimistic-${index}`} // Use timestamp or index
                 className={`flex ${
                   msg.sender._id === user?._id ? "justify-end" : "justify-start"
                 }`}
@@ -245,11 +266,14 @@ const Project = () => {
                         : "text-gray-400"
                     }`}
                   >
-                    {/* Format timestamp later */}
-                    {new Date().toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
+                    {/* Format timestamp */}
+                    {new Date(msg.timestamp || Date.now()).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      }
+                    )}
                     {msg.isOptimistic && (
                       <span className="ml-1 opacity-50">(Sending...)</span>
                     )}
@@ -257,7 +281,6 @@ const Project = () => {
                 </div>
               </div>
             ))}
-            {/* Add placeholder if no messages */}
             {messages.length === 0 && (
               <div className="text-center text-gray-500 mt-10">
                 No messages yet.
@@ -269,7 +292,7 @@ const Project = () => {
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && send()} // Send on Enter key
+              onKeyPress={(e) => e.key === "Enter" && send()}
               className="p-3 px-4 border-none outline-none flex-grow bg-slate-200 text-gray-800 placeholder-gray-500"
               type="text"
               placeholder="Enter message..."
@@ -277,16 +300,15 @@ const Project = () => {
             <button
               onClick={send}
               className="px-5 bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-              disabled={!message.trim()} // Disable if message is empty
+              disabled={!message.trim()}
             >
               <i className="ri-send-plane-fill"></i>
             </button>
           </div>
         </div>
-        {/* --- Side Panel --- */}
+        {/* Side Panel */}
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-transform duration-300 ease-in-out ${
-            // Use transform
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
           } top-0 z-10`}
         >
@@ -312,7 +334,6 @@ const Project = () => {
             {project &&
               project.users &&
               project.users.map((u) => {
-                // Renamed loop variable to avoid conflict
                 return (
                   <div
                     key={u._id}
@@ -338,16 +359,14 @@ const Project = () => {
         </div>
       </section>
 
-      {/* --- Add User Modal --- */}
+      {/* Add User Modal */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4">
           <div
-            className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md flex flex-col max-h-[90vh]" // Added max-h
+            className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
-              {" "}
-              {/* flex-shrink-0 */}
               <h2 className="text-xl font-bold text-gray-800">
                 Add Collaborators
               </h2>
@@ -359,8 +378,6 @@ const Project = () => {
               </button>
             </div>
             <div className="p-4 flex-grow overflow-y-auto">
-              {" "}
-              {/* Added overflow-y-auto */}
               <div className="mb-4">
                 <label
                   htmlFor="userSearch"
@@ -378,11 +395,8 @@ const Project = () => {
                 />
               </div>
               <ul className="h-64 border rounded-md overflow-y-auto">
-                {" "}
-                {/* Ensure list itself scrolls */}
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((modalUser) => {
-                    // Renamed loop variable
                     const alreadyInProject = project?.users?.some(
                       (pUser) => pUser._id === modalUser._id
                     );
@@ -427,15 +441,12 @@ const Project = () => {
               </ul>
             </div>
             <div className="flex justify-end p-4 border-t bg-slate-50 rounded-b-lg flex-shrink-0">
-              {" "}
-              {/* flex-shrink-0 */}
               <button
                 onClick={() => setAddUserModalOpen(false)}
                 type="button"
                 className="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded border border-gray-300 mr-3 transition-colors"
               >
-                {" "}
-                Cancel{" "}
+                Cancel
               </button>
               <button
                 onClick={handleSubmitCollaborators}
@@ -443,7 +454,6 @@ const Project = () => {
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={selectedUsers.length === 0}
               >
-                {" "}
                 Add{" "}
                 {selectedUsers.length > 0 ? `(${selectedUsers.length})` : ""}
               </button>
