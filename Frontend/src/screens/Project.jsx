@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react"; // Added useRef
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../Config/axios";
 import {
   initializeSocket,
   recieveMessage,
   sendMessage,
-  disconnectSocket, // Import the new disconnect function
+  disconnectSocket,
 } from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
 
 const Project = () => {
   const location = useLocation();
   const { projectId } = useParams();
-  const { user } = useContext(UserContext); // Get logged-in user context
+  const { user } = useContext(UserContext);
 
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
@@ -24,11 +24,13 @@ const Project = () => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  // Removed: messageBox ref (no longer needed)
+
+  // --- FIX: Ref for smooth scrolling ---
+  const messageEndRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
-    let cleanupMessageListener = null; // To store the cleanup function
+    let cleanupMessageListener = null;
 
     const fetchProjectAndUsers = async () => {
       if (!projectId) {
@@ -45,44 +47,43 @@ const Project = () => {
         if (isMounted && projectRes.data.project) {
           const fetchedProject = projectRes.data.project;
           setProject(fetchedProject);
-          initializeSocket(projectId); // This will now only run once
+          initializeSocket(projectId);
 
           // --- FIX: Store the returned cleanup function ---
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             console.log("Received message:", data);
-            // Removed: appendIncomingMessage(data);
+
             if (isMounted) {
-              // Update state based on received data
+              // --- FIX 2: Replaced complex logic with simpler version ---
               setMessages((prev) => {
-                // Check if message (by timestamp or optimistic flag) already exists
-                // This is a safeguard if server emits back to sender
-                const exists = prev.some(
-                  (m) =>
-                    (m.isOptimistic &&
+                // Check if the received message is from the current user
+                if (data.sender._id === user?._id) {
+                  // YES. It's from us. Find and replace the *first*
+                  // optimistic message with matching text.
+                  let replaced = false;
+                  const newState = prev.map((m) => {
+                    if (
+                      m.isOptimistic &&
                       m.message === data.message &&
-                      m.sender._id === data.sender._id) || // Check optimistic
-                    m.timestamp === data.timestamp // Check timestamp
-                );
-
-                // If it's an optimistic message, replace it with the server version
-                if (exists && data.sender._id === user?._id) {
-                  return prev.map((m) =>
-                    m.isOptimistic &&
-                    m.message === data.message &&
-                    m.sender._id === data.sender._id
-                      ? data // Replace optimistic with server data
-                      : m
-                  );
+                      !replaced
+                    ) {
+                      replaced = true;
+                      return data; // Replace optimistic msg with server's confirmed msg
+                    }
+                    return m;
+                  });
+                  return newState;
+                } else {
+                  // NO. It's from someone else. Just add it.
+                  // Check if it already exists (just in case)
+                  if (!prev.some((m) => m.timestamp === data.timestamp)) {
+                    return [...prev, data];
+                  }
                 }
-
-                // If it's a new incoming message, add it
-                if (!exists) {
-                  return [...prev, data];
-                }
-
-                // Otherwise, it's a duplicate, return previous state
+                // If no condition met (e.g., duplicate), return the previous state
                 return prev;
               });
+              // --- END FIX 2 ---
             }
           });
           // --- END FIX ---
@@ -108,7 +109,6 @@ const Project = () => {
 
     fetchProjectAndUsers();
 
-    // --- FIX: Use the cleanup function on unmount ---
     return () => {
       isMounted = false;
       if (cleanupMessageListener) {
@@ -116,10 +116,13 @@ const Project = () => {
       }
       disconnectSocket(); // Disconnect socket and clear instance
     };
-    // --- END FIX ---
-  }, [projectId, user?._id]); // Add user._id as dependency for message logic
+  }, [projectId, user?._id]);
 
-  // ... (handleUserSelect and other functions remain the same) ...
+  // --- FIX: Add useEffect for smooth scrolling ---
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]); // Scroll smoothly when messages array changes
+
   const handleUserSelect = (userId) => {
     setSelectedUsers((prevSelected) => {
       if (prevSelected.includes(userId)) {
@@ -179,11 +182,6 @@ const Project = () => {
     };
     sendMessage("project-message", messageData); // Send to server
 
-    // --- FIX: REMOVED manual DOM append ---
-    // Removed: appendoutgoingMessage(messageData);
-
-    // ONLY update React state
-    // Add a temporary timestamp for optimistic rendering
     setMessages((prev) => [
       ...prev,
       {
@@ -210,11 +208,6 @@ const Project = () => {
     );
   }
 
-  // --- FIX: Removed the append... functions ---
-  // Removed: function appendIncomingMessage(messageObject) { ... }
-  // Removed: function appendoutgoingMessage(messageObject) { ... }
-  // --- END FIX ---
-
   return (
     <main className="h-screen w-screen flex">
       <section className="left relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[450px] bg-slate-300 overflow-hidden border-r border-slate-400">
@@ -230,14 +223,22 @@ const Project = () => {
           </button>
         </header>
 
-        {/* Conversation Area */}
-        <div className="conversation-area flex-grow flex flex-col">
-          {/* Message Box - Now 100% controlled by React state */}
-          <div
-            // Removed: ref={messageBox}
-            className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto"
-          >
-            {/* Map over actual messages from state */}
+        {/* --- FIX 1: Added overflow-hidden here --- */}
+        <div className="conversation-area flex-grow flex flex-col overflow-hidden">
+          {/* --- FIX 3: Added style tag to hide scrollbar --- */}
+          <style>
+            {`
+              .message-box::-webkit-scrollbar {
+                display: none;
+              }
+              .message-box {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+            `}
+          </style>
+
+          <div className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
             {messages.map((msg, index) => (
               <div
                 key={msg.timestamp || `optimistic-${index}`} // Use timestamp or index
@@ -274,9 +275,10 @@ const Project = () => {
                         minute: "2-digit",
                       }
                     )}
-                    {msg.isOptimistic && (
+                    {/* --- FIX: Removed (Sending...) text --- */}
+                    {/* {msg.isOptimistic && (
                       <span className="ml-1 opacity-50">(Sending...)</span>
-                    )}
+                    )} */}
                   </small>
                 </div>
               </div>
@@ -286,6 +288,8 @@ const Project = () => {
                 No messages yet.
               </div>
             )}
+            {/* --- FIX: Added ref for smooth scrolling --- */}
+            <div ref={messageEndRef} />
           </div>
           {/* Input */}
           <div className="inputField w-full flex border-t border-slate-400">
