@@ -4,6 +4,7 @@ import connect from "./db/db.js";
 import userRoutes from "./Routes/User.routes.js";
 import projectRoutes from "./Routes/Project.routes.js";
 import cookieParser from "cookie-parser";
+import aiRoutes from "./Routes/ai.routes.js";
 import cors from "cors";
 
 connect();
@@ -18,6 +19,7 @@ app.use(morgan("dev"));
 
 app.use("/user", userRoutes);
 app.use("/project", projectRoutes);
+app.use("/ai", aiRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
