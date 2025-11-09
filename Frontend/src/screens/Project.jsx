@@ -223,9 +223,9 @@ const Project = () => {
           </button>
         </header>
 
-        {/* --- FIX 1: Added overflow-hidden here --- */}
+        {/* --- FIX 1: Added overflow-hidden here to contain children --- */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden">
-          {/* --- FIX 3: Added style tag to hide scrollbar --- */}
+          {/* --- FIX 2: Added style tag to hide scrollbar --- */}
           <style>
             {`
               .message-box::-webkit-scrollbar {
@@ -259,7 +259,11 @@ const Project = () => {
                       {msg.sender.email || "Unknown User"}
                     </small>
                   )}
-                  <p className="text-sm">{msg.message}</p>
+                  {/* --- THIS IS THE FIX --- */}
+                  <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">
+                    {msg.message}
+                  </p>
+                  {/* --- END OF FIX --- */}
                   <small
                     className={`text-xs self-end mt-1 ${
                       msg.sender._id === user?._id
@@ -275,7 +279,7 @@ const Project = () => {
                         minute: "2-digit",
                       }
                     )}
-                    {/* --- FIX: Removed (Sending...) text --- */}
+                    {/* --- FIX 3: Removed (Sending...) text --- */}
                     {/* {msg.isOptimistic && (
                       <span className="ml-1 opacity-50">(Sending...)</span>
                     )} */}
