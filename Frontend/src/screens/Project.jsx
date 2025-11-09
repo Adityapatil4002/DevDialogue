@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react"; // Added useRef
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../Config/axios";
 import {
@@ -25,7 +25,6 @@ const Project = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
-  // --- FIX: Ref for smooth scrolling ---
   const messageEndRef = useRef(null);
 
   useEffect(() => {
@@ -49,17 +48,12 @@ const Project = () => {
           setProject(fetchedProject);
           initializeSocket(projectId);
 
-          // --- FIX: Store the returned cleanup function ---
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             console.log("Received message:", data);
 
             if (isMounted) {
-              // --- FIX 2: Replaced complex logic with simpler version ---
               setMessages((prev) => {
-                // Check if the received message is from the current user
                 if (data.sender._id === user?._id) {
-                  // YES. It's from us. Find and replace the *first*
-                  // optimistic message with matching text.
                   let replaced = false;
                   const newState = prev.map((m) => {
                     if (
@@ -68,25 +62,20 @@ const Project = () => {
                       !replaced
                     ) {
                       replaced = true;
-                      return data; // Replace optimistic msg with server's confirmed msg
+                      return data;
                     }
                     return m;
                   });
                   return newState;
                 } else {
-                  // NO. It's from someone else. Just add it.
-                  // Check if it already exists (just in case)
                   if (!prev.some((m) => m.timestamp === data.timestamp)) {
                     return [...prev, data];
                   }
                 }
-                // If no condition met (e.g., duplicate), return the previous state
                 return prev;
               });
-              // --- END FIX 2 ---
             }
           });
-          // --- END FIX ---
         } else if (isMounted) {
           setError("Project not found or failed to load.");
         }
@@ -111,24 +100,21 @@ const Project = () => {
 
     return () => {
       isMounted = false;
-      if (cleanupMessageListener) {
-        cleanupMessageListener(); // Remove the 'project-message' listener
-      }
-      disconnectSocket(); // Disconnect socket and clear instance
+      if (cleanupMessageListener) cleanupMessageListener();
+      disconnectSocket();
     };
   }, [projectId, user?._id]);
 
-  // --- FIX: Add useEffect for smooth scrolling ---
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]); // Scroll smoothly when messages array changes
+  }, [messages]);
 
   const handleUserSelect = (userId) => {
-    setSelectedUsers((prevSelected) => {
-      if (prevSelected.includes(userId)) {
-        return prevSelected.filter((id) => id !== userId);
+    setSelectedUsers((prev) => {
+      if (prev.includes(userId)) {
+        return prev.filter((id) => id !== userId);
       } else {
-        return [...prevSelected, userId];
+        return [...prev, userId];
       }
     });
   };
@@ -140,9 +126,6 @@ const Project = () => {
   );
 
   const handleSubmitCollaborators = () => {
-    console.log("Adding these user IDs to the project:", selectedUsers);
-    console.log("Using projectId:", projectId);
-
     if (!projectId) {
       console.error("Cannot add collaborators: Project ID is missing.");
       return;
@@ -150,15 +133,11 @@ const Project = () => {
 
     axios
       .put("/project/add-user", {
-        projectId: projectId,
+        projectId,
         users: selectedUsers,
       })
-      .then((res) => {
-        setProject(res.data.project);
-      })
-      .catch((err) => {
-        console.error("Error adding collaborators:", err);
-      });
+      .then((res) => setProject(res.data.project))
+      .catch((err) => console.error("Error adding collaborators:", err));
 
     setAddUserModalOpen(false);
     setSelectedUsers([]);
@@ -166,21 +145,14 @@ const Project = () => {
   };
 
   const send = () => {
-    if (!message.trim() || !user?._id || !projectId) {
-      console.log(
-        "Cannot send message: Missing message, logged-in user ID, or project ID"
-      );
-      return;
-    }
+    if (!message.trim() || !user?._id || !projectId) return;
+
     const messageData = {
-      projectId: projectId,
-      message: message,
-      sender: {
-        _id: user._id,
-        email: user.email,
-      },
+      projectId,
+      message,
+      sender: { _id: user._id, email: user.email },
     };
-    sendMessage("project-message", messageData); // Send to server
+    sendMessage("project-message", messageData);
 
     setMessages((prev) => [
       ...prev,
@@ -192,6 +164,23 @@ const Project = () => {
     ]);
     setMessage("");
   };
+
+  /* ---------- AI MESSAGE RENDERER ---------- */
+  function writeAiMessage(raw) {
+    let msgObj;
+    try {
+      msgObj = JSON.parse(raw);
+    } catch {
+      return <p className="text-sm whitespace-pre-wrap break-words">{raw}</p>;
+    }
+
+    return (
+      <div className="prose prose-invert prose-sm max-w-none">
+        {/* replace with real markdown component if you have one */}
+        <div dangerouslySetInnerHTML={{ __html: msgObj.text }} />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -210,8 +199,9 @@ const Project = () => {
 
   return (
     <main className="h-screen w-screen flex">
-      <section className="left relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[450px] bg-slate-300 overflow-hidden border-r border-slate-400">
-        <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 border-b border-slate-200">
+      {/* ---------- CHAT PANEL (narrower) ---------- */}
+      <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-slate-300 overflow-hidden border-r border-slate-400">
+        <header className="flex justify-between items-center p-2 px-4 bg-slate-100 border-b border-slate-200">
           <h1 className="text-lg font-semibold truncate" title={project.name}>
             {project.name}
           </h1>
@@ -223,47 +213,54 @@ const Project = () => {
           </button>
         </header>
 
-        {/* --- FIX 1: Added overflow-hidden here to contain children --- */}
+        {/* ---------- CONVERSATION AREA ---------- */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden">
-          {/* --- FIX 2: Added style tag to hide scrollbar --- */}
           <style>
             {`
-              .message-box::-webkit-scrollbar {
-                display: none;
-              }
-              .message-box {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
+              .message-box::-webkit-scrollbar { display:none; }
+              .message-box { -ms-overflow-style:none; scrollbar-width:none; }
             `}
           </style>
 
           <div className="message-box p-2 flex-grow flex flex-col gap-2 overflow-y-auto">
-            {messages.map((msg, index) => (
+            {messages.map((msg, i) => (
               <div
-                key={msg.timestamp || `optimistic-${index}`} // Use timestamp or index
+                key={msg.timestamp || `optimistic-${i}`}
                 className={`flex ${
                   msg.sender._id === user?._id ? "justify-end" : "justify-start"
                 }`}
               >
+                {/* ---------- BUBBLE (same max-width for every message) ---------- */}
                 <div
-                  className={`message max-w-xs md:max-w-md flex flex-col p-2 rounded-lg shadow ${
-                    msg.sender._id === user?._id
-                      ? "bg-blue-500 text-white"
-                      : "bg-slate-50"
-                  }`}
+                  className={`
+                    max-w-xs md:max-w-md               /* <-- SAME WIDTH LIMIT */
+                    flex flex-col p-3 rounded-lg shadow
+                    ${
+                      msg.sender._id === user?._id
+                        ? "bg-blue-500 text-white"
+                        : msg.isAi
+                        ? "bg-slate-800 text-white"
+                        : "bg-slate-50 text-gray-800"
+                    }
+                  `}
                 >
-                  {/* Show sender email only if it's not the current user */}
-                  {msg.sender._id !== user?._id && (
+                  {/* Sender label (non-AI, non-current user) */}
+                  {msg.sender._id !== user?._id && !msg.isAi && (
                     <small className="opacity-80 text-xs font-medium text-blue-600 mb-1">
                       {msg.sender.email || "Unknown User"}
                     </small>
                   )}
-                  {/* --- THIS IS THE FIX --- */}
-                  <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">
-                    {msg.message}
-                  </p>
-                  {/* --- END OF FIX --- */}
+
+                  {/* CONTENT */}
+                  {msg.isAi ? (
+                    writeAiMessage(msg.message)
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {msg.message}
+                    </p>
+                  )}
+
+                  {/* Timestamp */}
                   <small
                     className={`text-xs self-end mt-1 ${
                       msg.sender._id === user?._id
@@ -271,7 +268,6 @@ const Project = () => {
                         : "text-gray-400"
                     }`}
                   >
-                    {/* Format timestamp */}
                     {new Date(msg.timestamp || Date.now()).toLocaleTimeString(
                       [],
                       {
@@ -279,30 +275,26 @@ const Project = () => {
                         minute: "2-digit",
                       }
                     )}
-                    {/* --- FIX 3: Removed (Sending...) text --- */}
-                    {/* {msg.isOptimistic && (
-                      <span className="ml-1 opacity-50">(Sending...)</span>
-                    )} */}
                   </small>
                 </div>
               </div>
             ))}
+
             {messages.length === 0 && (
               <div className="text-center text-gray-500 mt-10">
                 No messages yet.
               </div>
             )}
-            {/* --- FIX: Added ref for smooth scrolling --- */}
             <div ref={messageEndRef} />
           </div>
-          {/* Input */}
+
+          {/* ---------- INPUT ---------- */}
           <div className="inputField w-full flex border-t border-slate-400">
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && send()}
               className="p-3 px-4 border-none outline-none flex-grow bg-slate-200 text-gray-800 placeholder-gray-500"
-              type="text"
               placeholder="Enter message..."
             />
             <button
@@ -314,7 +306,8 @@ const Project = () => {
             </button>
           </div>
         </div>
-        {/* Side Panel */}
+
+        {/* ---------- SIDE PANEL (unchanged) ---------- */}
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-transform duration-300 ease-in-out ${
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -339,26 +332,22 @@ const Project = () => {
             <h3 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">
               Collaborators
             </h3>
-            {project &&
-              project.users &&
-              project.users.map((u) => {
-                return (
-                  <div
-                    key={u._id}
-                    className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-3 items-center rounded-md transition-colors"
-                  >
-                    <div className="relative flex-shrink-0 aspect-square rounded-full w-10 h-10 flex items-center justify-center text-white bg-slate-600">
-                      <span className="text-lg font-bold uppercase">
-                        {u.email ? u.email[0] : "?"}
-                      </span>
-                    </div>
-                    <h1 className="font-medium text-gray-800 truncate">
-                      {u.email}
-                    </h1>
-                  </div>
-                );
-              })}
-            {project && project.users && project.users.length === 0 && (
+            {project?.users?.map((u) => (
+              <div
+                key={u._id}
+                className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-3 items-center rounded-md transition-colors"
+              >
+                <div className="relative flex-shrink-0 aspect-square rounded-full w-10 h-10 flex items-center justify-center text-white bg-slate-600">
+                  <span className="text-lg font-bold uppercase">
+                    {u.email?.[0] ?? "?"}
+                  </span>
+                </div>
+                <h1 className="font-medium text-gray-800 truncate">
+                  {u.email}
+                </h1>
+              </div>
+            ))}
+            {(!project?.users || project.users.length === 0) && (
               <p className="text-center text-gray-500 mt-4">
                 No collaborators yet.
               </p>
@@ -367,7 +356,7 @@ const Project = () => {
         </div>
       </section>
 
-      {/* Add User Modal */}
+      {/* ---------- ADD USER MODAL (unchanged) ---------- */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4">
           <div
@@ -406,7 +395,7 @@ const Project = () => {
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((modalUser) => {
                     const alreadyInProject = project?.users?.some(
-                      (pUser) => pUser._id === modalUser._id
+                      (p) => p._id === modalUser._id
                     );
                     const isSelected = selectedUsers.includes(modalUser._id);
                     return (
@@ -451,19 +440,16 @@ const Project = () => {
             <div className="flex justify-end p-4 border-t bg-slate-50 rounded-b-lg flex-shrink-0">
               <button
                 onClick={() => setAddUserModalOpen(false)}
-                type="button"
                 className="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded border border-gray-300 mr-3 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitCollaborators}
-                type="button"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={selectedUsers.length === 0}
               >
-                Add{" "}
-                {selectedUsers.length > 0 ? `(${selectedUsers.length})` : ""}
+                Add {selectedUsers.length > 0 && `(${selectedUsers.length})`}
               </button>
             </div>
           </div>
