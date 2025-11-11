@@ -87,14 +87,12 @@ D
     </example>
 
 `,
-  // --- END OF FIX ---
 });
 
 export const generateResult = async (prompt) => {
   console.log(`Sending prompt to Gemini: "${prompt}"`);
   try {
     const result = await model.generateContent(prompt);
-    // You are asking for JSON, so you must parse it before returning text
     const response = result.response;
     const jsonString = response.text();
     const parsedJson = JSON.parse(jsonString);

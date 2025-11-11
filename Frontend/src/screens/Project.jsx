@@ -24,6 +24,18 @@ const Project = () => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [fileTree, setFileTree] = useState({
+    "app.js": {
+      content: `const express = require('express');`
+    },
+    "package.json": {
+      content: `{
+        "name": "temp-server"
+        }`
+    }
+  })
+  const [CurrentFile, setCurrentFile] = useState(null);
+  const [openFiles, setOpenFiles] = useState([]);
 
   const messageEndRef = useRef(null);
 
@@ -354,6 +366,65 @@ const Project = () => {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="right bg-red-50 flex-grow h-full flex">
+        <div className="explorer h-full max-w-64 min-w-52 bg-slate-300">
+          <div className="file-tree w-full">
+            {
+              Object.keys(fileTree).map((file, index) => {
+                <button
+                  onClick={() => {
+                    setCurrentFile(file)
+                    setOpenFiles((prev) => (prev.includes(file) ? prev : [...prev, file]));
+                  }}
+                  className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-200">
+                  <p className=" font-semibold text-lg">{file}</p>
+                </button>
+
+              })
+            }
+
+          </div>
+        </div>
+
+        {CurrentFile && (
+        <div className="code-editor flex flex-col flex-grow h-full">
+            <div className="top flex">
+              {
+                openFiles.map((file, index) => (
+                  <button
+                    onClick={() => setCurrentFile(file)}
+                    className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${CurrentFile === file}`}
+                  >
+                    <p className="font-semibold text-lg">{file}</p>
+                    
+                  </button>
+                ))
+              }
+          </div>
+          <div className="bottom flex flex-grow ">
+              {
+                fileTree[CurrentFile] && (
+                  <textarea
+                    value={fileTree[CurrentFile].content}
+                    onChange={(e) => {
+                      setFileTree((prev) => ({
+                        ...prev,
+                        [CurrentFile]: {
+                          ...prev[CurrentFile],
+                          content: e.target.value
+                        }
+                      }))
+                    }}
+                    className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
+                  ></textarea>
+                )
+            }
+          </div>
+        </div>
+        )}
+
       </section>
 
       {/* ---------- ADD USER MODAL (unchanged) ---------- */}
