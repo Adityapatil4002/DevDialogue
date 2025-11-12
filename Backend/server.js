@@ -72,7 +72,7 @@ io.on("connection", (socket) => {
   socket.on("project-message", async (data) => {
     // Check for AI prompt
     const message = data.message;
-    const aiIsPresentInMessage = message.includes("@ai"); // --- THIS IS THE FIX --- // Handle AI prompts separately
+    const aiIsPresentInMessage = message.includes("@ai");
 
     if (aiIsPresentInMessage) {
       try {
@@ -89,27 +89,28 @@ io.on("connection", (socket) => {
         const result = await generateResult(prompt);
 
         // 3. Send the AI's response to everyone
-        io.to(socket.roomId).emit("project-message", {
-          message: result,
-          sender: {
-            _id: "ai",
-            email: "AI",
-          },
-          timestamp: new Date(),
-        });
+        // --- THIS IS THE FIX ---
+        // 'result' is already a complete message object, so we send it directly
+        // instead of wrapping it in a new object.
+        io.to(socket.roomId).emit("project-message", result);
+        // --- END OF FIX ---
       } catch (error) {
         // If AI fails, send an error message just to the sender
         console.error("AI Handler Error:", error.message);
         socket.emit("project-message", {
-          message: "Sorry, the AI feature is not available right now.",
+          message: JSON.stringify({
+            // Send error in same format as AI
+            text: "Sorry, the AI feature is not available right now.",
+          }),
+          isAi: true, // Mark as AI so it still renders correctly
           sender: { _id: "ai-error", email: "AI Error" },
           timestamp: new Date(),
         });
       }
       return; // Stop execution to prevent broadcasting the '@ai' message again
-    } // If it's a regular message, broadcast to everyone (including sender)
-    // --- END OF FIX ---
+    }
 
+    // If it's a regular message, broadcast to everyone (including sender)
     console.log(
       `Message received for project ${socket.projectIdString}:`,
       data.message

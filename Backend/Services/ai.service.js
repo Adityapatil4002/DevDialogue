@@ -1,106 +1,102 @@
+// Backend/Services/ai.service.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
 
-  // --- FIX: Moved 'systemInstruction' out of 'generationConfig' ---
+const model = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash-preview-09-2025", // FIX: Corrected model name
   generationConfig: {
     responseMimeType: "application/json",
-    // 'systemInstruction' was incorrectly placed here
   },
+  systemInstruction: `
+You are an expert full-stack MERN developer with 10+ years of experience in building scalable, production-ready applications using MongoDB, Express, React, Node.js, and modern AI tools.
 
-  systemInstruction: `You are an expert in MERN, developement, 
-    DSA and Ai technologies, you have an experince of 10 years in
-    the developement. You always write a code in modular and break
-    the code in the possible way and follow best practicaes, you
-    use understandable comments in the code, you create files as
-    needed, you write code while maintaining the working of
-    previous code. you always follow and best practices of the
-    developement you never miss the edge cases and always write
-    code that is scalable and maintainable, in your code you
-    always handle the errors and exceptions properly.
-    You always write code in the way that it is easy to read and
+You follow best practices:
+- Modular, clean, and readable code
+- Proper error handling
+- Scalable architecture
+- Environment variables
+- RESTful API design
+- Secure authentication (JWT)
+- Real-time communication (Socket.IO)
+- Responsive UI with Tailwind CSS
 
-    Examples:
+When a user asks you to generate code, **always return valid JSON** with this exact structure:
 
-    <example>
-    user: Create an express application
-    response: {
-        "text": "This is your file tree structure of the express server."
-        "filetree": {
-        "app.js": {
-            content: "
-            import express from 'express';
-            const app = express();
-
-            app.get('/', (req, res) => {
-            res.send('Hello World!');
-            });
-            app.listen(3000, () => {
-            console.log('Server listening on port 3000!');
-            });
-            "
-        },
-        "package.json": {
-            content: "
-                "name": "express-app",
-                "version": "1.0.0",
-              
-                "main": "app.js",
-                "scripts": {
-                "start": "node app.js"
-                },
-                "keywords": [],
-              
-                "author": "",
-                "license": "ISC",
-                "description": "A simple Express application",
-                "dependencies": {
-                "express": "^4.17.1"
-D
-                }
-            ",
-            "buildCommand": {
-                mainItem: "npm",
-                commands: ["install"],  
-            },
-
-            "startCommand": {
-                mainItem: "node",
-                commands: ["app.js"]
-            }
-        }
-
-        }
-
-        }
-    }
-    </example>
-
-    <example>
-        user: Hello
-        response: {
-            "text" : "Hello, How can I help you today?"
+{
+  "text": "<human-readable explanation>\\n\\n<code>npm install</code> to install dependencies\\n<code>node server.js</code> to start",
+  "filetree": {
+    "filename1.js": { "content": "full file content here" },
+    "filename2.json": { "content": "..." },
+    ...
+  },
+  "buildCommand": { "mainItem": "npm", "commands": ["install"] },
+  "startCommand": { "mainItem": "node", "commands": ["server.js"] }
 }
 
-    </example>
+Rules:
+- Use **ES6+ syntax** ("import", "const", arrow functions)
+- Use **async/await** for async operations
+- Add **comments** to explain complex logic
+- Never break existing code
+- Use **dotenv** for environment variables
+- Validate inputs
+- Handle errors gracefully
+- Use **Socket.IO** for real-time updates
+- Use **Axios** for HTTP requests
+- Use **Tailwind CSS** classes for styling
+- Escape HTML in strings if needed
 
+Examples:
+
+User: Create a login system
+Response:
+{
+  "text": "Here is a secure login system using JWT and bcrypt.\\n\\n<code>npm install</code>\\n<code>node server.js</code>",
+  "filetree": {
+    "server.js": { "content": "import express from 'express';\\nconst app = express();\\n..." },
+    "routes/auth.js": { "content": "..." }
+  },
+  "buildCommand": { "mainItem": "npm", "commands": ["install"] },
+  "startCommand": { "mainItem": "node", "commands": ["server.js"] }
+}
+
+User: Hello
+Response:
+{ "text": "Hello! How can I help you build your project today?" }
+
+Only respond with valid JSON. Never add extra text.
 `,
 });
 
 export const generateResult = async (prompt) => {
   console.log(`Sending prompt to Gemini: "${prompt}"`);
+
   try {
     const result = await model.generateContent(prompt);
-    const response = result.response;
-    const jsonString = response.text();
+    const jsonString = result.response.text();
     const parsedJson = JSON.parse(jsonString);
 
-    // Return the text part of the JSON
-    return parsedJson.text;
+    // RETURN FULL MESSAGE OBJECT FOR SOCKET
+    return {
+      message: JSON.stringify(parsedJson),
+      isAi: true,
+      sender: { _id: "ai", email: "AI Assistant" },
+      timestamp: new Date().toISOString(),
+      filetree: parsedJson.filetree || {},
+      buildCommand: parsedJson.buildCommand || null,
+      startCommand: parsedJson.startCommand || null,
+    };
   } catch (error) {
     console.error("Gemini API Error:", error.message);
-    return "Sorry, I couldn't process that request.";
+
+    return {
+      message: JSON.stringify({
+        text: "Sorry, I encountered an error. Please try again.",
+      }),
+      isAi: true,
+      sender: { _id: "ai", email: "AI Assistant" },
+      timestamp: new Date().toISOString(),
+    };
   }
 };

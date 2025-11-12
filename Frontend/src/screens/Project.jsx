@@ -1,5 +1,6 @@
+// Frontend/screens/Project.jsx
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import axios from "../Config/axios";
 import {
   initializeSocket,
@@ -10,7 +11,6 @@ import {
 import { UserContext } from "../Context/user.context.jsx";
 
 const Project = () => {
-  const location = useLocation();
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
 
@@ -24,16 +24,7 @@ const Project = () => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [fileTree, setFileTree] = useState({
-    "app.js": {
-      content: `const express = require('express');`
-    },
-    "package.json": {
-      content: `{
-        "name": "temp-server"
-        }`
-    }
-  })
+  const [fileTree, setFileTree] = useState({});
   const [CurrentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
 
@@ -54,10 +45,15 @@ const Project = () => {
       setError(null);
 
       try {
-        const projectRes = await axios.get(`/project/get-project/${projectId}`);
-        if (isMounted && projectRes.data.project) {
+        const [projectRes, usersRes] = await Promise.all([
+          axios.get(`/project/get-project/${projectId}`),
+          axios.get("/user/all"),
+        ]);
+
+        if (isMounted) {
           const fetchedProject = projectRes.data.project;
           setProject(fetchedProject);
+          setAllUsers(usersRes.data.users);
           initializeSocket(projectId);
 
           cleanupMessageListener = recieveMessage("project-message", (data) => {
@@ -65,46 +61,60 @@ const Project = () => {
 
             if (isMounted) {
               setMessages((prev) => {
-                if (data.sender._id === user?._id) {
+                // FIX: Logic adjusted to prevent dropping messages
+                if (data.sender?._id === user?._id) {
                   let replaced = false;
-                  const newState = prev.map((m) => {
+                  // First, try to replace an optimistic message
+                  const updatedMessages = prev.map((m) => {
                     if (
                       m.isOptimistic &&
                       m.message === data.message &&
                       !replaced
                     ) {
                       replaced = true;
-                      return data;
+                      return data; // Replace optimistic with server data
                     }
                     return m;
                   });
-                  return newState;
+
+                  if (replaced) {
+                    return updatedMessages; // Return the array with the replacement
+                  }
+
+                  // If no message was replaced, add the new message from server
+                  // (unless it's already somehow in the list)
+                  if (!prev.some((m) => m.timestamp === data.timestamp)) {
+                    return [...updatedMessages, data];
+                  }
+                  // Otherwise, it's a duplicate, just return the mapped list
+                  return updatedMessages;
                 } else {
+                  // This is from another user, add it if it's not a duplicate
                   if (!prev.some((m) => m.timestamp === data.timestamp)) {
                     return [...prev, data];
                   }
                 }
+                // If it's a duplicate from another user, do nothing
                 return prev;
               });
+
+              // AI: Update file tree
+              if (data.isAi && data.filetree) {
+                setFileTree(data.filetree);
+                const files = Object.keys(data.filetree);
+                if (files.length > 0) {
+                  setCurrentFile(files[0]);
+                  setOpenFiles([files[0]]);
+                }
+              }
             }
           });
-        } else if (isMounted) {
-          setError("Project not found or failed to load.");
-        }
-
-        const usersRes = await axios.get("/user/all");
-        if (isMounted) {
-          setAllUsers(usersRes.data.users);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
-        if (isMounted) {
-          setError("Failed to load project details or users.");
-        }
+        if (isMounted) setError("Failed to load project.");
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -122,13 +132,11 @@ const Project = () => {
   }, [messages]);
 
   const handleUserSelect = (userId) => {
-    setSelectedUsers((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
-      } else {
-        return [...prev, userId];
-      }
-    });
+    setSelectedUsers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   const filteredUsers = allUsers.filter(
@@ -138,16 +146,10 @@ const Project = () => {
   );
 
   const handleSubmitCollaborators = () => {
-    if (!projectId) {
-      console.error("Cannot add collaborators: Project ID is missing.");
-      return;
-    }
+    if (!projectId || selectedUsers.length === 0) return;
 
     axios
-      .put("/project/add-user", {
-        projectId,
-        users: selectedUsers,
-      })
+      .put("/project/add-user", { projectId, users: selectedUsers })
       .then((res) => setProject(res.data.project))
       .catch((err) => console.error("Error adding collaborators:", err));
 
@@ -177,8 +179,8 @@ const Project = () => {
     setMessage("");
   };
 
-  /* ---------- AI MESSAGE RENDERER ---------- */
-  function writeAiMessage(raw) {
+  /* ---------- SAFE AI MESSAGE RENDERER ---------- */
+  const AiMessage = ({ raw }) => {
     let msgObj;
     try {
       msgObj = JSON.parse(raw);
@@ -187,12 +189,23 @@ const Project = () => {
     }
 
     return (
-      <div className="prose prose-invert prose-sm max-w-none">
-        {/* replace with real markdown component if you have one */}
-        <div dangerouslySetInnerHTML={{ __html: msgObj.text }} />
+      <div className="prose prose-invert prose-sm max-w-none space-y-2">
+        <div dangerouslySetInnerHTML={{ __html: msgObj.text || "" }} />
+        {msgObj.buildCommand && (
+          <div className="p-2 bg-slate-700 rounded text-xs font-mono">
+            <strong>Build:</strong> {msgObj.buildCommand.mainItem}{" "}
+            {msgObj.buildCommand.commands.join(" ")}
+          </div>
+        )}
+        {msgObj.startCommand && (
+          <div className="p-2 bg-slate-700 rounded text-xs font-mono">
+            <strong>Start:</strong> {msgObj.startCommand.mainItem}{" "}
+            {msgObj.startCommand.commands.join(" ")}
+          </div>
+        )}
       </div>
     );
-  }
+  };
 
   if (loading) {
     return (
@@ -211,7 +224,7 @@ const Project = () => {
 
   return (
     <main className="h-screen w-screen flex">
-      {/* ---------- CHAT PANEL (narrower) ---------- */}
+      {/* ---------- CHAT PANEL ---------- */}
       <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-slate-300 overflow-hidden border-r border-slate-400">
         <header className="flex justify-between items-center p-2 px-4 bg-slate-100 border-b border-slate-200">
           <h1 className="text-lg font-semibold truncate" title={project.name}>
@@ -239,16 +252,16 @@ const Project = () => {
               <div
                 key={msg.timestamp || `optimistic-${i}`}
                 className={`flex ${
-                  msg.sender._id === user?._id ? "justify-end" : "justify-start"
+                  msg.sender?._id === user?._id
+                    ? "justify-end"
+                    : "justify-start"
                 }`}
               >
-                {/* ---------- BUBBLE (same max-width for every message) ---------- */}
                 <div
                   className={`
-                    max-w-xs md:max-w-md               /* <-- SAME WIDTH LIMIT */
-                    flex flex-col p-3 rounded-lg shadow
+                    max-w-xs md:max-w-md flex flex-col p-3 rounded-lg shadow
                     ${
-                      msg.sender._id === user?._id
+                      msg.sender?._id === user?._id
                         ? "bg-blue-500 text-white"
                         : msg.isAi
                         ? "bg-slate-800 text-white"
@@ -256,26 +269,23 @@ const Project = () => {
                     }
                   `}
                 >
-                  {/* Sender label (non-AI, non-current user) */}
-                  {msg.sender._id !== user?._id && !msg.isAi && (
+                  {msg.sender?._id !== user?._id && !msg.isAi && (
                     <small className="opacity-80 text-xs font-medium text-blue-600 mb-1">
                       {msg.sender.email || "Unknown User"}
                     </small>
                   )}
 
-                  {/* CONTENT */}
                   {msg.isAi ? (
-                    writeAiMessage(msg.message)
+                    <AiMessage raw={msg.message} />
                   ) : (
                     <p className="text-sm whitespace-pre-wrap break-words">
                       {msg.message}
                     </p>
                   )}
 
-                  {/* Timestamp */}
                   <small
                     className={`text-xs self-end mt-1 ${
-                      msg.sender._id === user?._id
+                      msg.sender?._id === user?._id
                         ? "text-blue-100 opacity-70"
                         : "text-gray-400"
                     }`}
@@ -319,7 +329,7 @@ const Project = () => {
           </div>
         </div>
 
-        {/* ---------- SIDE PANEL (unchanged) ---------- */}
+        {/* ---------- SIDE PANEL (Collaborators) ---------- */}
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-transform duration-300 ease-in-out ${
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -368,66 +378,68 @@ const Project = () => {
         </div>
       </section>
 
+      {/* ---------- RIGHT PANEL: FILE TREE + EDITOR ---------- */}
       <section className="right bg-red-50 flex-grow h-full flex">
         <div className="explorer h-full max-w-64 min-w-52 bg-slate-300">
           <div className="file-tree w-full">
-            {
-              Object.keys(fileTree).map((file, index) => {
+            {Object.keys(fileTree).length > 0 ? (
+              Object.keys(fileTree).map((file) => (
                 <button
+                  key={file}
                   onClick={() => {
-                    setCurrentFile(file)
-                    setOpenFiles((prev) => (prev.includes(file) ? prev : [...prev, file]));
+                    setCurrentFile(file);
+                    setOpenFiles((prev) =>
+                      prev.includes(file) ? prev : [...prev, file]
+                    );
                   }}
-                  className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-200">
-                  <p className=" font-semibold text-lg">{file}</p>
+                  className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-200 hover:bg-slate-300 w-full text-left"
+                >
+                  <p className="font-semibold text-lg">{file}</p>
                 </button>
-
-              })
-            }
-
+              ))
+            ) : (
+              <p className="p-4 text-sm text-gray-500">No files yet.</p>
+            )}
           </div>
         </div>
 
         {CurrentFile && (
-        <div className="code-editor flex flex-col flex-grow h-full">
-            <div className="top flex">
-              {
-                openFiles.map((file, index) => (
-                  <button
-                    onClick={() => setCurrentFile(file)}
-                    className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${CurrentFile === file}`}
-                  >
-                    <p className="font-semibold text-lg">{file}</p>
-                    
-                  </button>
-                ))
-              }
+          <div className="code-editor flex flex-col flex-grow h-full">
+            <div className="top flex overflow-x-auto">
+              {openFiles.map((file) => (
+                <button
+                  key={file}
+                  onClick={() => setCurrentFile(file)}
+                  className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${
+                    CurrentFile === file ? "bg-slate-400" : ""
+                  }`}
+                >
+                  <p className="font-semibold text-lg">{file}</p>
+                </button>
+              ))}
+            </div>
+            <div className="bottom flex flex-grow">
+              {fileTree[CurrentFile] && (
+                <textarea
+                  value={fileTree[CurrentFile].content}
+                  onChange={(e) => {
+                    setFileTree((prev) => ({
+                      ...prev,
+                      [CurrentFile]: {
+                        ...prev[CurrentFile],
+                        content: e.target.value,
+                      },
+                    }));
+                  }}
+                  className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
+                ></textarea>
+              )}
+            </div>
           </div>
-          <div className="bottom flex flex-grow ">
-              {
-                fileTree[CurrentFile] && (
-                  <textarea
-                    value={fileTree[CurrentFile].content}
-                    onChange={(e) => {
-                      setFileTree((prev) => ({
-                        ...prev,
-                        [CurrentFile]: {
-                          ...prev[CurrentFile],
-                          content: e.target.value
-                        }
-                      }))
-                    }}
-                    className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
-                  ></textarea>
-                )
-            }
-          </div>
-        </div>
         )}
-
       </section>
 
-      {/* ---------- ADD USER MODAL (unchanged) ---------- */}
+      {/* ---------- ADD USER MODAL ---------- */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4">
           <div
@@ -495,7 +507,7 @@ const Project = () => {
                             </span>
                           )}
                         </span>
-                        {!alreadyInProject && isSelected && (
+                        {!alreadyInTopProject && isSelected && (
                           <i className="ri-check-line text-blue-600 font-bold"></i>
                         )}
                       </li>
