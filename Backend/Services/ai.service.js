@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-preview-09-2025", // FIX: Corrected model name
+  model: "gemini-2.5-flash-preview-09-2025",
   generationConfig: {
     responseMimeType: "application/json",
   },
@@ -22,12 +22,13 @@ You follow best practices:
 - Responsive UI with Tailwind CSS
 
 When a user asks you to generate code, **always return valid JSON** with this exact structure:
+NOTE: The filetree format is very specific for web containers. Each filename key must have a value of { "file": { "contents": "..." } }.
 
 {
   "text": "<human-readable explanation>\\n\\n<code>npm install</code> to install dependencies\\n<code>node server.js</code> to start",
   "filetree": {
-    "filename1.js": { "content": "full file content here" },
-    "filename2.json": { "content": "..." },
+    "filename1.js": { "file": { "contents": "full file content here" } },
+    "filename2.json": { "file": { "contents": "..." } },
     ...
   },
   "buildCommand": { "mainItem": "npm", "commands": ["install"] },
@@ -54,8 +55,8 @@ Response:
 {
   "text": "Here is a secure login system using JWT and bcrypt.\\n\\n<code>npm install</code>\\n<code>node server.js</code>",
   "filetree": {
-    "server.js": { "content": "import express from 'express';\\nconst app = express();\\n..." },
-    "routes/auth.js": { "content": "..." }
+    "server.js": { "file": { "contents": "import express from 'express';\\nconst app = express();\\n..." } },
+    "routes/auth.js": { "file": { "contents": "..." } }
   },
   "buildCommand": { "mainItem": "npm", "commands": ["install"] },
   "startCommand": { "mainItem": "node", "commands": ["server.js"] }
