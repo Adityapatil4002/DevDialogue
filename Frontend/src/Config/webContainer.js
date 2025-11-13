@@ -1,0 +1,10 @@
+import { WebContainer, webContainer } from "@webcontainer/api";
+
+let webContainerInstance = null;
+
+export const getWebContainer = () => {
+    if (webContainerInstance === null) {
+        webContainerInstance = new WebContainer();
+    }
+    return webContainerInstance;
+}
