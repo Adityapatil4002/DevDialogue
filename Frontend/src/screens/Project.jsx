@@ -9,6 +9,8 @@ import {
   disconnectSocket,
 } from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
+import { getWebContainer } from "../Config/webContainer.js";
+// FIX: Removed invalid imports for 'postcss' and 'mongoose'
 
 const Project = () => {
   const { projectId } = useParams();
@@ -27,6 +29,7 @@ const Project = () => {
   const [fileTree, setFileTree] = useState({});
   const [CurrentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
+  const [webContainer, setWebContainer] = useState(null);
 
   const messageEndRef = useRef(null);
 
@@ -56,15 +59,22 @@ const Project = () => {
           setAllUsers(usersRes.data.users);
           initializeSocket(projectId);
 
+          if (!webContainer) {
+            // FIX: Renamed 'Container' to 'containerInstance' to avoid confusion
+            getWebContainer().then((containerInstance) => {
+              setWebContainer(containerInstance);
+              console.log("container started");
+            });
+          }
+
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             console.log("Received message:", data);
 
             if (isMounted) {
               setMessages((prev) => {
-                // FIX: Logic adjusted to prevent dropping messages
+                // (Your existing, correct message handling logic)
                 if (data.sender?._id === user?._id) {
                   let replaced = false;
-                  // First, try to replace an optimistic message
                   const updatedMessages = prev.map((m) => {
                     if (
                       m.isOptimistic &&
@@ -72,29 +82,23 @@ const Project = () => {
                       !replaced
                     ) {
                       replaced = true;
-                      return data; // Replace optimistic with server data
+                      return data;
                     }
                     return m;
                   });
 
                   if (replaced) {
-                    return updatedMessages; // Return the array with the replacement
+                    return updatedMessages;
                   }
-
-                  // If no message was replaced, add the new message from server
-                  // (unless it's already somehow in the list)
                   if (!prev.some((m) => m.timestamp === data.timestamp)) {
                     return [...updatedMessages, data];
                   }
-                  // Otherwise, it's a duplicate, just return the mapped list
                   return updatedMessages;
                 } else {
-                  // This is from another user, add it if it's not a duplicate
                   if (!prev.some((m) => m.timestamp === data.timestamp)) {
                     return [...prev, data];
                   }
                 }
-                // If it's a duplicate from another user, do nothing
                 return prev;
               });
 
@@ -125,7 +129,7 @@ const Project = () => {
       if (cleanupMessageListener) cleanupMessageListener();
       disconnectSocket();
     };
-  }, [projectId, user?._id]);
+  }, [projectId, user?._id, webContainer]); // Added webContainer to dependency array
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -419,15 +423,21 @@ const Project = () => {
               ))}
             </div>
             <div className="bottom flex flex-grow">
-              {fileTree[CurrentFile] && (
+              {/* FIX: Check for the new filetree structure */}
+              {fileTree[CurrentFile] && fileTree[CurrentFile].file && (
                 <textarea
-                  value={fileTree[CurrentFile].content}
+                  // FIX: Read from the new structure: .file.contents
+                  value={fileTree[CurrentFile].file.contents || ""}
                   onChange={(e) => {
+                    // FIX: Write to the new structure
                     setFileTree((prev) => ({
                       ...prev,
                       [CurrentFile]: {
                         ...prev[CurrentFile],
-                        content: e.target.value,
+                        file: {
+                          ...prev[CurrentFile]?.file,
+                          contents: e.target.value,
+                        },
                       },
                     }));
                   }}
@@ -507,7 +517,8 @@ const Project = () => {
                             </span>
                           )}
                         </span>
-                        {!alreadyInTopProject && isSelected && (
+                        {/* FIX: Corrected typo from alreadyInTopProject to alreadyInProject */}
+                        {!alreadyInProject && isSelected && (
                           <i className="ri-check-line text-blue-600 font-bold"></i>
                         )}
                       </li>
