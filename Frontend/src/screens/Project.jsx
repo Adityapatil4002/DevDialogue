@@ -1,4 +1,3 @@
-// Frontend/screens/Project.jsx
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "../Config/axios";
@@ -10,7 +9,6 @@ import {
 } from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
-// FIX: Removed invalid imports for 'postcss' and 'mongoose'
 
 const Project = () => {
   const { projectId } = useParams();
@@ -60,7 +58,6 @@ const Project = () => {
           initializeSocket(projectId);
 
           if (!webContainer) {
-            // FIX: Renamed 'Container' to 'containerInstance' to avoid confusion
             getWebContainer().then((containerInstance) => {
               setWebContainer(containerInstance);
               console.log("container started");
@@ -72,7 +69,6 @@ const Project = () => {
 
             if (isMounted) {
               setMessages((prev) => {
-                // (Your existing, correct message handling logic)
                 if (data.sender?._id === user?._id) {
                   let replaced = false;
                   const updatedMessages = prev.map((m) => {
@@ -183,7 +179,6 @@ const Project = () => {
     setMessage("");
   };
 
-  /* ---------- SAFE AI MESSAGE RENDERER ---------- */
   const AiMessage = ({ raw }) => {
     let msgObj;
     try {
@@ -407,9 +402,9 @@ const Project = () => {
           </div>
         </div>
 
-        {CurrentFile && (
-          <div className="code-editor flex flex-col flex-grow h-full">
-            <div className="top flex overflow-x-auto">
+        <div className="code-editor flex flex-col flex-grow h-full">
+          <div className="top flex overflow-x-auto">
+            <div className="files flex justify-between w-full">
               {openFiles.map((file) => (
                 <button
                   key={file}
@@ -422,31 +417,51 @@ const Project = () => {
                 </button>
               ))}
             </div>
-            <div className="bottom flex flex-grow">
-              {/* FIX: Check for the new filetree structure */}
-              {fileTree[CurrentFile] && fileTree[CurrentFile].file && (
-                <textarea
-                  // FIX: Read from the new structure: .file.contents
-                  value={fileTree[CurrentFile].file.contents || ""}
-                  onChange={(e) => {
-                    // FIX: Write to the new structure
-                    setFileTree((prev) => ({
-                      ...prev,
-                      [CurrentFile]: {
-                        ...prev[CurrentFile],
-                        file: {
-                          ...prev[CurrentFile]?.file,
-                          contents: e.target.value,
-                        },
-                      },
-                    }));
-                  }}
-                  className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
-                ></textarea>
-              )}
-            </div>
+
+              <div className="actions flex gap-2">
+              <button
+                onClick={async() => {
+                  const lsProcess = await webContainer?.spawn('ls')
+
+                  await webContainer?.mount(fileTree)
+
+                  lsProcess.output.pipeTo(new WritableStream({
+                    write(chunk) {
+                      console.log(chunk)
+                    }
+                  }))
+                }}
+                className="p-2 px-4 bg-slate-300 text-white"
+              >
+                
+                </button>
+              </div>
+
           </div>
-        )}
+          <div className="bottom flex flex-grow">
+            {/* FIX: Check for the new filetree structure */}
+            {fileTree[CurrentFile] && fileTree[CurrentFile].file && (
+              <textarea
+                // FIX: Read from the new structure: .file.contents
+                value={fileTree[CurrentFile].file.contents || ""}
+                onChange={(e) => {
+                  // FIX: Write to the new structure
+                  setFileTree((prev) => ({
+                    ...prev,
+                    [CurrentFile]: {
+                      ...prev[CurrentFile],
+                      file: {
+                        ...prev[CurrentFile]?.file,
+                        contents: e.target.value,
+                      },
+                    },
+                  }));
+                }}
+                className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
+              ></textarea>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ---------- ADD USER MODAL ---------- */}

@@ -67,6 +67,10 @@ Response:
 { "text": "Hello! How can I help you build your project today?" }
 
 Only respond with valid JSON. Never add extra text.
+
+Important : don't use file name like routes/index.js
+
+
 `,
 });
 
