@@ -208,6 +208,17 @@ const Project = () => {
     );
   };
 
+  function saveFileTree(ft) {
+    axios.put('/project/update-file-tree', {
+      projectId: project._id,
+      fileTree: ft
+    }).then(res => {
+      console.log(res.data)
+    }).catch(err => {
+      console.log(err)
+    })  
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -482,6 +493,9 @@ const Project = () => {
                       },
                     },
                   }));
+
+                  saveFileTree(ft)
+
                 }}
                 className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
               ></textarea>
