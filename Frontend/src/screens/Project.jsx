@@ -28,6 +28,8 @@ const Project = () => {
   const [CurrentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
   const [webContainer, setWebContainer] = useState(null);
+  const [iframeUrl, setIframeUrl] = useState(null)
+  const [runProcess, setRunProcess] = useState(null)
 
   const messageEndRef = useRef(null);
 
@@ -418,25 +420,49 @@ const Project = () => {
               ))}
             </div>
 
-              <div className="actions flex gap-2">
+            <div className="actions flex gap-2">
               <button
-                onClick={async() => {
-                  const lsProcess = await webContainer?.spawn('ls')
+                onClick={async () => {
+                  await webContainer.mount(fileTree);
 
-                  await webContainer?.mount(fileTree)
+                  const installProcess = await webContainer.spawn("npm", [
+                    "install",
+                  ]);
 
-                  lsProcess.output.pipeTo(new WritableStream({
-                    write(chunk) {
-                      console.log(chunk)
-                    }
-                  }))
+                  installProcess.output.pipeTo(
+                    new WritableStream({
+                      write(chunk) {
+                        console.log(chunk);
+                      },
+                    })
+                  );
+
+                  if (runProcess) {
+                    runProcess.kill()
+                  }
+
+                  let tempRunProcess = await webContainer.spawn("npm", ["start"]);
+
+                  tempRunProcess.output.pipeTo(
+                    new WritableStream({
+                      write(chunk) {
+                        console.log(chunk);
+                      },
+                    })
+                  );
+
+                  setRunProcess(tempRunProcess)
+
+                  webContainer.on("server-ready", (port, url) => {
+                    console.log(port, url);
+                    setIframeUrl(url);
+                  });
                 }}
                 className="p-2 px-4 bg-slate-300 text-white"
               >
-                
-                </button>
-              </div>
-
+                Run
+              </button>
+            </div>
           </div>
           <div className="bottom flex flex-grow">
             {/* FIX: Check for the new filetree structure */}
@@ -462,6 +488,18 @@ const Project = () => {
             )}
           </div>
         </div>
+
+        {iframeUrl && webContainer && (
+          <div className="flex min-w-96 flex-col h-full ">
+            <div className="adress-bar">
+              <input type="text"
+                onChange={(e) => setIframeUrl(e.target.value)}
+                value={iframeUrl} className="w-full p-2 px-4 bg-slate-200"
+              />
+            </div>
+            <iframe src={iframeUrl} className="w-full h-full"></iframe>
+          </div>
+        )}
       </section>
 
       {/* ---------- ADD USER MODAL ---------- */}
