@@ -3,17 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "../Config/axios.js";
 import { UserContext } from "../Context/user.context.jsx";
 
-// ----------------------------------------------------------------------
-// ⚠️ IMPORTANT: Import your LaserFlow component.
-// You must update this path to wherever you saved 'LaserFlow.jsx'.
-// ----------------------------------------------------------------------
-import LaserFlow from "../components/LaserFlow"; // <-- FIX THIS IMPORT PATH
-
 const Login = () => {
-  // Your existing state and logic (no changes)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   const { setUser } = useContext(UserContext);
   const navigate = useNavigate();
@@ -40,36 +35,23 @@ const Login = () => {
   }
 
   return (
-    <div className="relative flex items-center justify-center min-h-screen p-4 bg-gray-950">
-      {/* Background (simple dark color since LaserFlow is moving) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/10 to-gray-900 animate-gradient-shift"></div>
+    <div className="relative flex items-center justify-center min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 animate-gradient-shift"></div>
+
+      {/* Floating orbs for background effect */}
       <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
       <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float-delayed"></div>
 
-      {/* This is the new central box that contains both panels.
-          Adjusted max-h- for shorter rectangle.
-      */}
-      <div className="relative z-10 w-full max-w-5xl md:max-h-[600px] lg:max-h-[650px] flex rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
-        {/*
-          LaserFlow component now specifically for the top of this central box.
-          It's absolutely positioned within this container.
-          Added a dark overlay to make text more readable.
-        */}
-        <div className="absolute inset-0 z-0">
-          <LaserFlow
-            color="#3B82F6" // Blue theme
-            horizontalBeamOffset={0.1}
-            verticalBeamOffset={0.0}
-          />
-        </div>
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/80 to-transparent"></div>
+      {/* Main login card */}
+      <div className="relative w-full max-w-md mx-4 transform transition-all duration-500 hover:scale-[1.02]">
+        <div className="relative p-8 space-y-6 bg-gray-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700/50 animate-slide-up">
+          {/* Glow effect on top */}
+          <div className="absolute -top-1 -left-1 -right-1 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-75 animate-glow-pulse"></div>
 
-        {/* ------------------------------------------------ */}
-        {/* --------------- LEFT INFO PANEL (DARK) --------- */}
-        {/* ------------------------------------------------ */}
-        <div className="hidden md:flex w-1/2 p-12 flex-col justify-center bg-gray-900/90 text-white relative z-20">
-          <div className="relative z-10 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full shadow-lg animate-pulse-slow">
+          {/* Logo/Title Section */}
+          <div className="text-center space-y-2 animate-fade-in">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-2 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full shadow-lg animate-pulse-slow">
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -80,85 +62,119 @@ const Login = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  d="M12 4v16m8-8H4"
                 ></path>
               </svg>
             </div>
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-text-shimmer mb-4">
-              Welcome to DevDialogue
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-text-shimmer">
+              Welcome Back
             </h1>
-            <p className="text-lg text-gray-300 max-w-lg leading-relaxed">
-              Your new hub for real-time collaboration, code sharing, and
-              developer-focused discussion.
+            <p className="text-sm text-gray-400 animate-fade-in-delayed">
+              Login to DevDialogue
             </p>
           </div>
-        </div>
 
-        {/* ------------------------------------------------ */}
-        {/* --------------- RIGHT LOGIN PANEL (WHITE) ------ */}
-        {/* ------------------------------------------------ */}
-        <div className="w-full md:w-1/2 bg-white text-gray-800 p-12 relative z-20">
-          <h2 className="text-3xl font-bold text-gray-900 mb-1">User Login</h2>
-          <p className="text-gray-600 mb-8">Login to access your dashboard.</p>
-
-          {/* --- Form (Re-styled for white background) --- */}
-          <form onSubmit={submitHandler} className="space-y-5">
+          <form onSubmit={submitHandler} className="space-y-6">
             {/* Email Input */}
-            <div className="space-y-2">
+            <div className="space-y-2 animate-slide-in-left">
               <label
                 htmlFor="email"
-                className="text-sm font-medium text-gray-700"
+                className={`text-sm font-medium transition-colors duration-300 ${
+                  emailFocused ? "text-blue-400" : "text-gray-300"
+                }`}
               >
                 Email address
               </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg 
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white
-                              transition-all duration-300"
-                placeholder="you@example.com"
-              />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <svg
+                    className={`w-5 h-5 transition-colors duration-300 ${
+                      emailFocused ? "text-blue-400" : "text-gray-500"
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                    ></path>
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 text-gray-100 bg-gray-700/50 border border-gray-600 rounded-lg 
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                           transition-all duration-300 hover:bg-gray-700/70
+                           placeholder-gray-500"
+                  placeholder="you@example.com"
+                />
+                <div
+                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transform origin-left transition-transform duration-300 ${
+                    emailFocused ? "scale-x-100" : "scale-x-0"
+                  }`}
+                ></div>
+              </div>
             </div>
 
             {/* Password Input */}
-            <div className="space-y-2">
+            <div className="space-y-2 animate-slide-in-right">
               <label
                 htmlFor="password"
-                className="text-sm font-medium text-gray-700"
+                className={`text-sm font-medium transition-colors duration-300 ${
+                  passwordFocused ? "text-blue-400" : "text-gray-300"
+                }`}
               >
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg 
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white
-                              transition-all duration-300"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {/* Remember / Forgot */}
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center text-gray-600 cursor-pointer">
-                <input type="checkbox" className="h-4 w-4 mr-2" />
-                Remember me
-              </label>
-              <a
-                href="#"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                Forgot password?
-              </a>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <svg
+                    className={`w-5 h-5 transition-colors duration-300 ${
+                      passwordFocused ? "text-blue-400" : "text-gray-500"
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    ></path>
+                  </svg>
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 text-gray-100 bg-gray-700/50 border border-gray-600 rounded-lg 
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                           transition-all duration-300 hover:bg-gray-700/70
+                           placeholder-gray-500"
+                  placeholder="••••••••"
+                />
+                <div
+                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transform origin-left transition-transform duration-300 ${
+                    passwordFocused ? "scale-x-100" : "scale-x-0"
+                  }`}
+                ></div>
+              </div>
             </div>
 
             {/* Login Button */}
@@ -166,16 +182,13 @@ const Login = () => {
               type="submit"
               disabled={isLoading}
               className={`relative w-full px-4 py-3 font-bold text-white rounded-lg
-                                bg-gradient-to-r from-blue-600 to-blue-700
-                                hover:from-blue-700 hover:to-blue-800
-                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-                                transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                                shadow-lg hover:shadow-xl
-                                ${
-                                  isLoading
-                                    ? "opacity-75 cursor-not-allowed"
-                                    : ""
-                                }`}
+                       bg-gradient-to-r from-blue-600 to-blue-700
+                       hover:from-blue-700 hover:to-blue-800
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+                       transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
+                       shadow-lg hover:shadow-xl
+                       animate-slide-up-delayed
+                       ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
             >
               <span
                 className={`flex items-center justify-center ${
@@ -184,7 +197,7 @@ const Login = () => {
               >
                 Login
                 <svg
-                  className="w-5 h-5 ml-2 transform"
+                  className="w-5 h-5 ml-2 transform transition-transform group-hover:translate-x-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -203,32 +216,38 @@ const Login = () => {
                 </div>
               )}
             </button>
-
-            {/* Divider */}
-            <div className="relative pt-2">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">or</span>
-              </div>
-            </div>
-
-            {/* Sign up link */}
-            <p className="text-sm text-center text-gray-600">
-              Don't have an account?{" "}
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                Create one
-              </Link>
-            </p>
           </form>
+
+          {/* Divider */}
+          <div className="relative animate-fade-in-delayed">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-800/50 text-gray-400">or</span>
+            </div>
+          </div>
+
+          {/* Sign up link */}
+          <p className="text-sm text-center text-gray-400 animate-fade-in-delayed">
+            Don't have an account?{" "}
+            <Link
+              to="/register"
+              className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 
+                       hover:from-blue-300 hover:to-purple-300 transition-all duration-300
+                       relative group"
+            >
+              Create one
+              <span
+                className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 
+                           transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
+              ></span>
+            </Link>
+          </p>
         </div>
       </div>
 
-      {/* This <style> block contains all the animations */}
+      {/* Add custom styles */}
       <style jsx>{`
         @keyframes gradient-shift {
           0%,
@@ -277,6 +296,28 @@ const Login = () => {
           }
         }
 
+        @keyframes slide-in-left {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slide-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
         @keyframes fade-in {
           from {
             opacity: 0;
@@ -293,6 +334,16 @@ const Login = () => {
           }
           50% {
             background-position: 100% 50%;
+          }
+        }
+
+        @keyframes glow-pulse {
+          0%,
+          100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 1;
           }
         }
 
@@ -323,13 +374,33 @@ const Login = () => {
           animation: slide-up 0.6s ease-out;
         }
 
+        .animate-slide-up-delayed {
+          animation: slide-up 0.8s ease-out;
+        }
+
+        .animate-slide-in-left {
+          animation: slide-in-left 0.6s ease-out;
+        }
+
+        .animate-slide-in-right {
+          animation: slide-in-right 0.6s ease-out;
+        }
+
         .animate-fade-in {
           animation: fade-in 0.8s ease-out;
+        }
+
+        .animate-fade-in-delayed {
+          animation: fade-in 1s ease-out;
         }
 
         .animate-text-shimmer {
           background-size: 200% 200%;
           animation: text-shimmer 3s ease-in-out infinite;
+        }
+
+        .animate-glow-pulse {
+          animation: glow-pulse 2s ease-in-out infinite;
         }
 
         .animate-pulse-slow {

@@ -9,6 +9,28 @@ import {
 } from "../Config/socket";
 import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
+import Editor from "@monaco-editor/react"; // 1. Import VS Code's editor
+
+// Helper to get language for syntax highlighting
+const getLanguageFromFileName = (fileName) => {
+  if (!fileName) return "plaintext";
+  const ext = fileName.split(".").pop();
+  switch (ext) {
+    case "js":
+    case "jsx":
+      return "javascript";
+    case "css":
+      return "css";
+    case "json":
+      return "json";
+    case "html":
+      return "html";
+    case "md":
+      return "markdown";
+    default:
+      return "plaintext";
+  }
+};
 
 const Project = () => {
   const { projectId } = useParams();
@@ -28,11 +50,16 @@ const Project = () => {
   const [CurrentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
   const [webContainer, setWebContainer] = useState(null);
-  const [iframeUrl, setIframeUrl] = useState(null)
-  const [runProcess, setRunProcess] = useState(null)
+  const [iframeUrl, setIframeUrl] = useState(null);
+  const [runProcess, setRunProcess] = useState(null);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const [activeTab, setActiveTab] = useState("browser"); // 'browser' or 'terminal'
 
   const messageEndRef = useRef(null);
+  const saveTimeout = useRef(null); // Ref for debouncing file save
 
+  // 2. Load files from DB on mount
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -57,12 +84,17 @@ const Project = () => {
           const fetchedProject = projectRes.data.project;
           setProject(fetchedProject);
           setAllUsers(usersRes.data.users);
+          // Load saved file tree from the project
+          setFileTree(fetchedProject.fileTree || {});
+          
           initializeSocket(projectId);
 
           if (!webContainer) {
             getWebContainer().then((containerInstance) => {
-              setWebContainer(containerInstance);
-              console.log("container started");
+              if (isMounted) {
+                setWebContainer(containerInstance);
+                console.log("container started");
+              }
             });
           }
 
@@ -100,13 +132,32 @@ const Project = () => {
                 return prev;
               });
 
-              // AI: Update file tree
+              // 3. Update code from AI (merge, don't replace)
               if (data.isAi && data.filetree) {
-                setFileTree(data.filetree);
-                const files = Object.keys(data.filetree);
-                if (files.length > 0) {
-                  setCurrentFile(files[0]);
-                  setOpenFiles([files[0]]);
+                const newFiles = Object.keys(data.filetree);
+                
+                setFileTree(prevFileTree => {
+                  const mergedFileTree = {
+                    ...prevFileTree,
+                    ...data.filetree
+                  };
+                  // Save the newly merged file tree to DB
+                  saveFileTree(mergedFileTree);
+                  return mergedFileTree;
+                });
+
+                // Open the new/updated files
+                if (newFiles.length > 0) {
+                  setCurrentFile(newFiles[0]);
+                  setOpenFiles((prevOpen) => {
+                    const allOpen = [...prevOpen];
+                    newFiles.forEach(file => {
+                      if (!allOpen.includes(file)) {
+                        allOpen.push(file);
+                      }
+                    });
+                    return allOpen;
+                  });
                 }
               }
             }
@@ -126,6 +177,9 @@ const Project = () => {
       isMounted = false;
       if (cleanupMessageListener) cleanupMessageListener();
       disconnectSocket();
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current);
+      }
     };
   }, [projectId, user?._id, webContainer]); // Added webContainer to dependency array
 
@@ -208,16 +262,114 @@ const Project = () => {
     );
   };
 
-  function saveFileTree(ft) {
+  // 2. Function to save file tree to DB
+  const saveFileTree = (fileTreeToSave) => {
+    if (!project?._id) return;
+    
+    console.log("Saving file tree...");
     axios.put('/project/update-file-tree', {
       projectId: project._id,
-      fileTree: ft
+      fileTree: fileTreeToSave
     }).then(res => {
-      console.log(res.data)
+      console.log("File tree saved successfully.", res.data);
     }).catch(err => {
-      console.log(err)
-    })  
-  }
+      console.error("Error saving file tree:", err);
+    });
+  };
+
+  // 2. Debounced save on file change
+  const handleFileContentChange = (newValue) => {
+    // Update state immediately for responsive UI
+    const newFileTree = {
+      ...fileTree,
+      [CurrentFile]: {
+        ...fileTree[CurrentFile],
+        file: {
+          ...fileTree[CurrentFile]?.file,
+          contents: newValue,
+        },
+      },
+    };
+    setFileTree(newFileTree);
+
+    // Clear existing timeout
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+    }
+
+    // Set new timeout to save after 1.5s of no typing
+    saveTimeout.current = setTimeout(() => {
+      saveFileTree(newFileTree);
+    }, 1500);
+  };
+  
+  // 1. Improved Run/Stop logic
+  const handleRunClick = async () => {
+    if (!webContainer) return;
+
+    setTerminalOutput(""); // Clear terminal
+    setIsInstalling(true);
+    setActiveTab("terminal"); // Show terminal
+
+    try {
+      await webContainer.mount(fileTree);
+
+      setTerminalOutput((prev) => prev + "Installing dependencies...\n");
+      const installProcess = await webContainer.spawn("npm", ["install"]);
+      
+      installProcess.output.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            setTerminalOutput((prev) => prev + chunk);
+          },
+        })
+      );
+
+      const exitCode = await installProcess.exit;
+      if (exitCode !== 0) {
+        throw new Error("Installation failed");
+      }
+      
+      setTerminalOutput((prev) => prev + "\nStarting server...\n");
+      setIsInstalling(false);
+
+      if (runProcess) {
+        runProcess.kill();
+      }
+
+      let tempRunProcess = await webContainer.spawn("npm", ["start"]);
+
+      tempRunProcess.output.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            setTerminalOutput((prev) => prev + chunk);
+          },
+        })
+      );
+
+      setRunProcess(tempRunProcess);
+
+      webContainer.on("server-ready", (port, url) => {
+        console.log("Server ready at:", port, url);
+        setIframeUrl(url);
+        setActiveTab("browser"); // Switch to browser when ready
+      });
+
+    } catch (err) {
+      setTerminalOutput((prev) => prev + `\nError: ${err.message}\n`);
+      setIsInstalling(false);
+      setRunProcess(null);
+    }
+  };
+
+  const handleStopClick = () => {
+    if (runProcess) {
+      runProcess.kill();
+      setRunProcess(null);
+      setTerminalOutput((prev) => prev + "\nProcess stopped by user.\n");
+    }
+  };
+
 
   if (loading) {
     return (
@@ -238,6 +390,7 @@ const Project = () => {
     <main className="h-screen w-screen flex">
       {/* ---------- CHAT PANEL ---------- */}
       <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-slate-300 overflow-hidden border-r border-slate-400">
+        {/* Header, Conversation, Input... (unchanged) */}
         <header className="flex justify-between items-center p-2 px-4 bg-slate-100 border-b border-slate-200">
           <h1 className="text-lg font-semibold truncate" title={project.name}>
             {project.name}
@@ -250,7 +403,6 @@ const Project = () => {
           </button>
         </header>
 
-        {/* ---------- CONVERSATION AREA ---------- */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden">
           <style>
             {`
@@ -322,7 +474,6 @@ const Project = () => {
             <div ref={messageEndRef} />
           </div>
 
-          {/* ---------- INPUT ---------- */}
           <div className="inputField w-full flex border-t border-slate-400">
             <input
               value={message}
@@ -341,12 +492,12 @@ const Project = () => {
           </div>
         </div>
 
-        {/* ---------- SIDE PANEL (Collaborators) ---------- */}
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-slate-50 absolute transition-transform duration-300 ease-in-out ${
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
           } top-0 z-10`}
         >
+          {/* Side Panel Content... (unchanged) */}
           <header className="flex justify-between items-center px-3 p-2 bg-slate-200 border-b border-slate-300">
             <button
               onClick={() => setAddUserModalOpen(true)}
@@ -391,8 +542,8 @@ const Project = () => {
       </section>
 
       {/* ---------- RIGHT PANEL: FILE TREE + EDITOR ---------- */}
-      <section className="right bg-red-50 flex-grow h-full flex">
-        <div className="explorer h-full max-w-64 min-w-52 bg-slate-300">
+      <section className="right bg-gray-900 flex-grow h-full flex">
+        <div className="explorer h-full max-w-64 min-w-52 bg-slate-800 text-white">
           <div className="file-tree w-full">
             {Object.keys(fileTree).length > 0 ? (
               Object.keys(fileTree).map((file) => (
@@ -404,116 +555,137 @@ const Project = () => {
                       prev.includes(file) ? prev : [...prev, file]
                     );
                   }}
-                  className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-200 hover:bg-slate-300 w-full text-left"
+                  className={`tree-element cursor-pointer p-2 px-4 flex items-center gap-2 w-full text-left ${
+                    CurrentFile === file ? "bg-slate-700" : "hover:bg-slate-700"
+                  }`}
                 >
-                  <p className="font-semibold text-lg">{file}</p>
+                  <p className="font-medium text-sm">{file}</p>
                 </button>
               ))
             ) : (
-              <p className="p-4 text-sm text-gray-500">No files yet.</p>
+              <p className="p-4 text-sm text-gray-400">No files yet.</p>
             )}
           </div>
         </div>
 
-        <div className="code-editor flex flex-col flex-grow h-full">
-          <div className="top flex overflow-x-auto">
-            <div className="files flex justify-between w-full">
+        <div className="code-editor flex flex-col flex-grow h-full w-1/2">
+          <div className="top-bar flex overflow-x-auto bg-slate-800">
+            <div className="files flex-grow flex">
               {openFiles.map((file) => (
                 <button
                   key={file}
                   onClick={() => setCurrentFile(file)}
-                  className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${
-                    CurrentFile === file ? "bg-slate-400" : ""
+                  className={`open-file cursor-pointer py-2 px-4 flex items-center w-fit gap-2 ${
+                    CurrentFile === file
+                      ? "bg-gray-900 text-white"
+                      : "bg-slate-800 text-gray-400 hover:bg-slate-700"
                   }`}
                 >
-                  <p className="font-semibold text-lg">{file}</p>
+                  <p className="font-medium text-sm">{file}</p>
                 </button>
               ))}
             </div>
 
-            <div className="actions flex gap-2">
-              <button
-                onClick={async () => {
-                  await webContainer.mount(fileTree);
-
-                  const installProcess = await webContainer.spawn("npm", [
-                    "install",
-                  ]);
-
-                  installProcess.output.pipeTo(
-                    new WritableStream({
-                      write(chunk) {
-                        console.log(chunk);
-                      },
-                    })
-                  );
-
-                  if (runProcess) {
-                    runProcess.kill()
-                  }
-
-                  let tempRunProcess = await webContainer.spawn("npm", ["start"]);
-
-                  tempRunProcess.output.pipeTo(
-                    new WritableStream({
-                      write(chunk) {
-                        console.log(chunk);
-                      },
-                    })
-                  );
-
-                  setRunProcess(tempRunProcess)
-
-                  webContainer.on("server-ready", (port, url) => {
-                    console.log(port, url);
-                    setIframeUrl(url);
-                  });
-                }}
-                className="p-2 px-4 bg-slate-300 text-white"
-              >
-                Run
-              </button>
+            <div className="actions flex gap-2 p-1 bg-slate-800">
+              {/* 1. Updated Run/Stop Buttons */}
+              {!runProcess ? (
+                <button
+                  onClick={handleRunClick}
+                  disabled={isInstalling}
+                  className={`p-2 px-4 text-sm rounded ${
+                    isInstalling
+                      ? "bg-yellow-600 cursor-wait"
+                      : "bg-green-600 hover:bg-green-700"
+                  } text-white`}
+                >
+                  {isInstalling ? "Installing..." : "Run"}
+                </button>
+              ) : (
+                <button
+                  onClick={handleStopClick}
+                  className="p-2 px-4 text-sm rounded bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Stop
+                </button>
+              )}
             </div>
           </div>
-          <div className="bottom flex flex-grow">
-            {/* FIX: Check for the new filetree structure */}
-            {fileTree[CurrentFile] && fileTree[CurrentFile].file && (
-              <textarea
-                // FIX: Read from the new structure: .file.contents
+          <div className="bottom flex flex-grow bg-gray-900">
+            {/* 4. VS Code Editor */}
+            {CurrentFile && fileTree[CurrentFile] && fileTree[CurrentFile].file ? (
+              <Editor
+                height="100%"
+                width="100%"
+                path={CurrentFile}
+                language={getLanguageFromFileName(CurrentFile)}
+                theme="vs-dark"
                 value={fileTree[CurrentFile].file.contents || ""}
-                onChange={(e) => {
-                  // FIX: Write to the new structure
-                  setFileTree((prev) => ({
-                    ...prev,
-                    [CurrentFile]: {
-                      ...prev[CurrentFile],
-                      file: {
-                        ...prev[CurrentFile]?.file,
-                        contents: e.target.value,
-                      },
-                    },
-                  }));
-
-                  saveFileTree(ft)
-
+                onChange={handleFileContentChange}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  scrollBeyondLastLine: false,
                 }}
-                className="w-full h-full p-4 bg-slate-50 outline-none border-none resize-none font-mono text-sm"
-              ></textarea>
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500">
+                Select a file to start editing.
+              </div>
             )}
           </div>
         </div>
 
-        {iframeUrl && webContainer && (
-          <div className="flex min-w-96 flex-col h-full ">
-            <div className="adress-bar">
-              <input type="text"
-                onChange={(e) => setIframeUrl(e.target.value)}
-                value={iframeUrl} className="w-full p-2 px-4 bg-slate-200"
-              />
-            </div>
-            <iframe src={iframeUrl} className="w-full h-full"></iframe>
+        {/* 1. Terminal / Browser View */}
+        <div className="flex-grow min-w-96 flex-col h-full flex bg-white">
+          <div className="tabs flex bg-slate-200">
+            <button
+              onClick={() => setActiveTab("browser")}
+              className={`p-2 px-4 text-sm font-medium ${
+                activeTab === "browser"
+                  ? "bg-white text-black"
+                  : "bg-slate-200 text-gray-600 hover:bg-slate-300"
+              }`}
+            >
+              Browser
+            </button>
+            <button
+              onClick={() => setActiveTab("terminal")}
+              className={`p-2 px-4 text-sm font-medium ${
+                activeTab === "terminal"
+                  ? "bg-gray-900 text-white"
+                  : "bg-slate-200 text-gray-600 hover:bg-slate-300"
+              }`}
+            >
+              Terminal
+            </button>
           </div>
-        )}
+
+          {activeTab === 'browser' && (
+            <div className="flex flex-col h-full">
+              <div className="address-bar">
+                <input type="text"
+                  readOnly={true} // Make read-only
+                  value={iframeUrl || "http://localhost:..."} className="w-full p-2 px-4 bg-slate-100 text-gray-600 text-sm"
+                />
+              </div>
+              {iframeUrl ? (
+                 <iframe src={iframeUrl} className="w-full h-full"></iframe>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  Click "Run" to start the server.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'terminal' && (
+            <div className="w-full h-full bg-gray-900 text-white p-4 overflow-y-auto">
+              <pre className="text-xs whitespace-pre-wrap font-mono">
+                {terminalOutput || "Click 'Run' to install dependencies and start the server..."}
+              </pre>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ---------- ADD USER MODAL ---------- */}
@@ -523,6 +695,7 @@ const Project = () => {
             className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Content... (unchanged) */}
             <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
               <h2 className="text-xl font-bold text-gray-800">
                 Add Collaborators
@@ -584,7 +757,6 @@ const Project = () => {
                             </span>
                           )}
                         </span>
-                        {/* FIX: Corrected typo from alreadyInTopProject to alreadyInProject */}
                         {!alreadyInProject && isSelected && (
                           <i className="ri-check-line text-blue-600 font-bold"></i>
                         )}
@@ -621,3 +793,4 @@ const Project = () => {
 };
 
 export default Project;
+
