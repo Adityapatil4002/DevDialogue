@@ -9,6 +9,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const { setUser } = useContext(UserContext);
   const navigate = useNavigate();
@@ -34,63 +35,111 @@ const Login = () => {
       });
   }
 
+  const chatMessages = [
+    { type: "received", text: "Is the API live?" },
+    { type: "sent", text: "Deployed to prod 🚀" },
+    { type: "received", text: "Great! Checking logs..." },
+    { type: "sent", text: "Latency is under 20ms." },
+    { type: "received", text: "Pushing the new PR." },
+    { type: "sent", text: "Merging now." },
+    { type: "received", text: "UI glitch fixed?" },
+    { type: "sent", text: "Yes, border-radius updated." },
+  ];
+
+  const infiniteChat = [...chatMessages, ...chatMessages];
+
   return (
-    <div className="relative flex items-center justify-center min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 animate-gradient-shift"></div>
+    <div className="relative flex items-center justify-center min-h-screen bg-[#0f131a] text-gray-100 font-sans overflow-hidden selection:bg-cyan-500 selection:text-white">
+      {/* Background Ambient Glows */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50rem] h-[50rem] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50rem] h-[50rem] bg-blue-600/10 rounded-full blur-[120px] animate-pulse-slow delay-1000"></div>
 
-      {/* Floating orbs for background effect */}
-      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float-delayed"></div>
+      {/* Main Card Container */}
+      <div className="relative w-full max-w-5xl h-[650px] m-4 flex rounded-3xl shadow-2xl overflow-hidden border border-gray-800 animate-card-entry">
+        {/* ================= LEFT SIDE (Brand & Dissolved Chat) ================= */}
+        <div className="hidden md:flex relative w-[45%] bg-gradient-to-br from-cyan-900 to-[#0f131a] flex-col p-12 overflow-hidden border-r border-white/5">
+          {/* Background Texture */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+          <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
 
-      {/* Main login card */}
-      <div className="relative w-full max-w-md mx-4 transform transition-all duration-500 hover:scale-[1.02]">
-        <div className="relative p-8 space-y-6 bg-gray-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700/50 animate-slide-up">
-          {/* Glow effect on top */}
-          <div className="absolute -top-1 -left-1 -right-1 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-75 animate-glow-pulse"></div>
-
-          {/* Logo/Title Section */}
-          <div className="text-center space-y-2 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-2 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full shadow-lg animate-pulse-slow">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 4v16m8-8H4"
-                ></path>
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-text-shimmer">
-              Welcome Back
+          {/* Top: Project Name */}
+          <div className="relative z-10 animate-slide-down flex-shrink-0">
+            <h1 className="text-4xl font-black tracking-tighter text-white drop-shadow-lg">
+              DEV
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-200">
+                DIALOGUE
+              </span>
             </h1>
-            <p className="text-sm text-gray-400 animate-fade-in-delayed">
-              Login to DevDialogue
+            <div className="h-1 w-12 bg-cyan-500 mt-2 rounded-full animate-width-expand"></div>
+          </div>
+
+          {/* Middle: Continuous Chat Animation (Dissolved Edges) */}
+          <div className="relative flex-1 w-full flex flex-col justify-center my-6 overflow-hidden chat-fade-mask">
+            {/* The Scrolling Track */}
+            <div className="w-full animate-scroll-vertical">
+              <div className="flex flex-col space-y-4">
+                {infiniteChat.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex w-full ${
+                      msg.type === "sent" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs font-medium backdrop-blur-sm border shadow-sm
+                      ${
+                        msg.type === "sent"
+                          ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-100 rounded-tr-none"
+                          : "bg-white/5 border-white/5 text-gray-400 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Welcome Text */}
+          <div className="relative z-10 animate-slide-up flex-shrink-0">
+            <h2 className="text-3xl font-bold text-white leading-tight mb-2">
+              Welcome Back.
+            </h2>
+            <p className="text-cyan-100/60 font-medium text-sm leading-relaxed">
+              Join the conversation. Sync your code and collaborate in
+              real-time.
+            </p>
+          </div>
+        </div>
+
+        {/* ================= RIGHT SIDE (Login Form) ================= */}
+        <div className="w-full md:w-[55%] bg-[#141820] p-8 md:p-16 flex flex-col justify-center relative z-20">
+          <div className="mb-10 animate-fade-in-right delay-100">
+            <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">
+              Login
+            </h2>
+            <p className="text-gray-500 text-sm">
+              Enter your credentials to access the dialogue.
             </p>
           </div>
 
-          <form onSubmit={submitHandler} className="space-y-6">
+          <form onSubmit={submitHandler} className="space-y-7 w-full max-w-sm">
             {/* Email Input */}
-            <div className="space-y-2 animate-slide-in-left">
-              <label
-                htmlFor="email"
-                className={`text-sm font-medium transition-colors duration-300 ${
-                  emailFocused ? "text-blue-400" : "text-gray-300"
+            <div className="group animate-fade-in-right delay-200">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 group-focus-within:text-cyan-400 transition-colors duration-300">
+                Email Address
+              </label>
+              <div
+                className={`relative flex items-center bg-[#0f131a] rounded-xl border-2 transition-all duration-300 transform group-focus-within:scale-[1.02] ${
+                  emailFocused
+                    ? "border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                    : "border-gray-800 hover:border-gray-700"
                 }`}
               >
-                Email address
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <span className="pl-4 text-gray-500">
                   <svg
-                    className={`w-5 h-5 transition-colors duration-300 ${
-                      emailFocused ? "text-blue-400" : "text-gray-500"
-                    }`}
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -102,46 +151,35 @@ const Login = () => {
                       d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
                     ></path>
                   </svg>
-                </div>
+                </span>
                 <input
                   type="email"
-                  id="email"
-                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
                   required
-                  className="w-full pl-10 pr-4 py-3 text-gray-100 bg-gray-700/50 border border-gray-600 rounded-lg 
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-all duration-300 hover:bg-gray-700/70
-                           placeholder-gray-500"
-                  placeholder="you@example.com"
+                  className="w-full bg-transparent text-gray-200 p-4 outline-none placeholder-gray-700 text-sm font-medium"
+                  placeholder="dev@dialogue.com"
                 />
-                <div
-                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transform origin-left transition-transform duration-300 ${
-                    emailFocused ? "scale-x-100" : "scale-x-0"
-                  }`}
-                ></div>
               </div>
             </div>
 
             {/* Password Input */}
-            <div className="space-y-2 animate-slide-in-right">
-              <label
-                htmlFor="password"
-                className={`text-sm font-medium transition-colors duration-300 ${
-                  passwordFocused ? "text-blue-400" : "text-gray-300"
-                }`}
-              >
+            <div className="group animate-fade-in-right delay-300">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 group-focus-within:text-cyan-400 transition-colors duration-300">
                 Password
               </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <div
+                className={`relative flex items-center bg-[#0f131a] rounded-xl border-2 transition-all duration-300 transform group-focus-within:scale-[1.02] ${
+                  passwordFocused
+                    ? "border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                    : "border-gray-800 hover:border-gray-700"
+                }`}
+              >
+                <span className="pl-4 text-gray-500">
                   <svg
-                    className={`w-5 h-5 transition-colors duration-300 ${
-                      passwordFocused ? "text-blue-400" : "text-gray-500"
-                    }`}
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -153,139 +191,162 @@ const Login = () => {
                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                     ></path>
                   </svg>
-                </div>
+                </span>
                 <input
                   type="password"
-                  id="password"
-                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                   required
-                  className="w-full pl-10 pr-4 py-3 text-gray-100 bg-gray-700/50 border border-gray-600 rounded-lg 
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-all duration-300 hover:bg-gray-700/70
-                           placeholder-gray-500"
+                  className="w-full bg-transparent text-gray-200 p-4 outline-none placeholder-gray-700 text-sm font-medium"
                   placeholder="••••••••"
                 />
-                <div
-                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transform origin-left transition-transform duration-300 ${
-                    passwordFocused ? "scale-x-100" : "scale-x-0"
-                  }`}
-                ></div>
               </div>
             </div>
 
-            {/* Login Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`relative w-full px-4 py-3 font-bold text-white rounded-lg
-                       bg-gradient-to-r from-blue-600 to-blue-700
-                       hover:from-blue-700 hover:to-blue-800
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-                       transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                       shadow-lg hover:shadow-xl
-                       animate-slide-up-delayed
-                       ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
-            >
-              <span
-                className={`flex items-center justify-center ${
-                  isLoading ? "invisible" : ""
-                }`}
-              >
-                Login
-                <svg
-                  className="w-5 h-5 ml-2 transform transition-transform group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  ></path>
-                </svg>
-              </span>
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            {/* Checkbox & Footer Options */}
+            <div className="flex items-center justify-between animate-fade-in-right delay-400">
+              <label className="flex items-center cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={rememberMe}
+                    onChange={() => setRememberMe(!rememberMe)}
+                  />
+                  <div
+                    className={`w-5 h-5 border rounded transition-all duration-300 flex items-center justify-center
+                    ${
+                      rememberMe
+                        ? "bg-cyan-600 border-cyan-600 scale-110"
+                        : "bg-[#0f131a] border-gray-600 group-hover:border-cyan-500"
+                    }`}
+                  >
+                    {rememberMe && (
+                      <svg
+                        className="w-3 h-3 text-white fill-current animate-ping-once"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
-              )}
-            </button>
+                <span className="ml-3 text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                  Remember me
+                </span>
+              </label>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-cyan-600 hover:text-cyan-400 transition-colors"
+              >
+                Recovery?
+              </Link>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center justify-between animate-fade-in-up delay-500">
+              <Link
+                to="/register"
+                className="text-sm font-medium text-gray-500 hover:text-white transition-colors relative group"
+              >
+                Create account
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-cyan-500 transition-all duration-300 group-hover:w-full"></span>
+              </Link>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`relative overflow-hidden bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-3 px-10 rounded-full shadow-lg 
+                           transform transition-all duration-300 hover:scale-105 hover:shadow-cyan-500/25 active:scale-95
+                           group
+                           ${isLoading ? "opacity-80 cursor-wait" : ""}`}
+              >
+                <span
+                  className={`flex items-center gap-2 ${
+                    isLoading ? "opacity-0" : "opacity-100"
+                  }`}
+                >
+                  ENTER{" "}
+                  <span className="group-hover:translate-x-1 transition-transform">
+                    →
+                  </span>
+                </span>
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+                <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[20deg] animate-shine group-hover:animate-shine-fast"></div>
+              </button>
+            </div>
           </form>
-
-          {/* Divider */}
-          <div className="relative animate-fade-in-delayed">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-800/50 text-gray-400">or</span>
-            </div>
-          </div>
-
-          {/* Sign up link */}
-          <p className="text-sm text-center text-gray-400 animate-fade-in-delayed">
-            Don't have an account?{" "}
-            <Link
-              to="/register"
-              className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 
-                       hover:from-blue-300 hover:to-purple-300 transition-all duration-300
-                       relative group"
-            >
-              Create one
-              <span
-                className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 
-                           transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
-              ></span>
-            </Link>
-          </p>
         </div>
       </div>
 
-      {/* Add custom styles */}
+      {/* Custom Animations Styles */}
       <style jsx>{`
-        @keyframes gradient-shift {
-          0%,
-          100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
+        /* Masking for the dissolved background effect */
+        .chat-fade-mask {
+          -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 20%,
+            black 80%,
+            transparent 100%
+          );
+          mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 20%,
+            black 80%,
+            transparent 100%
+          );
         }
 
-        @keyframes float {
-          0%,
+        /* Card & Layout */
+        @keyframes card-entry {
+          0% {
+            opacity: 0;
+            transform: scale(0.9) translateY(30px);
+          }
           100% {
-            transform: translateY(0) translateX(0) scale(1);
-          }
-          33% {
-            transform: translateY(-20px) translateX(10px) scale(1.05);
-          }
-          66% {
-            transform: translateY(20px) translateX(-10px) scale(0.95);
+            opacity: 1;
+            transform: scale(1) translateY(0);
           }
         }
-
-        @keyframes float-delayed {
-          0%,
-          100% {
-            transform: translateY(0) translateX(0) scale(1);
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-40px);
           }
-          33% {
-            transform: translateY(20px) translateX(-10px) scale(1.05);
-          }
-          66% {
-            transform: translateY(-20px) translateX(10px) scale(0.95);
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
         }
-
         @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fade-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes fade-in-up {
           from {
             opacity: 0;
             transform: translateY(20px);
@@ -295,116 +356,112 @@ const Login = () => {
             transform: translateY(0);
           }
         }
-
-        @keyframes slide-in-left {
+        @keyframes width-expand {
           from {
-            opacity: 0;
-            transform: translateX(-20px);
+            width: 0;
           }
           to {
-            opacity: 1;
-            transform: translateX(0);
+            width: 3rem;
           }
         }
 
-        @keyframes slide-in-right {
+        /* Scrolling Chat Animation */
+        @keyframes scroll-vertical {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(-50%);
+          }
+        }
+
+        /* Button & Interactions */
+        @keyframes shine {
           from {
-            opacity: 0;
-            transform: translateX(20px);
+            left: -100%;
           }
           to {
-            opacity: 1;
-            transform: translateX(0);
+            left: 200%;
           }
         }
-
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes text-shimmer {
-          0%,
-          100% {
-            background-position: 0% 50%;
+        @keyframes ping-once {
+          0% {
+            transform: scale(1);
           }
           50% {
-            background-position: 100% 50%;
+            transform: scale(1.4);
           }
-        }
-
-        @keyframes glow-pulse {
-          0%,
           100% {
-            opacity: 0.5;
-          }
-          50% {
-            opacity: 1;
+            transform: scale(1);
           }
         }
 
-        @keyframes pulse-slow {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.8;
-          }
+        .animate-card-entry {
+          animation: card-entry 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
-
-        .animate-gradient-shift {
-          background-size: 200% 200%;
-          animation: gradient-shift 10s ease infinite;
+        .animate-slide-down {
+          animation: slide-down 0.8s ease-out forwards;
         }
-
-        .animate-float {
-          animation: float 8s ease-in-out infinite;
-        }
-
-        .animate-float-delayed {
-          animation: float-delayed 8s ease-in-out infinite;
-        }
-
         .animate-slide-up {
-          animation: slide-up 0.6s ease-out;
+          animation: slide-up 0.8s ease-out forwards;
+        }
+        .animate-width-expand {
+          animation: width-expand 1s ease-out 0.5s forwards;
+        }
+        .animate-fade-in-right {
+          animation: fade-in-right 0.6s ease-out forwards;
+          opacity: 0;
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out forwards;
+          opacity: 0;
         }
 
-        .animate-slide-up-delayed {
-          animation: slide-up 0.8s ease-out;
+        /* Smooth infinite scroll */
+        .animate-scroll-vertical {
+          animation: scroll-vertical 20s linear infinite;
+        }
+        .animate-scroll-vertical:hover {
+          animation-play-state: paused;
         }
 
-        .animate-slide-in-left {
-          animation: slide-in-left 0.6s ease-out;
+        .animate-shine {
+          animation: shine 3s infinite linear;
+        }
+        .animate-shine-fast {
+          animation: shine 1s infinite linear;
+        }
+        .animate-ping-once {
+          animation: ping-once 0.3s cubic-bezier(0, 0, 0.2, 1);
         }
 
-        .animate-slide-in-right {
-          animation: slide-in-right 0.6s ease-out;
+        .bg-grid-pattern {
+          background-image: linear-gradient(
+              rgba(255, 255, 255, 0.05) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.05) 1px,
+              transparent 1px
+            );
+          background-size: 20px 20px;
         }
 
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
+        .delay-100 {
+          animation-delay: 100ms;
         }
-
-        .animate-fade-in-delayed {
-          animation: fade-in 1s ease-out;
+        .delay-200 {
+          animation-delay: 200ms;
         }
-
-        .animate-text-shimmer {
-          background-size: 200% 200%;
-          animation: text-shimmer 3s ease-in-out infinite;
+        .delay-300 {
+          animation-delay: 300ms;
         }
-
-        .animate-glow-pulse {
-          animation: glow-pulse 2s ease-in-out infinite;
+        .delay-400 {
+          animation-delay: 400ms;
         }
-
-        .animate-pulse-slow {
-          animation: pulse-slow 3s ease-in-out infinite;
+        .delay-500 {
+          animation-delay: 500ms;
         }
       `}</style>
     </div>
