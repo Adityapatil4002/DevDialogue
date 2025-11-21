@@ -86,7 +86,7 @@ const Project = () => {
           setAllUsers(usersRes.data.users);
           // Load saved file tree from the project
           setFileTree(fetchedProject.fileTree || {});
-          
+
           initializeSocket(projectId);
 
           if (!webContainer) {
@@ -135,11 +135,11 @@ const Project = () => {
               // 3. Update code from AI (merge, don't replace)
               if (data.isAi && data.filetree) {
                 const newFiles = Object.keys(data.filetree);
-                
-                setFileTree(prevFileTree => {
+
+                setFileTree((prevFileTree) => {
                   const mergedFileTree = {
                     ...prevFileTree,
-                    ...data.filetree
+                    ...data.filetree,
                   };
                   // Save the newly merged file tree to DB
                   saveFileTree(mergedFileTree);
@@ -151,7 +151,7 @@ const Project = () => {
                   setCurrentFile(newFiles[0]);
                   setOpenFiles((prevOpen) => {
                     const allOpen = [...prevOpen];
-                    newFiles.forEach(file => {
+                    newFiles.forEach((file) => {
                       if (!allOpen.includes(file)) {
                         allOpen.push(file);
                       }
@@ -265,16 +265,19 @@ const Project = () => {
   // 2. Function to save file tree to DB
   const saveFileTree = (fileTreeToSave) => {
     if (!project?._id) return;
-    
+
     console.log("Saving file tree...");
-    axios.put('/project/update-file-tree', {
-      projectId: project._id,
-      fileTree: fileTreeToSave
-    }).then(res => {
-      console.log("File tree saved successfully.", res.data);
-    }).catch(err => {
-      console.error("Error saving file tree:", err);
-    });
+    axios
+      .put("/project/update-file-tree", {
+        projectId: project._id,
+        fileTree: fileTreeToSave,
+      })
+      .then((res) => {
+        console.log("File tree saved successfully.", res.data);
+      })
+      .catch((err) => {
+        console.error("Error saving file tree:", err);
+      });
   };
 
   // 2. Debounced save on file change
@@ -302,7 +305,7 @@ const Project = () => {
       saveFileTree(newFileTree);
     }, 1500);
   };
-  
+
   // 1. Improved Run/Stop logic
   const handleRunClick = async () => {
     if (!webContainer) return;
@@ -316,7 +319,7 @@ const Project = () => {
 
       setTerminalOutput((prev) => prev + "Installing dependencies...\n");
       const installProcess = await webContainer.spawn("npm", ["install"]);
-      
+
       installProcess.output.pipeTo(
         new WritableStream({
           write(chunk) {
@@ -329,7 +332,7 @@ const Project = () => {
       if (exitCode !== 0) {
         throw new Error("Installation failed");
       }
-      
+
       setTerminalOutput((prev) => prev + "\nStarting server...\n");
       setIsInstalling(false);
 
@@ -354,7 +357,6 @@ const Project = () => {
         setIframeUrl(url);
         setActiveTab("browser"); // Switch to browser when ready
       });
-
     } catch (err) {
       setTerminalOutput((prev) => prev + `\nError: ${err.message}\n`);
       setIsInstalling(false);
@@ -369,7 +371,6 @@ const Project = () => {
       setTerminalOutput((prev) => prev + "\nProcess stopped by user.\n");
     }
   };
-
 
   if (loading) {
     return (
@@ -612,7 +613,9 @@ const Project = () => {
           </div>
           <div className="bottom flex flex-grow bg-gray-900">
             {/* 4. VS Code Editor */}
-            {CurrentFile && fileTree[CurrentFile] && fileTree[CurrentFile].file ? (
+            {CurrentFile &&
+            fileTree[CurrentFile] &&
+            fileTree[CurrentFile].file ? (
               <Editor
                 height="100%"
                 width="100%"
@@ -660,16 +663,18 @@ const Project = () => {
             </button>
           </div>
 
-          {activeTab === 'browser' && (
+          {activeTab === "browser" && (
             <div className="flex flex-col h-full">
               <div className="address-bar">
-                <input type="text"
+                <input
+                  type="text"
                   readOnly={true} // Make read-only
-                  value={iframeUrl || "http://localhost:..."} className="w-full p-2 px-4 bg-slate-100 text-gray-600 text-sm"
+                  value={iframeUrl || "http://localhost:..."}
+                  className="w-full p-2 px-4 bg-slate-100 text-gray-600 text-sm"
                 />
               </div>
               {iframeUrl ? (
-                 <iframe src={iframeUrl} className="w-full h-full"></iframe>
+                <iframe src={iframeUrl} className="w-full h-full"></iframe>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500">
                   Click "Run" to start the server.
@@ -678,10 +683,11 @@ const Project = () => {
             </div>
           )}
 
-          {activeTab === 'terminal' && (
+          {activeTab === "terminal" && (
             <div className="w-full h-full bg-gray-900 text-white p-4 overflow-y-auto">
               <pre className="text-xs whitespace-pre-wrap font-mono">
-                {terminalOutput || "Click 'Run' to install dependencies and start the server..."}
+                {terminalOutput ||
+                  "Click 'Run' to install dependencies and start the server..."}
               </pre>
             </div>
           )}
@@ -793,7 +799,3 @@ const Project = () => {
 };
 
 export default Project;
-
-
-
-
