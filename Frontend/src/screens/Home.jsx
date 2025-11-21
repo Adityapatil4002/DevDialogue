@@ -1,74 +1,52 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../Context/user.context";
 import axios from "../Config/axios";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
 
-// --- Refined Spotlight Card ---
-// 1. Reduced spotlight intensity (opacity)
-// 2. Added hover 'pop' and 'glow' effects
-const SpotlightCard = ({ children, className = "", onClick }) => {
-  const divRef = useRef(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [opacity, setOpacity] = useState(0);
+// --- ANIMATION VARIANTS ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
 
-  const handleMouseMove = (e) => {
-    if (!divRef.current) return;
-    const div = divRef.current;
-    const rect = div.getBoundingClientRect();
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+};
 
-  const handleMouseEnter = () => {
-    setOpacity(1);
-  };
-
-  const handleMouseLeave = () => {
-    setOpacity(0);
-  };
-
+// --- GLOW CARD COMPONENT ---
+const GlowCard = ({ children, className = "", onClick }) => {
   return (
     <motion.div
-      ref={divRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      variants={itemVariants}
+      // --- HOVER PHYSICS UPDATE ---
+      // Reduced scale slightly (1.015) so it doesn't jump too much
+      whileHover={{ y: -4, scale: 1.015 }}
+      // Stiffness: 100 (Was 300) -> Makes it softer/slower
+      // Damping: 15 -> Removes the "bounciness" for a smooth float
+      transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
       onClick={onClick}
-      // Entrance Animation
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      // Hover Pop & Glow Animation
-      whileHover={{
-        scale: 1.015,
-        boxShadow: "0px 10px 30px -10px rgba(6, 182, 212, 0.2)",
-        borderColor: "rgba(6, 182, 212, 0.3)",
-      }}
-      className={`relative rounded-3xl border border-neutral-800 bg-neutral-900/50 overflow-hidden cursor-pointer transition-colors duration-300 group z-0 hover:z-10 ${className}`}
+      // Changed duration-500 to duration-700 for slower color fade
+      className={`relative rounded-[2rem] border border-[#1a1f2e] bg-[#0f131a] p-6 overflow-hidden cursor-pointer group z-20
+                 hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
+                 transition-all duration-700 ease-out
+                 ${className}`}
     >
-      {/* 
-         Subtle Spotlight Gradient 
-         - Changed opacity from 0.15 to 0.05 for a much softer feel
-      */}
-      <div
-        className="pointer-events-none absolute -inset-px opacity-0 transition duration-500"
-        style={{
-          opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(6,182,212,0.06), transparent 40%)`,
-        }}
-      />
-      {/* 
-         Border Highlight Gradient 
-         - Changed opacity from 0.4 to 0.15
-      */}
-      <div
-        className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-500"
-        style={{
-          opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(6,182,212,0.15), transparent 40%)`,
-        }}
-      />
-      <div className="relative h-full">{children}</div>
+      {/* Noise texture */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
+      <div className="relative h-full z-10 flex flex-col">{children}</div>
     </motion.div>
   );
 };
@@ -80,7 +58,25 @@ const Home = () => {
   const [project, setProject] = useState([]);
   const navigate = useNavigate();
 
-  // --- API Logic ---
+  // --- MOUSE FOLLOWER LOGIC ---
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Smoother trailing effect (increased damping)
+  const springConfig = { damping: 35, stiffness: 150 };
+  const smoothX = useSpring(mouseX, springConfig);
+  const smoothY = useSpring(mouseY, springConfig);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  // --- API LOGIC ---
   function createProject(e) {
     e.preventDefault();
     axios
@@ -100,7 +96,6 @@ const Home = () => {
       .catch((err) => console.log(err));
   }, []);
 
-  // --- Mock Data ---
   const collaborators = [
     { name: "Dev_Alex", status: "online" },
     { name: "CodeMaster", status: "busy" },
@@ -110,106 +105,146 @@ const Home = () => {
   ];
 
   return (
-    <main className="min-h-screen bg-black text-white p-6 font-sans selection:bg-cyan-500/30 flex items-center justify-center">
+    <main className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8 font-sans selection:bg-cyan-500/30 flex items-center justify-center overflow-hidden relative">
+      {/* --- GLOBAL CURSOR FOLLOWER (The "Flashlight") --- */}
+      <motion.div
+        style={{
+          left: smoothX,
+          top: smoothY,
+          translateX: "-50%",
+          translateY: "-50%",
+        }}
+        className="fixed pointer-events-none w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[80px] z-0"
+      />
+
+      {/* Static Background Ambiance */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-blue-900/05 rounded-full blur-[150px]" />
+      </div>
+
       {/* --- Main Grid --- */}
-      <div className="w-full max-w-7xl h-[90vh] grid grid-cols-1 md:grid-cols-4 grid-rows-6 gap-5">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 w-full max-w-[80rem] h-[85vh] grid grid-cols-1 md:grid-cols-4 grid-rows-6 gap-4 md:gap-6"
+      >
         {/* 1. New Project */}
-        <SpotlightCard
-          className="col-span-1 row-span-2 flex flex-col justify-between p-6 hover:bg-neutral-900/80"
+        <GlowCard
+          className="col-span-1 row-span-2 group"
           onClick={() => setIsModalOpen(true)}
         >
-          <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors duration-300">
-            <i className="ri-add-line text-xl text-neutral-400 group-hover:text-cyan-400"></i>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-neutral-200">New Project</h2>
-            <p className="text-sm text-neutral-500 mt-1 group-hover:text-neutral-400 transition-colors">
-              Create a new workspace
+          <div className="h-full flex flex-col justify-center items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-[#1a1f2e] flex items-center justify-center mb-4 border border-[#2a3040] group-hover:border-cyan-500/50 group-hover:bg-cyan-500/10 transition-colors duration-500">
+              <i className="ri-add-line text-3xl text-neutral-400 group-hover:text-cyan-400 transition-colors duration-500"></i>
+            </div>
+            <h2 className="text-xl font-bold text-neutral-200 group-hover:text-white transition-colors duration-500">
+              Create Project
+            </h2>
+            <p className="text-sm text-neutral-500 mt-2">
+              Start a new collaborative workspace.
             </p>
           </div>
-        </SpotlightCard>
+        </GlowCard>
 
         {/* 2. AI Credits */}
-        <SpotlightCard className="col-span-1 row-span-2 flex flex-col justify-between p-6">
+        <GlowCard className="col-span-1 row-span-2 justify-between">
           <div className="flex justify-between items-start">
-            <h2 className="text-lg font-bold text-neutral-200">AI Credits</h2>
-            <i className="ri-flashlight-line text-cyan-400"></i>
-          </div>
-          <div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-white">2,450</span>
-              <span className="text-xs text-neutral-500">/ 5,000</span>
-            </div>
-            <div className="w-full bg-neutral-800 h-1.5 rounded-full mt-3 overflow-hidden">
-              <div className="bg-cyan-500 h-full w-[45%] shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
-            </div>
-          </div>
-        </SpotlightCard>
-
-        {/* 3. Collaborators (Continuous Scroll) */}
-        <SpotlightCard className="col-span-2 row-span-4 p-6 overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-4 z-10 relative">
-            <h2 className="text-xl font-bold text-neutral-200">
-              Collaborators
+            <h2 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">
+              AI Credits
             </h2>
-            <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-cyan-400 border border-neutral-700">
-              Active Team
+            <i className="ri-flashlight-fill text-cyan-400 text-lg shadow-[0_0_15px_rgba(6,182,212,0.6)]"></i>
+          </div>
+          <div className="space-y-4 mt-auto">
+            <div className="flex items-end gap-2">
+              <span className="text-5xl font-mono font-bold text-white tracking-tighter">
+                2,450
+              </span>
+            </div>
+            <div className="w-full bg-[#1a1f2e] h-2 rounded-full overflow-hidden relative">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: "45%" }}
+                transition={{ duration: 1.5, ease: "circOut" }}
+                className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-blue-600"
+              ></motion.div>
+            </div>
+            <span className="text-xs text-neutral-500">
+              45% used of 5,000 total quota.
+            </span>
+          </div>
+        </GlowCard>
+
+        {/* 3. Collaborators */}
+        <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden">
+          <div className="flex justify-between items-center mb-6 z-10 relative">
+            <div>
+              <h2 className="text-xl font-bold text-white mb-1">
+                Team Members
+              </h2>
+              <p className="text-xs text-neutral-500">Active contributors</p>
+            </div>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 rounded-full text-xs font-medium text-cyan-400 border border-cyan-500/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+              Live Info
             </span>
           </div>
 
-          <div className="relative flex-1 overflow-hidden mask-gradient">
-            <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-neutral-900/0 to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-neutral-900/0 to-transparent z-10 pointer-events-none"></div>
-
+          <div className="relative flex-1 overflow-hidden -mx-6 px-6 mask-gradient-vertical">
             <motion.div
-              animate={{ y: ["0%", "-50%"] }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="space-y-3"
+              animate={{ y: ["0%", "-33.33%"] }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="space-y-2"
             >
               {[...collaborators, ...collaborators, ...collaborators].map(
                 (user, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-neutral-800/20 border border-neutral-800/50 hover:bg-neutral-800 hover:border-cyan-500/30 transition-all duration-300"
+                    className="flex items-center gap-4 p-3 rounded-xl bg-[#141820] border border-[#1f2533] hover:bg-[#1a1f2e] hover:border-cyan-500/30 transition-all duration-200 group/item"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-900 to-blue-900 border border-blue-700/30 flex items-center justify-center text-xs font-bold text-cyan-100">
-                      {user.name[0]}
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-[#0a0a0a] border border-[#2a3040] flex items-center justify-center text-sm font-bold text-neutral-300 group-hover/item:text-cyan-400 transition-colors">
+                        {user.name[0]}
+                      </div>
+                      {user.status === "online" && (
+                        <div className="absolute bottom-0 right-0">
+                          <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-[#141820]"></span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-neutral-200">
+
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-neutral-200 group-hover/item:text-white">
                         {user.name}
                       </div>
-                      <div className="text-[10px] text-neutral-500 flex items-center gap-1 uppercase tracking-wide">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            user.status === "online"
-                              ? "bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"
-                              : "bg-neutral-600"
-                          }`}
-                        ></span>
+                      <div className="text-[11px] text-neutral-500 uppercase tracking-wider mt-0.5 font-medium">
                         {user.status}
                       </div>
                     </div>
+                    <i className="ri-more-2-fill text-neutral-600 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
                   </div>
                 )
               )}
             </motion.div>
           </div>
-        </SpotlightCard>
+        </GlowCard>
 
-        {/* 4. Projects (Main List) */}
-        <SpotlightCard className="col-span-2 row-span-4 p-6 relative overflow-hidden flex flex-col">
-          {/* Background Atmosphere */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-cyan-500 rounded-full blur-[60px]"></div>
-            <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-600 rounded-full blur-[60px]"></div>
+        {/* 4. Projects List */}
+        <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden">
+          <div className="flex justify-between items-end mb-6 relative z-10">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-1">Projects</h2>
+              <p className="text-sm text-neutral-500">
+                Recent activity & deployments
+              </p>
+            </div>
           </div>
 
-          <h2 className="text-xl font-bold text-neutral-200 mb-6 relative z-10">
-            Your Projects
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
+          <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar relative z-10 -mx-2 px-2">
             {project.map((proj) => (
               <div
                 key={proj._id}
@@ -217,123 +252,156 @@ const Home = () => {
                   e.stopPropagation();
                   navigate(`/project/${proj._id}`);
                 }}
-                className="group p-4 rounded-xl bg-neutral-950/50 border border-neutral-800 cursor-pointer hover:border-cyan-500/40 hover:bg-neutral-900 transition-all duration-300 flex flex-col justify-between"
+                className="group/project relative p-4 rounded-xl bg-[#141820] border border-[#1f2533] cursor-pointer hover:bg-[#1a1f2e] overflow-hidden transition-all duration-300 hover:border-cyan-500/30"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-neutral-200 truncate pr-2 group-hover:text-cyan-400 transition-colors">
-                    {proj.name}
-                  </h3>
-                  <i className="ri-arrow-right-up-line text-neutral-600 group-hover:text-cyan-400 transition-colors"></i>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-neutral-500 mt-4">
-                  <div className="px-2 py-1 rounded bg-neutral-900 border border-neutral-800 flex items-center gap-1">
-                    <i className="ri-user-line text-[10px]"></i>
-                    <span>{proj.users.length}</span>
+                <div className="relative z-10 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#1f2533] flex items-center justify-center text-neutral-400 group-hover/project:text-cyan-400 group-hover/project:bg-cyan-500/10 transition-all">
+                      <i className="ri-code-s-slash-line text-xl"></i>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-neutral-200 group-hover/project:text-white transition-colors mb-1">
+                        {proj.name}
+                      </h3>
+                      <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
+                        <span className="flex items-center gap-1 bg-[#1f2533] px-2 py-0.5 rounded-md">
+                          <i className="ri-user-line"></i> {proj.users.length}
+                        </span>
+                        <span>Updated just now</span>
+                      </div>
+                    </div>
                   </div>
-                  <span>Updated recently</span>
+                  <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center opacity-0 -translate-x-4 group-hover/project:opacity-100 group-hover/project:translate-x-0 transition-all duration-300 bg-[#1f2533] text-cyan-400">
+                    <i className="ri-arrow-right-line text-lg"></i>
+                  </div>
                 </div>
               </div>
             ))}
+
             {project.length === 0 && (
-              <div className="col-span-2 flex flex-col items-center justify-center h-40 text-neutral-600">
-                <i className="ri-code-box-line text-3xl mb-2 opacity-50"></i>
-                <p>No active projects</p>
+              <div className="flex flex-col items-center justify-center h-48 text-neutral-600 border-2 border-dashed border-[#1f2533] rounded-2xl bg-[#141820]/50">
+                <i className="ri-folder-add-line text-4xl mb-3 opacity-50"></i>
+                <p className="text-base font-medium">No active projects</p>
+                <p className="text-sm opacity-70">Create one to get started.</p>
               </div>
             )}
           </div>
-        </SpotlightCard>
+        </GlowCard>
 
-        {/* 5. Connectivity */}
-        <SpotlightCard className="col-span-1 row-span-2 p-6 flex flex-col justify-center">
-          <h3 className="text-neutral-400 text-sm font-medium mb-3">
+        {/* 5. System Status */}
+        <GlowCard className="col-span-1 row-span-2 justify-center relative overflow-hidden">
+          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl animate-pulse pointer-events-none"></div>
+          <h3 className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-4">
             System Status
           </h3>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="relative flex h-3 w-3">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></span>
             </div>
-            <span className="text-neutral-200 font-medium">Operational</span>
+            <span className="text-white font-bold text-xl">Operational</span>
           </div>
-          <div className="w-full bg-neutral-900 rounded border border-neutral-800 p-2 mt-2">
-            <p className="text-[10px] text-neutral-500 font-mono">
-              Ping: 24ms • Stable
+          <div className="flex items-center justify-between text-xs text-neutral-500 font-mono border-t border-[#1f2533] pt-4">
+            <span>API LATENCY</span>
+            <span className="text-emerald-400 font-bold">24ms • Stable</span>
+          </div>
+        </GlowCard>
+
+        {/* 6. User Profile */}
+        <GlowCard className="col-span-1 row-span-2 justify-between text-center">
+          <div className="flex flex-col items-center mt-4">
+            <div className="relative mb-4 group/avatar">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[3px] shadow-[0_0_20px_rgba(6,182,212,0.3)] group-hover/avatar:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-shadow duration-500">
+                <div className="w-full h-full rounded-full bg-[#0f131a] flex items-center justify-center overflow-hidden">
+                  <i className="ri-user-3-fill text-4xl text-neutral-200"></i>
+                </div>
+              </div>
+              <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#0f131a] rounded-full flex items-center justify-center">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0f131a]"></div>
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-white truncate w-full">
+              {user?.email?.split("@")[0] || "Developer"}
+            </h3>
+            <p className="text-sm text-cyan-400 font-medium mb-2">
+              Pro Workspace
             </p>
           </div>
-        </SpotlightCard>
 
-        {/* 6. Profile / Protection */}
-        <SpotlightCard className="col-span-1 row-span-2 p-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0 group-hover:border-cyan-500/50 transition-colors">
-            <i className="ri-user-3-fill text-xl text-neutral-400 group-hover:text-cyan-400 transition-colors"></i>
-          </div>
-          <div className="overflow-hidden">
-            <h3 className="text-neutral-200 font-bold truncate text-sm">
-              {user?.email?.split("@")[0] || "User"}
-            </h3>
-            <p className="text-xs text-neutral-600 mb-1">Developer</p>
-          </div>
-        </SpotlightCard>
-      </div>
+          <button className="w-full py-3 rounded-xl bg-[#1a1f2e] hover:bg-[#2a3040] text-white text-sm font-medium transition-colors border border-[#2a3040] hover:border-cyan-500/30 flex items-center justify-center gap-2">
+            <i className="ri-settings-3-line"></i>
+            View Settings
+          </button>
+        </GlowCard>
+      </motion.div>
 
-      {/* --- Modal --- */}
+      {/* --- Modal (Unchanged) --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4"
+            className="fixed inset-0 z-50 flex justify-center items-center p-4"
             onClick={() => setIsModalOpen(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-[#0a0a0a] border border-neutral-800 w-full max-w-md p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, type: "spring", bounce: 0.3 }}
+              className="bg-[#0f131a] border border-[#1f2533] w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative overflow-hidden z-10"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Top Accent */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-600 to-blue-600"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold text-white">
-                  Initialize Project
-                </h2>
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold text-white">New Project</h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-neutral-500 hover:text-white transition-colors"
+                  className="w-10 h-10 rounded-full bg-[#1a1f2e] flex items-center justify-center text-neutral-400 hover:text-white hover:bg-[#2a3040] transition-colors"
                 >
-                  <i className="ri-close-line text-2xl"></i>
+                  <i className="ri-close-line text-xl"></i>
                 </button>
               </div>
 
               <form onSubmit={createProject}>
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                <div className="mb-8">
+                  <label className="block text-sm font-bold text-neutral-300 mb-3">
                     Project Name
                   </label>
-                  <input
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 text-white rounded-lg py-3 px-4 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-neutral-600 text-sm"
-                    placeholder="e.g. My Next.js App"
-                    required
-                    autoFocus
-                  />
+                  <div className="relative">
+                    <i className="ri-hashtag absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"></i>
+                    <input
+                      type="text"
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 pl-10 pr-4 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-neutral-600 text-base font-medium"
+                      placeholder="e.g. Quantum Dashboard"
+                      required
+                      autoFocus
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                    className="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm transition-all shadow-lg shadow-cyan-500/20"
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
                   >
-                    Create
+                    <span>Create Project</span>
+                    <i className="ri-arrow-right-line"></i>
                   </button>
                 </div>
               </form>
@@ -341,6 +409,24 @@ const Home = () => {
           </div>
         )}
       </AnimatePresence>
+      <style jsx>{`
+        .mask-gradient-vertical {
+          mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 10%,
+            black 90%,
+            transparent 100%
+          );
+          -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 10%,
+            black 90%,
+            transparent 100%
+          );
+        }
+      `}</style>
     </main>
   );
 };

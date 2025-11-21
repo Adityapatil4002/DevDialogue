@@ -5,5 +5,43 @@
 @layer base {
   html {
     font-family: "Inter", sans-serif;
+    /* Use the dark background globally to prevent white flashes during load */
+    background-color: #0f131a; 
+    color: #ffffff;
   }
+}
+
+/* 1. THE DARK MODE SCROLLBAR */
+/* Width of the scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* The track (background) of the scrollbar */
+::-webkit-scrollbar-track {
+  background: #0f131a; 
+}
+
+/* The draggable part (thumb) */
+::-webkit-scrollbar-thumb {
+  background: #262626; 
+  border-radius: 4px;
+  border: 1px solid #0f131a; /* Adds a tiny gap for a premium feel */
+}
+
+/* Hover state of the scrollbar */
+::-webkit-scrollbar-thumb:hover {
+  background: #404040; 
+}
+
+/* 2. GLOBAL TEXT SELECTION COLOR */
+::selection {
+  background-color: rgba(6, 182, 212, 0.3); /* Cyan-500 with opacity */
+  color: #ffffff;
+}
+
+/* 3. REMOVE UGLY FOCUS RINGS */
+:focus {
+  outline: none;
 }
