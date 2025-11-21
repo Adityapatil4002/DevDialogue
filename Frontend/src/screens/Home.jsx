@@ -9,6 +9,44 @@ import {
   useSpring,
 } from "framer-motion";
 
+// --- LOADER COMPONENT (Internal for easy use) ---
+const Loader = () => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0a0a]"
+    >
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse"></div>
+      </div>
+      <div className="relative flex items-center justify-center w-24 h-24">
+        <motion.span
+          className="absolute w-full h-full border-2 border-cyan-500/20 border-t-cyan-500 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.span
+          className="absolute w-16 h-16 border-2 border-blue-500/20 border-b-blue-500 rounded-full"
+          animate={{ rotate: -360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.div
+          className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.8)]"
+          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+      <div className="mt-8 flex flex-col items-center gap-2">
+        <h3 className="text-white font-bold tracking-[0.3em] text-xs uppercase">
+          Initializing
+        </h3>
+      </div>
+    </motion.div>
+  );
+};
+
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,20 +69,14 @@ const GlowCard = ({ children, className = "", onClick }) => {
   return (
     <motion.div
       variants={itemVariants}
-      // --- HOVER PHYSICS UPDATE ---
-      // Reduced scale slightly (1.015) so it doesn't jump too much
       whileHover={{ y: -4, scale: 1.015 }}
-      // Stiffness: 100 (Was 300) -> Makes it softer/slower
-      // Damping: 15 -> Removes the "bounciness" for a smooth float
       transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
       onClick={onClick}
-      // Changed duration-500 to duration-700 for slower color fade
       className={`relative rounded-[2rem] border border-[#1a1f2e] bg-[#0f131a] p-6 overflow-hidden cursor-pointer group z-20
                  hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
                  transition-all duration-700 ease-out
                  ${className}`}
     >
-      {/* Noise texture */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
       <div className="relative h-full z-10 flex flex-col">{children}</div>
     </motion.div>
@@ -56,13 +88,12 @@ const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [project, setProject] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   // --- MOUSE FOLLOWER LOGIC ---
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-
-  // Smoother trailing effect (increased damping)
   const springConfig = { damping: 35, stiffness: 150 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
@@ -92,8 +123,14 @@ const Home = () => {
   useEffect(() => {
     axios
       .get("/project/all")
-      .then((res) => setProject(res.data.projects))
-      .catch((err) => console.log(err));
+      .then((res) => {
+        setProject(res.data.projects);
+        setTimeout(() => setIsLoading(false), 1000); // Small delay for smoothness
+      })
+      .catch((err) => {
+        console.log(err);
+        setIsLoading(false);
+      });
   }, []);
 
   const collaborators = [
@@ -104,9 +141,11 @@ const Home = () => {
     { name: "Backend_Guy", status: "busy" },
   ];
 
+  if (isLoading) return <Loader />;
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8 font-sans selection:bg-cyan-500/30 flex items-center justify-center overflow-hidden relative">
-      {/* --- GLOBAL CURSOR FOLLOWER (The "Flashlight") --- */}
+      {/* --- GLOBAL CURSOR FOLLOWER --- */}
       <motion.div
         style={{
           left: smoothX,
@@ -233,58 +272,68 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 4. Projects List */}
-        <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden">
-          <div className="flex justify-between items-end mb-6 relative z-10">
+        {/* 4. Projects List (CLEAN GRID LAYOUT) */}
+        <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
+          <div className="flex justify-between items-end mb-6 relative z-10 shrink-0">
             <div>
               <h2 className="text-2xl font-bold text-white mb-1">Projects</h2>
               <p className="text-sm text-neutral-500">
                 Recent activity & deployments
               </p>
             </div>
+            <div className="px-3 py-1 bg-[#1a1f2e] rounded-lg border border-[#2a3040] text-xs text-neutral-400">
+              {project.length} Active
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar relative z-10 -mx-2 px-2">
-            {project.map((proj) => (
-              <div
-                key={proj._id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/project/${proj._id}`);
-                }}
-                className="group/project relative p-4 rounded-xl bg-[#141820] border border-[#1f2533] cursor-pointer hover:bg-[#1a1f2e] overflow-hidden transition-all duration-300 hover:border-cyan-500/30"
-              >
-                <div className="relative z-10 flex justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#1f2533] flex items-center justify-center text-neutral-400 group-hover/project:text-cyan-400 group-hover/project:bg-cyan-500/10 transition-all">
-                      <i className="ri-code-s-slash-line text-xl"></i>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-neutral-200 group-hover/project:text-white transition-colors mb-1">
-                        {proj.name}
-                      </h3>
-                      <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
-                        <span className="flex items-center gap-1 bg-[#1f2533] px-2 py-0.5 rounded-md">
-                          <i className="ri-user-line"></i> {proj.users.length}
-                        </span>
-                        <span>Updated just now</span>
+          {/* Grid Layout + Scroll Mask to fix clutter */}
+          <div className="relative flex-1 overflow-hidden -mx-2 px-2 mask-gradient-vertical">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-y-auto pr-2 custom-scrollbar max-h-full pb-4">
+              {project.map((proj) => (
+                <div
+                  key={proj._id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/project/${proj._id}`);
+                  }}
+                  className="group/project relative p-4 rounded-xl bg-[#141820] border border-[#1f2533] cursor-pointer hover:bg-[#1a1f2e] overflow-hidden transition-all duration-300 hover:border-cyan-500/30 flex flex-col justify-between h-[100px]"
+                >
+                  <div className="relative z-10 flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#1f2533] flex items-center justify-center text-neutral-400 group-hover/project:text-cyan-400 group-hover/project:bg-cyan-500/10 transition-all shrink-0">
+                        <i className="ri-code-s-slash-line text-lg"></i>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-neutral-200 group-hover/project:text-white transition-colors truncate">
+                          {proj.name}
+                        </h3>
+                        <p className="text-[10px] text-neutral-500">
+                          Last active 2m ago
+                        </p>
                       </div>
                     </div>
+
+                    <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center opacity-0 -translate-x-2 group-hover/project:opacity-100 group-hover/project:translate-x-0 transition-all duration-300 bg-[#1f2533] text-cyan-400">
+                      <i className="ri-arrow-right-up-line text-sm"></i>
+                    </div>
                   </div>
-                  <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center opacity-0 -translate-x-4 group-hover/project:opacity-100 group-hover/project:translate-x-0 transition-all duration-300 bg-[#1f2533] text-cyan-400">
-                    <i className="ri-arrow-right-line text-lg"></i>
+
+                  <div className="relative z-10 mt-auto pt-3 flex items-center gap-2 text-[10px] text-neutral-500 font-medium border-t border-white/5">
+                    <span className="flex items-center gap-1">
+                      <i className="ri-user-line"></i> {proj.users.length}{" "}
+                      members
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {project.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-48 text-neutral-600 border-2 border-dashed border-[#1f2533] rounded-2xl bg-[#141820]/50">
-                <i className="ri-folder-add-line text-4xl mb-3 opacity-50"></i>
-                <p className="text-base font-medium">No active projects</p>
-                <p className="text-sm opacity-70">Create one to get started.</p>
-              </div>
-            )}
+              {project.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center h-40 text-neutral-600 border-2 border-dashed border-[#1f2533] rounded-2xl bg-[#141820]/50">
+                  <i className="ri-folder-add-line text-3xl mb-2 opacity-50"></i>
+                  <p className="text-sm font-medium">No active projects</p>
+                </div>
+              )}
+            </div>
           </div>
         </GlowCard>
 
@@ -336,7 +385,7 @@ const Home = () => {
         </GlowCard>
       </motion.div>
 
-      {/* --- Modal (Unchanged) --- */}
+      {/* --- Modal --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div
