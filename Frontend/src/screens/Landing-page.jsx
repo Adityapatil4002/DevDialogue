@@ -26,12 +26,20 @@ import {
   MessageCircle,
   Menu,
   X,
+  Check,
+  Globe,
 } from "lucide-react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 
-// --- Import your component ---
+// --- Import your components ---
+// Ensure these files exist in your project structure
 import LiquidEther from "../components/LiquidEther";
+import CardNav from "../components/CardNav";
+
+// --- Generate a placeholder logo since assets are missing ---
+// This creates a small SVG data URI to serve as a logo
+const logo = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2322d3ee'/%3E%3Cpath d='M30 50 L45 65 L70 35' stroke='black' stroke-width='10' fill='none'/%3E%3C/svg%3E`;
 
 // --- Utility ---
 function cn(...inputs) {
@@ -67,7 +75,7 @@ const itemVariants = {
 };
 
 // ==========================================
-// 🌌 HERO SECTION (Optimized)
+// 🌌 HERO SECTION
 // ==========================================
 const BACKGROUND_COLORS = ["#5227FF", "#FF9FFC", "#B19EEF"];
 
@@ -95,7 +103,7 @@ const MemoizedLiquidBackground = React.memo(() => {
   );
 });
 
-// --- Hero Cards (Same logic as before) ---
+// --- Hero Cards Logic ---
 const ChatCardContent = ({ isActive }) => {
   const [step, setStep] = useState(0);
   useEffect(() => {
@@ -527,306 +535,225 @@ const HeroSection = () => {
 };
 
 // ==========================================
-// 🧭 NAVBAR
-// ==========================================
-const Navbar = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollTo = (id) => {
-    setMobileMenu(false);
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  };
-
-  return (
-    <nav
-      className={cn(
-        "fixed top-0 left-0 right-0 z-[100] transition-all duration-300 border-b",
-        scrolled
-          ? "bg-[#020617]/80 backdrop-blur-lg border-white/10 py-4"
-          : "bg-transparent border-transparent py-6"
-      )}
-    >
-      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => window.scrollTo(0, 0)}
-        >
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
-            <Terminal className="text-white w-4 h-4" />
-          </div>
-          <span className="text-lg font-bold tracking-tight text-white">
-            DevDialogue
-          </span>
-        </div>
-
-        <div className="hidden md:flex gap-8 text-sm font-medium text-slate-300">
-          <button
-            onClick={() => scrollTo("chat")}
-            className="hover:text-cyan-400 transition-colors"
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => scrollTo("features")}
-            className="hover:text-cyan-400 transition-colors"
-          >
-            Features
-          </button>
-          <button
-            onClick={() => scrollTo("pricing")}
-            className="hover:text-cyan-400 transition-colors"
-          >
-            Pricing
-          </button>
-        </div>
-
-        <div className="hidden md:flex gap-4 items-center">
-          <button className="text-sm font-medium text-slate-300 hover:text-white px-3 py-2">
-            Log in
-          </button>
-          <button className="text-sm font-bold text-white border border-white/20 bg-white/5 px-4 py-2 rounded-lg hover:bg-white/10 transition-all">
-            Start Building
-          </button>
-          <button className="bg-cyan-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20">
-            Get Started
-          </button>
-        </div>
-
-        <div className="md:hidden">
-          <button
-            onClick={() => setMobileMenu(!mobileMenu)}
-            className="text-white"
-          >
-            {mobileMenu ? <X /> : <Menu />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenu && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-[#020617] border-b border-white/10 p-6 flex flex-col gap-4 shadow-2xl">
-          <button
-            onClick={() => scrollTo("chat")}
-            className="text-left text-slate-300 py-2"
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => scrollTo("features")}
-            className="text-left text-slate-300 py-2"
-          >
-            Features
-          </button>
-          <button
-            onClick={() => scrollTo("pricing")}
-            className="text-left text-slate-300 py-2"
-          >
-            Pricing
-          </button>
-          <hr className="border-white/10" />
-          <button className="text-center font-bold text-white border border-white/20 bg-white/5 py-3 rounded-lg">
-            Start Building
-          </button>
-          <button className="text-center font-bold bg-cyan-500 text-black py-3 rounded-lg">
-            Get Started
-          </button>
-        </div>
-      )}
-    </nav>
-  );
-};
-// ==========================================
-// 💬 SECTION 2: STANDARD CHAT (The Foundation)
+// 💬 SECTION 2: STANDARD CHAT (Continuous Animation)
 // ==========================================
 const StandardChatSection = () => {
-    return (
-        <section id="chat" className="py-32 bg-[#020617] relative overflow-hidden">
-            {/* Subtle Background Gradient */}
-            <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+  return (
+    <section id="chat" className="py-32 bg-[#020617] relative overflow-hidden">
+      {/* Background Gradient - Continuous Pulse */}
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none"
+      />
 
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                
-                {/* LEFT: Info/Text */}
-                <Reveal>
-                    <div className="space-y-6">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-                            <MessageCircle className="w-3 h-3" /> Real-time Sync
-                        </div>
-                        <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
-                            Built for Teams, <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Ready for Code.</span>
-                        </h2>
-                        <p className="text-slate-400 text-lg leading-relaxed">
-                            Before the AI magic happens, it's a powerful communication platform. 
-                            Organize discussions in channels, share code snippets with syntax highlighting, and sync with your team in real-time.
-                        </p>
-                        
-                        {/* Feature List */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                            {[
-                                "Threaded Conversations", 
-                                "Code Syntax Highlighting", 
-                                "Secure Direct Messages", 
-                                "File Sharing"
-                            ].map((feat, i) => (
-                                <div key={i} className="flex items-center gap-3 text-slate-300 font-medium">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-                                    </div>
-                                    {feat}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </Reveal>
-
-                {/* RIGHT: Animated Visualization */}
-                <Reveal delay={0.2} className="relative">
-                    <div className="relative rounded-xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex h-[450px]">
-                        
-                        {/* Sidebar (Channels) */}
-                        <div className="w-64 bg-[#0f172a]/50 border-r border-white/5 flex flex-col hidden sm:flex">
-                            <div className="p-4 border-b border-white/5 font-bold text-slate-200 flex items-center gap-2">
-                                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px]">D</div>
-                                DevTeam
-                            </div>
-                            <div className="p-3 space-y-1">
-                                <div className="px-3 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Channels</div>
-                                {["general", "announcements", "engineering", "design"].map((channel, i) => (
-                                    <motion.div 
-                                        key={channel}
-                                        initial={{ x: -20, opacity: 0 }}
-                                        whileInView={{ x: 0, opacity: 1 }}
-                                        transition={{ delay: i * 0.1 }}
-                                        className={cn(
-                                            "flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors text-sm",
-                                            channel === "engineering" ? "bg-indigo-500/10 text-indigo-300" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                                        )}
-                                    >
-                                        <span className="opacity-50">#</span> {channel}
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Main Chat Area */}
-                        <div className="flex-1 flex flex-col bg-[#0B1120]">
-                            {/* Chat Header */}
-                            <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0B1120]/50 backdrop-blur-md">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-slate-400 text-lg">#</span>
-                                    <span className="font-bold text-white">engineering</span>
-                                </div>
-                                <div className="flex -space-x-2">
-                                    {[1,2,3].map(i => (
-                                        <div key={i} className={`w-6 h-6 rounded-full border-2 border-[#0B1120] bg-slate-${i*200+400}`} />
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Messages Area (Animated) */}
-                            <div className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col justify-end pb-8">
-                                
-                                {/* Message 1: Sarah */}
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.2 }}
-                                    viewport={{ once: true }}
-                                    className="flex gap-4"
-                                >
-                                    <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center text-xs font-bold text-white mt-1">S</div>
-                                    <div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="font-bold text-slate-200 text-sm">Sarah Chen</span>
-                                            <span className="text-[10px] text-slate-500">10:02 AM</span>
-                                        </div>
-                                        <p className="text-slate-400 text-sm mt-1">Just pushed the new WebSocket service to staging. Can someone verify the connection stability?</p>
-                                    </div>
-                                </motion.div>
-
-                                {/* Message 2: Mike */}
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 1.2 }} // Delays to look like real conversation
-                                    viewport={{ once: true }}
-                                    className="flex gap-4"
-                                >
-                                    <div className="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center text-xs font-bold text-white mt-1">M</div>
-                                    <div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="font-bold text-slate-200 text-sm">Mike Ross</span>
-                                            <span className="text-[10px] text-slate-500">10:05 AM</span>
-                                        </div>
-                                        <p className="text-slate-400 text-sm mt-1">On it. Logs are looking clean so far. 🟢</p>
-                                    </div>
-                                </motion.div>
-
-                                {/* Typing Indicator (Appears then disappears) */}
-                                <motion.div 
-                                    initial={{ opacity: 0 }}
-                                    whileInView={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ delay: 2.5, duration: 0.5 }}
-                                    viewport={{ once: true }}
-                                    className="flex gap-4 items-end"
-                                >
-                                    <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white">E</div>
-                                    <div className="bg-slate-800 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1">
-                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.1 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                                    </div>
-                                </motion.div>
-
-                                {/* Message 3: Elena (Appears last) */}
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 4.0 }} // Appears after "typing"
-                                    viewport={{ once: true }}
-                                    className="flex gap-4"
-                                >
-                                    <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white mt-1">E</div>
-                                    <div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="font-bold text-slate-200 text-sm">Elena Fisher</span>
-                                            <span className="text-[10px] text-slate-500">10:08 AM</span>
-                                        </div>
-                                        <div className="bg-white/5 border border-white/10 rounded-lg p-3 mt-1">
-                                            <code className="text-xs font-mono text-cyan-400">
-                                                GET /ws/health 200 OK (12ms)
-                                            </code>
-                                        </div>
-                                        <p className="text-slate-400 text-sm mt-1">Latency looks amazing! Great job team. 🚀</p>
-                                    </div>
-                                </motion.div>
-
-                            </div>
-                        </div>
-
-                    </div>
-                    
-                    {/* Decorative Elements behind */}
-                    <div className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl" />
-                    <div className="absolute -z-10 -bottom-10 -left-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl" />
-                </Reveal>
-
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        {/* LEFT: Info/Text */}
+        <Reveal>
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+              <MessageCircle className="w-3 h-3" /> Real-time Sync
             </div>
-        </section>
-    );
+            <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
+              Built for Teams, <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                Ready for Code.
+              </span>
+            </h2>
+            <p className="text-slate-400 text-lg leading-relaxed">
+              Before the AI magic happens, it's a powerful communication
+              platform. Organize discussions in channels, share code snippets
+              with syntax highlighting, and sync with your team in real-time.
+            </p>
+
+            {/* Feature List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              {[
+                "Threaded Conversations",
+                "Code Syntax Highlighting",
+                "Secure Direct Messages",
+                "File Sharing",
+              ].map((feat, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 text-slate-300 font-medium"
+                >
+                  <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                  </div>
+                  {feat}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        {/* RIGHT: Animated Visualization */}
+        <Reveal delay={0.2} className="relative">
+          <div className="relative rounded-xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex h-[450px]">
+            {/* Sidebar (Channels) */}
+            <div className="w-64 bg-[#0f172a]/50 border-r border-white/5 flex flex-col hidden sm:flex">
+              <div className="p-4 border-b border-white/5 font-bold text-slate-200 flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px]">
+                  D
+                </div>
+                DevTeam
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="px-3 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Channels
+                </div>
+                {["general", "announcements", "engineering", "design"].map(
+                  (channel, i) => (
+                    <motion.div
+                      key={channel}
+                      initial={{ x: -20, opacity: 0 }}
+                      whileInView={{ x: 0, opacity: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors text-sm",
+                        channel === "engineering"
+                          ? "bg-indigo-500/10 text-indigo-300"
+                          : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                      )}
+                    >
+                      <span className="opacity-50">#</span> {channel}
+                    </motion.div>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col bg-[#0B1120]">
+              {/* Chat Header */}
+              <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0B1120]/50 backdrop-blur-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-lg">#</span>
+                  <span className="font-bold text-white">engineering</span>
+                </div>
+                <div className="flex -space-x-2">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 rounded-full border-2 border-[#0B1120] bg-slate-${
+                        i * 200 + 400
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Messages Area (Animated) */}
+              <div className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col justify-end pb-8">
+                {/* Message 1: Sarah */}
+                <motion.div
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="flex gap-4"
+                >
+                  <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center text-xs font-bold text-white mt-1">
+                    S
+                  </div>
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-slate-200 text-sm">
+                        Sarah Chen
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        10:02 AM
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Just pushed the new WebSocket service to staging. Can
+                      someone verify the connection stability?
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Message 2: Mike (Pulsing Highlight) */}
+                <motion.div
+                  animate={{
+                    backgroundColor: [
+                      "rgba(255,255,255,0.02)",
+                      "rgba(255,255,255,0.05)",
+                      "rgba(255,255,255,0.02)",
+                    ],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="flex gap-4 p-2 -ml-2 rounded-lg"
+                >
+                  <div className="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center text-xs font-bold text-white mt-1">
+                    M
+                  </div>
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-slate-200 text-sm">
+                        Mike Ross
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        10:05 AM
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-sm mt-1">
+                      On it. Logs are looking clean so far. 🟢
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Typing Indicator (Always Animated) */}
+                <div className="flex gap-4 items-end">
+                  <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white">
+                    E
+                  </div>
+                  <div className="bg-slate-800 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1">
+                    <motion.div
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 0.6 }}
+                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                    />
+                    <motion.div
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 0.6,
+                        delay: 0.1,
+                      }}
+                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                    />
+                    <motion.div
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 0.6,
+                        delay: 0.2,
+                      }}
+                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Decorative Elements - Rotating Blob */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl"
+          />
+        </Reveal>
+      </div>
+    </section>
+  );
 };
+
 // ==========================================
-// 🧠 FEATURE 3: THE @ai INVOCATION
+// 🧠 FEATURE 3: THE @ai INVOCATION (Continuous Animation)
 // ==========================================
 const NeuralChatSection = () => {
   return (
@@ -879,9 +806,13 @@ const NeuralChatSection = () => {
             </div>
             <div className="flex -space-x-2">
               <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-[#0B1120]" />
-              <div className="w-8 h-8 rounded-full bg-cyan-500 border-2 border-[#0B1120] flex items-center justify-center text-[10px] font-bold">
+              <motion.div
+                animate={{ borderColor: ["#0B1120", "#22d3ee", "#0B1120"] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-8 h-8 rounded-full bg-cyan-500 border-2 flex items-center justify-center text-[10px] font-bold"
+              >
                 AI
-              </div>
+              </motion.div>
             </div>
           </div>
 
@@ -928,10 +859,17 @@ const NeuralChatSection = () => {
                 <div className="text-xs text-cyan-500 font-bold">
                   DevDialogue AI • 10:24 AM
                 </div>
-                <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg">
-                  <p className="mb-3">
-                    Here is a robust email validation function:
-                  </p>
+                <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg relative overflow-hidden">
+                  {/* Continuous Scan Effect */}
+                  <motion.div
+                    animate={{ top: ["-100%", "200%"] }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="absolute left-0 right-0 h-20 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent pointer-events-none"
+                  />
                   <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative">
                     <span className="text-violet-400">export const</span>{" "}
                     <span className="text-blue-400">isValidEmail</span> =
@@ -953,11 +891,19 @@ const NeuralChatSection = () => {
                     re.test(email);
                     <br />
                     {"}"};
+                    <motion.span
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.8, repeat: Infinity }}
+                      className="inline-block w-1.5 h-3 bg-cyan-400 ml-1 align-middle"
+                    />
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 text-xs rounded border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors flex items-center gap-1">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 text-xs rounded border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors flex items-center gap-1"
+                    >
                       <PlayCircle className="w-3 h-3" /> Insert
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </div>
@@ -970,7 +916,7 @@ const NeuralChatSection = () => {
 };
 
 // ==========================================
-// 📂 FEATURE 4: GENERATIVE FILE TREE
+// 📂 FEATURE 4: GENERATIVE FILE TREE (Continuous Animation)
 // ==========================================
 const FileTreeSection = () => {
   return (
@@ -980,16 +926,17 @@ const FileTreeSection = () => {
           className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-sm p-6 lg:p-10 shadow-2xl"
           style={{ perspective: "1000px" }}
         >
-          {/* Particles */}
+          {/* Continuous Particles */}
           <div className="absolute inset-0 z-0 overflow-hidden opacity-20">
             {[...Array(5)].map((_, i) => (
               <motion.div
                 key={i}
-                animate={{ y: [0, -100], opacity: [0, 0.5, 0] }}
+                animate={{ y: [0, -400], opacity: [0, 0.5, 0] }}
                 transition={{
                   duration: Math.random() * 5 + 3,
                   repeat: Infinity,
                   delay: Math.random() * 2,
+                  ease: "linear",
                 }}
                 className="absolute bg-violet-500 w-0.5 h-10 rounded-full"
                 style={{ left: `${Math.random() * 100}%`, top: "100%" }}
@@ -997,13 +944,20 @@ const FileTreeSection = () => {
             ))}
           </div>
 
+          {/* Continuous Scanning Beam on Tree */}
+          <motion.div
+            animate={{ top: ["0%", "100%", "0%"] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent z-20 shadow-[0_0_10px_rgba(139,92,246,0.5)]"
+          />
+
           <div className="relative z-10 space-y-2 font-mono text-sm">
             <div className="flex items-center gap-2 text-slate-400 mb-4 border-b border-white/5 pb-2">
               <FolderTree className="w-4 h-4 text-violet-400" />
               <span>/project-root (Generated)</span>
             </div>
 
-            {/* Tree Animation */}
+            {/* Tree Items */}
             {[
               { name: "src", type: "folder", depth: 0, color: "text-blue-400" },
               {
@@ -1072,9 +1026,13 @@ const FileTreeSection = () => {
                 )}
                 <span className={item.color}>{item.name}</span>
                 {item.color.includes("green") && (
-                  <span className="ml-auto text-[9px] bg-green-500/20 text-green-400 px-1.5 rounded border border-green-500/30">
+                  <motion.span
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="ml-auto text-[9px] bg-green-500/20 text-green-400 px-1.5 rounded border border-green-500/30"
+                  >
                     NEW
-                  </span>
+                  </motion.span>
                 )}
               </motion.div>
             ))}
@@ -1108,12 +1066,17 @@ const FileTreeSection = () => {
 };
 
 // ==========================================
-// 🚀 FEATURE 5: LIVE EXECUTION
+// 🚀 FEATURE 5: LIVE EXECUTION (Continuous Animation)
 // ==========================================
 const ExecutionSection = () => {
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden">
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-pink-500/5 blur-[120px] rounded-full pointer-events-none" />
+      {/* Background Pulse */}
+      <motion.div
+        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+        transition={{ duration: 6, repeat: Infinity }}
+        className="absolute top-0 right-0 w-[600px] h-[600px] bg-pink-500/5 blur-[120px] rounded-full pointer-events-none"
+      />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
         <Reveal className="space-y-6">
@@ -1146,9 +1109,20 @@ const ExecutionSection = () => {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded hover:bg-green-500/20 transition-colors border border-green-500/20">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                animate={{
+                  boxShadow: [
+                    "0 0 0px rgba(74, 222, 128, 0)",
+                    "0 0 10px rgba(74, 222, 128, 0.3)",
+                    "0 0 0px rgba(74, 222, 128, 0)",
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded hover:bg-green-500/20 transition-colors border border-green-500/20"
+              >
                 <Play className="w-3 h-3 fill-current" /> RUN
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -1214,100 +1188,167 @@ const ExecutionSection = () => {
 };
 
 // ==========================================
-// 💎 PRICING SECTION
+// 💎 CYBER PRICING SECTION (New Design)
 // ==========================================
-const PricingCard = ({ tier, price, features, recommended }) => (
-  <motion.div
-    variants={itemVariants}
-    className={cn(
-      "relative p-8 rounded-2xl border flex flex-col h-full",
-      recommended
-        ? "bg-slate-900/80 border-cyan-500/50 shadow-[0_0_40px_rgba(34,211,238,0.1)]"
-        : "bg-white/5 border-white/10"
-    )}
-  >
-    {recommended && (
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-        Most Popular
-      </div>
-    )}
-    <h3 className="text-lg font-medium text-slate-300 mb-2">{tier}</h3>
-    <div className="text-4xl font-bold text-white mb-6">
-      {price}
-      <span className="text-sm text-slate-500 font-normal">/mo</span>
-    </div>
-    <div className="space-y-4 mb-8 flex-1">
-      {features.map((feat, i) => (
-        <div key={i} className="flex items-start gap-3 text-sm text-slate-400">
-          <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-          {feat}
-        </div>
-      ))}
-    </div>
-    <button
+const CyberPricingCard = ({ tier, price, features, recommended, annual }) => {
+  return (
+    <motion.div
+      initial={{ y: 20, opacity: 0 }}
+      whileInView={{ y: 0, opacity: 1 }}
+      viewport={{ once: true }}
       className={cn(
-        "w-full py-3 rounded-lg font-bold text-sm transition-all",
+        "relative p-1 rounded-2xl group transition-all duration-300",
         recommended
-          ? "bg-cyan-500 text-black hover:bg-cyan-400"
-          : "bg-white/10 text-white hover:bg-white/20"
+          ? "scale-105 z-10"
+          : "scale-100 opacity-90 hover:opacity-100"
       )}
     >
-      Choose {tier}
-    </button>
-  </motion.div>
-);
+      {/* Animated Gradient Border */}
+      <div
+        className={cn(
+          "absolute inset-0 rounded-2xl bg-gradient-to-r opacity-20 group-hover:opacity-100 transition-opacity duration-500 blur-xl",
+          recommended
+            ? "from-cyan-500 via-purple-500 to-pink-500 animate-spin-slow"
+            : "from-slate-700 to-slate-500"
+        )}
+      />
 
-const PricingSection = () => {
+      <div
+        className={cn(
+          "relative h-full bg-[#0B1120] rounded-xl p-8 border backdrop-blur-xl flex flex-col",
+          recommended
+            ? "border-cyan-500/50 shadow-[0_0_50px_-12px_rgba(34,211,238,0.2)]"
+            : "border-white/10"
+        )}
+      >
+        {recommended && (
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white text-[10px] font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg">
+            Recommended
+          </div>
+        )}
+
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">
+            {tier}
+          </h3>
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-extrabold text-white">
+              ${annual ? price * 10 : price}
+            </span>
+            <span className="text-slate-500 font-medium">
+              /{annual ? "yr" : "mo"}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-4 mb-8 flex-1">
+          {features.map((feat, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 text-sm text-slate-300"
+            >
+              <Check
+                className={cn(
+                  "w-4 h-4 shrink-0 mt-0.5",
+                  recommended ? "text-cyan-400" : "text-slate-500"
+                )}
+              />
+              {feat}
+            </div>
+          ))}
+        </div>
+
+        <button
+          className={cn(
+            "w-full py-4 rounded-lg font-bold text-sm tracking-wide transition-all relative overflow-hidden group/btn",
+            recommended
+              ? "bg-white text-black hover:bg-cyan-50"
+              : "bg-white/5 text-white hover:bg-white/10"
+          )}
+        >
+          <span className="relative z-10">Select {tier}</span>
+          {recommended && (
+            <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+const CyberPricingSection = () => {
+  const [annual, setAnnual] = useState(false);
+
   return (
     <section
       id="pricing"
-      className="py-32 px-6 bg-[#020617] border-t border-white/5"
+      className="py-32 px-6 bg-[#020617] border-t border-white/5 relative overflow-hidden"
     >
-      <Reveal className="text-center mb-16">
-        <h2 className="text-4xl font-bold mb-4">Simple, transparent pricing</h2>
-        <p className="text-slate-400">
-          Start building for free. Upgrade for power.
-        </p>
+      {/* Noise Texture */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+
+      <Reveal className="text-center mb-16 relative z-10">
+        <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+          Choose your computing power.
+        </h2>
+        <div className="flex items-center justify-center gap-4 text-sm font-medium">
+          <span className={!annual ? "text-white" : "text-slate-500"}>
+            Monthly
+          </span>
+          <button
+            onClick={() => setAnnual(!annual)}
+            className="w-12 h-6 rounded-full bg-slate-800 border border-white/10 relative p-1 transition-colors hover:border-cyan-500/50"
+          >
+            <motion.div
+              animate={{ x: annual ? 24 : 0 }}
+              className="w-4 h-4 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+            />
+          </button>
+          <span className={annual ? "text-white" : "text-slate-500"}>
+            Yearly{" "}
+            <span className="text-cyan-400 text-xs ml-1">(Save 20%)</span>
+          </span>
+        </div>
       </Reveal>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto"
-      >
-        <PricingCard
+
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+        <CyberPricingCard
           tier="Starter"
-          price="$0"
+          price={0}
           features={[
             "Unlimited Chat History",
             "50 AI Generations/mo",
             "Basic Execution Sandbox",
             "Community Support",
           ]}
+          annual={annual}
         />
-        <PricingCard
-          tier="Developer"
-          price="$15"
+        <CyberPricingCard
+          tier="Pro"
+          price={29}
           recommended={true}
           features={[
-            "Unlimited AI Generations",
-            "Advanced File Tree Generation",
+            "Unlimited Generations",
+            "Advanced File Tree",
             "Private Projects",
             "Priority Support",
+            "GPT-4 Access",
           ]}
+          annual={annual}
         />
-        <PricingCard
+        <CyberPricingCard
           tier="Team"
-          price="$49"
+          price={99}
           features={[
-            "Everything in Developer",
+            "Everything in Pro",
             "Team Context Sharing",
             "SSO & Audit Logs",
             "Dedicated Server",
+            "Custom Models",
           ]}
+          annual={annual}
         />
-      </motion.div>
+      </div>
     </section>
   );
 };
@@ -1427,15 +1468,58 @@ const Footer = () => (
 // 🚀 MAIN LANDING PAGE
 // ==========================================
 const LandingPage = () => {
+  // 🧭 Navbar Configuration from your request
+  const navItems = [
+    {
+      label: "About",
+      bgColor: "#0D0716",
+      textColor: "#fff",
+      links: [
+        { label: "Company", ariaLabel: "About Company" },
+        { label: "Careers", ariaLabel: "About Careers" },
+      ],
+    },
+    {
+      label: "Projects",
+      bgColor: "#170D27",
+      textColor: "#fff",
+      links: [
+        { label: "Featured", ariaLabel: "Featured Projects" },
+        { label: "Case Studies", ariaLabel: "Project Case Studies" },
+      ],
+    },
+    {
+      label: "Contact",
+      bgColor: "#271E37",
+      textColor: "#fff",
+      links: [
+        { label: "Email", ariaLabel: "Email us" },
+        { label: "Twitter", ariaLabel: "Twitter" },
+        { label: "LinkedIn", ariaLabel: "LinkedIn" },
+      ],
+    },
+  ];
+
   return (
     <div className="bg-[#020617] min-h-screen text-white font-sans selection:bg-cyan-500/30">
-      <Navbar />
+      {/* 1] Navbar Changed to CardNav */}
+      <CardNav
+        logo={logo}
+        logoAlt="Company Logo"
+        items={navItems}
+        baseColor="#0f172a"
+        menuColor="#000"
+        buttonBgColor="#111"
+        buttonTextColor="#fff"
+        ease="power3.out"
+      />
+
       <HeroSection />
       <StandardChatSection />
       <NeuralChatSection />
       <FileTreeSection />
       <ExecutionSection />
-      <PricingSection />
+      <CyberPricingSection />
       <GetStartedSection />
       <Footer />
     </div>
