@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   motion,
-  useScroll,
-  useTransform,
   AnimatePresence,
   useMotionValue,
   useSpring,
-  useInView,
 } from "framer-motion";
 import {
   Terminal,
@@ -18,19 +15,17 @@ import {
   Cpu,
   Sparkles,
   CheckCircle2,
-  Globe,
-  Shield,
   LayoutTemplate,
-  Database,
   FolderTree,
   FileCode,
   Users,
   PlayCircle,
-  Laptop,
   Github,
   Twitter,
   Disc,
-  Command,
+  MessageCircle,
+  Menu,
+  X,
 } from "lucide-react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -43,10 +38,37 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// ==========================================
-// 🌌 HERO SECTION (UNTOUCHED & OPTIMIZED)
-// ==========================================
+// --- 🎬 ANIMATION WRAPPER (Scroll Reveal) ---
+// Wraps content to fade in smoothly as user scrolls
+const Reveal = ({ children, delay = 0, className }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 40 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-50px" }}
+    transition={{ duration: 0.8, ease: "easeOut", delay }}
+    className={className}
+  >
+    {children}
+  </motion.div>
+);
 
+// --- Stagger Container for Cards ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.2 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+};
+
+// ==========================================
+// 🌌 HERO SECTION (Optimized)
+// ==========================================
 const BACKGROUND_COLORS = ["#5227FF", "#FF9FFC", "#B19EEF"];
 
 const MemoizedLiquidBackground = React.memo(() => {
@@ -73,7 +95,7 @@ const MemoizedLiquidBackground = React.memo(() => {
   );
 });
 
-// ... (Exact same Hero Card contents as before) ...
+// --- Hero Cards (Same logic as before) ---
 const ChatCardContent = ({ isActive }) => {
   const [step, setStep] = useState(0);
   useEffect(() => {
@@ -102,8 +124,8 @@ const ChatCardContent = ({ isActive }) => {
           <span className="text-slate-300 text-xs">U</span>
         </div>
         <div className="bg-slate-900/90 p-3 rounded-2xl rounded-tl-none border border-slate-700 text-slate-300 shadow-lg">
-          <span className="text-cyan-400 font-bold">@ai</span> build a{" "}
-          <span className="text-violet-400">file_upload</span> endpoint
+          <span className="text-cyan-400 font-bold">@ai</span> create a{" "}
+          <span className="text-violet-400">Login</span> component
         </div>
       </motion.div>
       <div className="flex gap-3 flex-row-reverse min-h-[60px]">
@@ -135,7 +157,7 @@ const ChatCardContent = ({ isActive }) => {
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-cyan-400" />
-                <span>Code generated successfully.</span>
+                <span>Component created.</span>
               </div>
             </motion.div>
           )}
@@ -152,9 +174,9 @@ const CodeCardContent = ({ isActive }) => {
       {
         html: (
           <>
-            <span className="text-violet-400">app</span>.post(
-            <span className="text-green-400">"/upload"</span>,{" "}
-            <span className="text-cyan-400">async</span> (req, res) ={">"} {"{"}
+            <span className="text-violet-400">export</span>{" "}
+            <span className="text-cyan-400">default</span>{" "}
+            <span className="text-violet-400">function</span> Login() {"{"}
           </>
         ),
         indent: 0,
@@ -162,7 +184,8 @@ const CodeCardContent = ({ isActive }) => {
       {
         html: (
           <>
-            <span className="text-slate-500">// Check permissions</span>
+            <span className="text-pink-400">const</span> [email, setEmail] =
+            useState(<span className="text-green-400">""</span>);
           </>
         ),
         indent: 1,
@@ -170,8 +193,7 @@ const CodeCardContent = ({ isActive }) => {
       {
         html: (
           <>
-            <span className="text-cyan-400">if</span> (!req.user){" "}
-            <span className="text-violet-400">throw</span> Error;
+            <span className="text-pink-400">return</span> (
           </>
         ),
         indent: 1,
@@ -179,29 +201,37 @@ const CodeCardContent = ({ isActive }) => {
       {
         html: (
           <>
-            <span className="text-cyan-400">const</span> file = req.files.doc;
+            <span className="text-cyan-400">{"<form>"}</span>
           </>
         ),
-        indent: 1,
+        indent: 2,
       },
       {
         html: (
           <>
-            <span className="text-violet-400">await</span> s3.upload(file);
+            <span className="text-cyan-400">{"<input"}</span> type=
+            <span className="text-green-400">"email"</span> /{">"}
           </>
         ),
-        indent: 1,
+        indent: 3,
       },
       {
         html: (
           <>
-            res.json({"{"} status: <span className="text-green-400">"ok"</span>{" "}
-            {"}"});
+            <span className="text-cyan-400">{"<button>"}</span>Sign In
+            <span className="text-cyan-400">{"</button>"}</span>
           </>
         ),
-        indent: 1,
+        indent: 3,
       },
-      { html: <>{"}"});</>, indent: 0 },
+      {
+        html: (
+          <>
+            <span className="text-cyan-400">{"</form>"}</span>
+          </>
+        ),
+        indent: 2,
+      },
     ],
     []
   );
@@ -223,9 +253,9 @@ const CodeCardContent = ({ isActive }) => {
   return (
     <div className="font-mono text-xs leading-loose text-slate-400 mt-1">
       <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-        <span className="text-violet-300">backend.js</span>
+        <span className="text-violet-300">Login.jsx</span>
         <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
-          JS
+          JSX
         </span>
       </div>
       <div className="h-[180px]">
@@ -259,27 +289,15 @@ const TerminalCardContent = ({ isActive }) => {
     if (isActive) {
       setLogs([]);
       const sequence = [
-        { text: "> node backend.js", color: "text-white", delay: 200 },
+        { text: "> npm run dev", color: "text-white", delay: 200 },
+        { text: "[info] ready in 120ms", color: "text-slate-400", delay: 800 },
+        { text: "[vite] connecting...", color: "text-slate-400", delay: 1400 },
         {
-          text: "[info] Initializing S3 client...",
-          color: "text-slate-400",
-          delay: 800,
-        },
-        {
-          text: "[info] Middlewares loaded",
-          color: "text-slate-400",
-          delay: 1400,
-        },
-        {
-          text: "[success] Database connected (2ms)",
+          text: "[success] Local: http://localhost:5173",
           color: "text-green-400",
           delay: 2200,
         },
-        {
-          text: "Server listening on port 8080 🚀",
-          color: "text-cyan-300",
-          delay: 2800,
-        },
+        { text: "App running 🚀", color: "text-cyan-300", delay: 2800 },
       ];
       let timeouts = [];
       sequence.forEach((item) => {
@@ -414,29 +432,7 @@ const HeroSection = () => {
           style={{ "--x": springX, "--y": springY }}
         />
       </motion.div>
-      <nav className="relative z-50 max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-            <Terminal className="text-white w-5 h-5" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">DevDialogue</span>
-        </div>
-        <div className="hidden md:flex gap-8 text-sm font-medium text-slate-400">
-          {["Features", "Docs", "Pricing"].map((item) => (
-            <a
-              key={item}
-              href="#"
-              className="hover:text-cyan-400 transition-colors"
-            >
-              {item}
-            </a>
-          ))}
-        </div>
-        <button className="bg-cyan-500 text-black px-5 py-2 rounded-lg text-sm font-bold hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-          Get Started
-        </button>
-      </nav>
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20 h-full justify-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-24 lg:pt-32 pb-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20 h-full justify-center">
         <div className="flex-1 text-center lg:text-left space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -444,7 +440,7 @@ const HeroSection = () => {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/5 backdrop-blur-md text-cyan-300 text-xs font-bold uppercase tracking-wider"
           >
             <Zap className="w-3 h-3 fill-cyan-300" />
-            <span>AI-Native Backend Generation</span>
+            <span>AI-Native Code Generation</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0 }}
@@ -465,8 +461,7 @@ const HeroSection = () => {
           >
             DevDialogue is more than a chat. Tag{" "}
             <strong className="text-cyan-400">@ai</strong> to generate
-            production-ready code, create files, and run backend logic in
-            real-time.
+            full-stack code, create files, and run logic in real-time.
           </motion.p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
             <motion.button
@@ -532,115 +527,365 @@ const HeroSection = () => {
 };
 
 // ==========================================
-// 🔌 INTEGRATION MARQUEE
+// 🧭 NAVBAR
 // ==========================================
-const TechMarquee = () => (
-  <div className="py-10 bg-[#020617] border-y border-white/5 relative overflow-hidden">
-    <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10" />
-    <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10" />
-    <div className="flex gap-16 animate-marquee whitespace-nowrap items-center opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-      {[
-        "Node.js",
-        "Python",
-        "React",
-        "Docker",
-        "AWS",
-        "Firebase",
-        "PostgreSQL",
-        "MongoDB",
-        "Go",
-        "Redis",
-        "Node.js",
-        "Python",
-        "React",
-        "Docker",
-        "AWS",
-        "Firebase",
-      ].map((tech, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-2 text-xl font-bold text-slate-300"
-        >
-          <Globe className="w-5 h-5" /> {tech}
-        </div>
-      ))}
-    </div>
-    <style>{`@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } .animate-marquee { animation: marquee 30s linear infinite; }`}</style>
-  </div>
-);
+const Navbar = () => {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollTo = (id) => {
+    setMobileMenu(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <nav
+      className={cn(
+        "fixed top-0 left-0 right-0 z-[100] transition-all duration-300 border-b",
+        scrolled
+          ? "bg-[#020617]/80 backdrop-blur-lg border-white/10 py-4"
+          : "bg-transparent border-transparent py-6"
+      )}
+    >
+      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => window.scrollTo(0, 0)}
+        >
+          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
+            <Terminal className="text-white w-4 h-4" />
+          </div>
+          <span className="text-lg font-bold tracking-tight text-white">
+            DevDialogue
+          </span>
+        </div>
+
+        <div className="hidden md:flex gap-8 text-sm font-medium text-slate-300">
+          <button
+            onClick={() => scrollTo("chat")}
+            className="hover:text-cyan-400 transition-colors"
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => scrollTo("features")}
+            className="hover:text-cyan-400 transition-colors"
+          >
+            Features
+          </button>
+          <button
+            onClick={() => scrollTo("pricing")}
+            className="hover:text-cyan-400 transition-colors"
+          >
+            Pricing
+          </button>
+        </div>
+
+        <div className="hidden md:flex gap-4 items-center">
+          <button className="text-sm font-medium text-slate-300 hover:text-white px-3 py-2">
+            Log in
+          </button>
+          <button className="text-sm font-bold text-white border border-white/20 bg-white/5 px-4 py-2 rounded-lg hover:bg-white/10 transition-all">
+            Start Building
+          </button>
+          <button className="bg-cyan-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20">
+            Get Started
+          </button>
+        </div>
+
+        <div className="md:hidden">
+          <button
+            onClick={() => setMobileMenu(!mobileMenu)}
+            className="text-white"
+          >
+            {mobileMenu ? <X /> : <Menu />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenu && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-[#020617] border-b border-white/10 p-6 flex flex-col gap-4 shadow-2xl">
+          <button
+            onClick={() => scrollTo("chat")}
+            className="text-left text-slate-300 py-2"
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => scrollTo("features")}
+            className="text-left text-slate-300 py-2"
+          >
+            Features
+          </button>
+          <button
+            onClick={() => scrollTo("pricing")}
+            className="text-left text-slate-300 py-2"
+          >
+            Pricing
+          </button>
+          <hr className="border-white/10" />
+          <button className="text-center font-bold text-white border border-white/20 bg-white/5 py-3 rounded-lg">
+            Start Building
+          </button>
+          <button className="text-center font-bold bg-cyan-500 text-black py-3 rounded-lg">
+            Get Started
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+};
 // ==========================================
-// 🧠 FEATURE 1: THE @ai INVOCATION (Group Sync)
+// 💬 SECTION 2: STANDARD CHAT (The Foundation)
+// ==========================================
+const StandardChatSection = () => {
+    return (
+        <section id="chat" className="py-32 bg-[#020617] relative overflow-hidden">
+            {/* Subtle Background Gradient */}
+            <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                
+                {/* LEFT: Info/Text */}
+                <Reveal>
+                    <div className="space-y-6">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+                            <MessageCircle className="w-3 h-3" /> Real-time Sync
+                        </div>
+                        <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
+                            Built for Teams, <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Ready for Code.</span>
+                        </h2>
+                        <p className="text-slate-400 text-lg leading-relaxed">
+                            Before the AI magic happens, it's a powerful communication platform. 
+                            Organize discussions in channels, share code snippets with syntax highlighting, and sync with your team in real-time.
+                        </p>
+                        
+                        {/* Feature List */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                            {[
+                                "Threaded Conversations", 
+                                "Code Syntax Highlighting", 
+                                "Secure Direct Messages", 
+                                "File Sharing"
+                            ].map((feat, i) => (
+                                <div key={i} className="flex items-center gap-3 text-slate-300 font-medium">
+                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                                    </div>
+                                    {feat}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </Reveal>
+
+                {/* RIGHT: Animated Visualization */}
+                <Reveal delay={0.2} className="relative">
+                    <div className="relative rounded-xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex h-[450px]">
+                        
+                        {/* Sidebar (Channels) */}
+                        <div className="w-64 bg-[#0f172a]/50 border-r border-white/5 flex flex-col hidden sm:flex">
+                            <div className="p-4 border-b border-white/5 font-bold text-slate-200 flex items-center gap-2">
+                                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px]">D</div>
+                                DevTeam
+                            </div>
+                            <div className="p-3 space-y-1">
+                                <div className="px-3 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Channels</div>
+                                {["general", "announcements", "engineering", "design"].map((channel, i) => (
+                                    <motion.div 
+                                        key={channel}
+                                        initial={{ x: -20, opacity: 0 }}
+                                        whileInView={{ x: 0, opacity: 1 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className={cn(
+                                            "flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors text-sm",
+                                            channel === "engineering" ? "bg-indigo-500/10 text-indigo-300" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                                        )}
+                                    >
+                                        <span className="opacity-50">#</span> {channel}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Main Chat Area */}
+                        <div className="flex-1 flex flex-col bg-[#0B1120]">
+                            {/* Chat Header */}
+                            <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0B1120]/50 backdrop-blur-md">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 text-lg">#</span>
+                                    <span className="font-bold text-white">engineering</span>
+                                </div>
+                                <div className="flex -space-x-2">
+                                    {[1,2,3].map(i => (
+                                        <div key={i} className={`w-6 h-6 rounded-full border-2 border-[#0B1120] bg-slate-${i*200+400}`} />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Messages Area (Animated) */}
+                            <div className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col justify-end pb-8">
+                                
+                                {/* Message 1: Sarah */}
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    viewport={{ once: true }}
+                                    className="flex gap-4"
+                                >
+                                    <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center text-xs font-bold text-white mt-1">S</div>
+                                    <div>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="font-bold text-slate-200 text-sm">Sarah Chen</span>
+                                            <span className="text-[10px] text-slate-500">10:02 AM</span>
+                                        </div>
+                                        <p className="text-slate-400 text-sm mt-1">Just pushed the new WebSocket service to staging. Can someone verify the connection stability?</p>
+                                    </div>
+                                </motion.div>
+
+                                {/* Message 2: Mike */}
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 1.2 }} // Delays to look like real conversation
+                                    viewport={{ once: true }}
+                                    className="flex gap-4"
+                                >
+                                    <div className="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center text-xs font-bold text-white mt-1">M</div>
+                                    <div>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="font-bold text-slate-200 text-sm">Mike Ross</span>
+                                            <span className="text-[10px] text-slate-500">10:05 AM</span>
+                                        </div>
+                                        <p className="text-slate-400 text-sm mt-1">On it. Logs are looking clean so far. 🟢</p>
+                                    </div>
+                                </motion.div>
+
+                                {/* Typing Indicator (Appears then disappears) */}
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    whileInView={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ delay: 2.5, duration: 0.5 }}
+                                    viewport={{ once: true }}
+                                    className="flex gap-4 items-end"
+                                >
+                                    <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white">E</div>
+                                    <div className="bg-slate-800 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1">
+                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.1 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                                    </div>
+                                </motion.div>
+
+                                {/* Message 3: Elena (Appears last) */}
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 4.0 }} // Appears after "typing"
+                                    viewport={{ once: true }}
+                                    className="flex gap-4"
+                                >
+                                    <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white mt-1">E</div>
+                                    <div>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="font-bold text-slate-200 text-sm">Elena Fisher</span>
+                                            <span className="text-[10px] text-slate-500">10:08 AM</span>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 rounded-lg p-3 mt-1">
+                                            <code className="text-xs font-mono text-cyan-400">
+                                                GET /ws/health 200 OK (12ms)
+                                            </code>
+                                        </div>
+                                        <p className="text-slate-400 text-sm mt-1">Latency looks amazing! Great job team. 🚀</p>
+                                    </div>
+                                </motion.div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    {/* Decorative Elements behind */}
+                    <div className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl" />
+                    <div className="absolute -z-10 -bottom-10 -left-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl" />
+                </Reveal>
+
+            </div>
+        </section>
+    );
+};
+// ==========================================
+// 🧠 FEATURE 3: THE @ai INVOCATION
 // ==========================================
 const NeuralChatSection = () => {
   return (
-    <section className="py-32 relative bg-[#020617] overflow-hidden">
-      {/* Background Gradient */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none" />
-
+    <section id="features" className="py-32 relative bg-[#020617]">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          className="space-y-6"
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-300 text-xs font-bold uppercase tracking-wider">
-            <Users className="w-3 h-3" /> Collaboration First
+        <Reveal>
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-300 text-xs font-bold uppercase tracking-wider">
+              <Zap className="w-3 h-3" /> Collaboration First
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
+              Your team's new <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
+                Technical Co-founder.
+              </span>
+            </h2>
+            <p className="text-slate-400 text-lg leading-relaxed">
+              Don't switch tabs to ChatGPT. Just type{" "}
+              <strong className="text-cyan-400">@ai</strong> inside your group
+              chat. The AI understands your project context, answers
+              architectural questions, and generates solutions where you are
+              discussing them.
+            </p>
+            <ul className="space-y-4 pt-4">
+              {[
+                "Context-aware answers based on chat history",
+                "Multi-user collaboration with AI support",
+                "Instant knowledge retrieval for docs & APIs",
+              ].map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-slate-300">
+                  <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />{" "}
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
-            Your team's new <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
-              Technical Co-founder.
-            </span>
-          </h2>
-          <p className="text-slate-400 text-lg leading-relaxed">
-            Don't switch tabs to ChatGPT. Just type{" "}
-            <strong className="text-cyan-400">@ai</strong> inside your group
-            chat. The AI understands your project context, answers architectural
-            questions, and generates solutions where you are discussing them.
-          </p>
-          <ul className="space-y-4 pt-4">
-            {[
-              "Context-aware answers based on chat history",
-              "Multi-user collaboration with AI support",
-              "Instant knowledge retrieval for docs & APIs",
-            ].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-slate-300">
-                <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />{" "}
-                {item}
-              </li>
-            ))}
-          </ul>
-        </motion.div>
+        </Reveal>
 
         {/* Visual: Chat UI */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
+        <Reveal
+          delay={0.2}
           className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden"
         >
-          {/* Mock Header */}
           <div className="h-12 border-b border-white/5 bg-white/5 flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-red-500" />
               <span className="text-sm font-bold text-slate-300">
-                # backend-architecture
+                # dev-team
               </span>
             </div>
             <div className="flex -space-x-2">
               <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-[#0B1120]" />
-              <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-[#0B1120]" />
               <div className="w-8 h-8 rounded-full bg-cyan-500 border-2 border-[#0B1120] flex items-center justify-center text-[10px] font-bold">
                 AI
               </div>
             </div>
           </div>
 
-          {/* Chat Area */}
           <div className="p-6 space-y-6 min-h-[400px]">
-            {/* Message 1 */}
             <div className="flex gap-4">
               <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                 JD
@@ -650,12 +895,12 @@ const NeuralChatSection = () => {
                   John Doe • 10:23 AM
                 </div>
                 <div className="bg-slate-800 p-3 rounded-lg rounded-tl-none text-slate-300 text-sm">
-                  Guys, how do we handle the S3 upload presigned URLs?
+                  We need a function to validate email addresses before sending
+                  the invite.
                 </div>
               </div>
             </div>
 
-            {/* Message 2 (User invoking AI) */}
             <div className="flex gap-4 flex-row-reverse">
               <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center shrink-0">
                 ME
@@ -664,16 +909,16 @@ const NeuralChatSection = () => {
                 <div className="text-xs text-slate-500">You • 10:24 AM</div>
                 <div className="bg-violet-900/50 border border-violet-500/30 p-3 rounded-lg rounded-tr-none text-white text-sm text-left">
                   <span className="text-cyan-400 font-bold">@ai</span> generate
-                  a utility function for S3 presigned URLs using AWS SDK v3.
+                  a regex utility for email validation in TypeScript.
                 </div>
               </div>
             </div>
 
-            {/* Message 3 (AI Reply) */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              viewport={{ once: true }}
               className="flex gap-4"
             >
               <div className="w-10 h-10 rounded-full bg-cyan-900 border border-cyan-500 flex items-center justify-center shrink-0">
@@ -685,65 +930,58 @@ const NeuralChatSection = () => {
                 </div>
                 <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg">
                   <p className="mb-3">
-                    Here is the function using{" "}
-                    <code className="bg-slate-800 px-1 rounded">
-                      @aws-sdk/client-s3
-                    </code>
-                    :
+                    Here is a robust email validation function:
                   </p>
                   <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative">
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-slate-600" />
-                      <div className="w-2 h-2 rounded-full bg-slate-600" />
-                    </div>
-                    <span className="text-violet-400">import</span>{" "}
-                    {"{ getSignedUrl }"}{" "}
-                    <span className="text-violet-400">from</span>{" "}
-                    "@aws-sdk/s3-request-presigner";
+                    <span className="text-violet-400">export const</span>{" "}
+                    <span className="text-blue-400">isValidEmail</span> =
+                    (email: <span className="text-orange-400">string</span>):{" "}
+                    <span className="text-orange-400">boolean</span> ={">"}{" "}
+                    {"{"}
                     <br />
-                    <span className="text-cyan-400">const</span> command ={" "}
-                    <span className="text-violet-400">new</span>{" "}
-                    PutObjectCommand(params);
-                    <br />
+                    &nbsp;&nbsp;<span className="text-violet-400">
+                      const
+                    </span>{" "}
+                    re ={" "}
                     <span className="text-green-400">
-                      // ... generating secure link
+                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/
                     </span>
+                    ;<br />
+                    &nbsp;&nbsp;<span className="text-violet-400">
+                      return
+                    </span>{" "}
+                    re.test(email);
+                    <br />
+                    {"}"};
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 text-xs rounded border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors flex items-center gap-1">
-                      <PlayCircle className="w-3 h-3" /> Insert to Project
-                    </button>
-                    <button className="px-3 py-1.5 bg-slate-800 text-slate-400 text-xs rounded border border-slate-700 hover:bg-slate-700 transition-colors">
-                      Copy Code
+                      <PlayCircle className="w-3 h-3" /> Insert
                     </button>
                   </div>
                 </div>
               </div>
             </motion.div>
           </div>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
 };
 
 // ==========================================
-// 📂 FEATURE 2: GENERATIVE FILE TREE
+// 📂 FEATURE 4: GENERATIVE FILE TREE
 // ==========================================
 const FileTreeSection = () => {
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* Visual: Holographic File Tree */}
-        <motion.div
-          initial={{ opacity: 0, rotateX: 10 }}
-          whileInView={{ opacity: 1, rotateX: 0 }}
-          viewport={{ once: true }}
+        <Reveal
           className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-sm p-6 lg:p-10 shadow-2xl"
           style={{ perspective: "1000px" }}
         >
-          {/* Floating Particles */}
-          <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Particles */}
+          <div className="absolute inset-0 z-0 overflow-hidden opacity-20">
             {[...Array(5)].map((_, i) => (
               <motion.div
                 key={i}
@@ -762,71 +1000,68 @@ const FileTreeSection = () => {
           <div className="relative z-10 space-y-2 font-mono text-sm">
             <div className="flex items-center gap-2 text-slate-400 mb-4 border-b border-white/5 pb-2">
               <FolderTree className="w-4 h-4 text-violet-400" />
-              <span>/src (Generated)</span>
+              <span>/project-root (Generated)</span>
             </div>
 
             {/* Tree Animation */}
             {[
+              { name: "src", type: "folder", depth: 0, color: "text-blue-400" },
               {
-                name: "controllers",
+                name: "components",
                 type: "folder",
                 depth: 1,
                 color: "text-blue-400",
               },
               {
-                name: "authController.ts",
+                name: "Button.tsx",
                 type: "file",
                 depth: 2,
                 color: "text-slate-300",
               },
               {
-                name: "userController.ts",
+                name: "Navbar.tsx",
                 type: "file",
                 depth: 2,
                 color: "text-green-300",
-              }, // New file
+              },
               {
-                name: "models",
+                name: "hooks",
                 type: "folder",
                 depth: 1,
                 color: "text-blue-400",
               },
               {
-                name: "User.ts",
+                name: "useAuth.ts",
                 type: "file",
                 depth: 2,
                 color: "text-slate-300",
               },
               {
-                name: "routes",
+                name: "pages",
                 type: "folder",
                 depth: 1,
                 color: "text-blue-400",
               },
               {
-                name: "api.ts",
+                name: "index.tsx",
                 type: "file",
                 depth: 2,
                 color: "text-slate-300",
               },
+              { name: "api", type: "folder", depth: 0, color: "text-blue-400" },
               {
-                name: "utils",
-                type: "folder",
-                depth: 1,
-                color: "text-blue-400",
-              },
-              {
-                name: "s3Helper.ts",
+                name: "server.js",
                 type: "file",
-                depth: 2,
+                depth: 1,
                 color: "text-green-300",
-              }, // New file
+              },
             ].map((item, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -10 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
                 className="flex items-center gap-2 hover:bg-white/5 p-1 rounded cursor-pointer transition-colors"
                 style={{ paddingLeft: `${item.depth * 20}px` }}
               >
@@ -844,48 +1079,44 @@ const FileTreeSection = () => {
               </motion.div>
             ))}
           </div>
-        </motion.div>
+        </Reveal>
 
-        {/* Text Content */}
-        <div className="order-1 lg:order-2 space-y-6">
+        <Reveal delay={0.2} className="order-1 lg:order-2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
             <LayoutTemplate className="w-3 h-3" /> Full Scaffolding
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
-            Don't just write functions. <br />
+            Don't just write snippets. <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400">
               Generate Architectures.
             </span>
           </h2>
           <p className="text-slate-400 text-lg leading-relaxed">
-            Snippet generation is the past. DevDialogue can understand your
-            intent and generate entire{" "}
+            DevDialogue can understand your intent and generate entire{" "}
             <strong className="text-white">File Trees</strong>. It creates
-            folders, separates concerns (Controllers, Models, Routes), and links
-            them automatically.
+            folders, separates concerns, and links files automatically for both
+            Frontend and Backend projects.
           </p>
           <div className="bg-slate-900/50 p-4 rounded-lg border border-white/5 text-sm text-slate-300">
-            <span className="text-cyan-400 font-bold">@ai</span> create a CRUD
-            backend structure for a blog app with Authentication.
+            <span className="text-cyan-400 font-bold">@ai</span> create a React
+            project structure with Tailwind and a basic API route.
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
 };
 
 // ==========================================
-// 🚀 FEATURE 3: LIVE EXECUTION ENVIRONMENT
+// 🚀 FEATURE 5: LIVE EXECUTION
 // ==========================================
 const ExecutionSection = () => {
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden">
-      {/* Glow */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-pink-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* Text */}
-        <div className="space-y-6">
+        <Reveal className="space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-pink-500/30 bg-pink-500/5 text-pink-300 text-xs font-bold uppercase tracking-wider">
             <Play className="w-3 h-3" /> Interactive Runtime
           </div>
@@ -898,29 +1129,20 @@ const ExecutionSection = () => {
           <p className="text-slate-400 text-lg leading-relaxed">
             Why switch to VS Code to test a logic snippet? DevDialogue comes
             with a built-in sandbox. The AI generates code, and you can{" "}
-            <strong className="text-white">Execute</strong> it instantly. Need
-            changes? Edit the code directly in the generated block.
+            <strong className="text-white">Execute</strong> it instantly. Works
+            for JavaScript, Python, and more.
           </p>
-          <button className="flex items-center gap-2 text-pink-400 font-bold hover:gap-3 transition-all">
-            Try the Sandbox <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+        </Reveal>
 
-        {/* Visual: IDE Mockup */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+        <Reveal
+          delay={0.2}
           className="rounded-xl border border-white/10 bg-[#1e1e2e] shadow-2xl overflow-hidden font-mono text-sm"
         >
           {/* Toolbar */}
           <div className="flex items-center justify-between p-3 border-b border-white/5 bg-[#181825]">
             <div className="flex gap-4">
               <span className="text-xs text-slate-400 px-2 py-1 bg-white/5 rounded">
-                script.js
-              </span>
-              <span className="text-xs text-slate-500 px-2 py-1">
-                output.log
+                script.py
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -930,44 +1152,29 @@ const ExecutionSection = () => {
             </div>
           </div>
 
-          {/* Editor & Terminal Split */}
-          <div className="grid grid-rows-2 h-[350px]">
-            {/* Code Editor (Top) */}
-            <div className="p-4 text-slate-300 border-b border-white/5 bg-[#1e1e2e] overflow-hidden">
-              <div className="flex">
-                <div className="flex flex-col text-slate-600 mr-4 select-none">
-                  {/* Line Numbers */}
-                  {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <span key={n}>{n}</span>
-                  ))}
-                </div>
-                <div className="leading-relaxed">
-                  <span className="text-pink-400">function</span>{" "}
-                  <span className="text-blue-400">calculateLoad</span>(users){" "}
-                  {"{"}
-                  <br />
-                  &nbsp;&nbsp;<span className="text-pink-400">const</span>{" "}
-                  active = users.<span className="text-blue-400">filter</span>(u
-                  ={">"} u.isActive);
-                  <br />
-                  &nbsp;&nbsp;
-                  <span className="text-slate-500">
-                    // User can edit this line manually
-                  </span>
-                  <br />
-                  &nbsp;&nbsp;<span className="text-pink-400">return</span>{" "}
-                  active.length * <span className="text-orange-400">1.5</span>;
-                  <br />
-                  {"}"}
-                  <br />
-                  <span className="text-blue-400">console</span>.log(
-                  <span className="text-green-400">"Load:"</span>,
-                  calculateLoad(data));
-                </div>
-              </div>
+          <div className="grid grid-rows-2 h-[300px]">
+            <div className="p-4 text-slate-300 border-b border-white/5 bg-[#1e1e2e] overflow-hidden leading-relaxed">
+              <span className="text-pink-400">def</span>{" "}
+              <span className="text-blue-400">factorial</span>(n):
+              <br />
+              &nbsp;&nbsp;<span className="text-pink-400">if</span> n =={" "}
+              <span className="text-orange-400">0</span>:<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <span className="text-pink-400">return</span>{" "}
+              <span className="text-orange-400">1</span>
+              <br />
+              &nbsp;&nbsp;<span className="text-pink-400">else</span>:<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <span className="text-pink-400">return</span> n * factorial(n-
+              <span className="text-orange-400">1</span>)<br />
+              <br />
+              <span className="text-blue-400">print</span>(
+              <span className="text-green-400">
+                f"Factorial of 5 is: {"{factorial(5)}"} "
+              </span>
+              )
             </div>
 
-            {/* Terminal Output (Bottom) */}
             <div className="bg-[#11111b] p-4 text-xs font-mono">
               <div className="flex items-center gap-2 text-slate-500 mb-2">
                 <Terminal className="w-3 h-3" />
@@ -977,26 +1184,20 @@ const ExecutionSection = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
                   transition={{ delay: 0.5 }}
                   className="text-slate-300"
                 >
-                  {">"} node script.js
+                  {">"} python script.py
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
                   transition={{ delay: 1.0 }}
                   className="text-green-400"
                 >
-                  Load: 450.5
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  transition={{ delay: 1.5 }}
-                  className="text-slate-500"
-                >
-                  Process exited with code 0
+                  Factorial of 5 is: 120
                 </motion.div>
                 <motion.div
                   animate={{ opacity: [1, 0] }}
@@ -1006,41 +1207,148 @@ const ExecutionSection = () => {
               </div>
             </div>
           </div>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
 };
 
 // ==========================================
-// 🦶 CTA & FOOTER
+// 💎 PRICING SECTION
+// ==========================================
+const PricingCard = ({ tier, price, features, recommended }) => (
+  <motion.div
+    variants={itemVariants}
+    className={cn(
+      "relative p-8 rounded-2xl border flex flex-col h-full",
+      recommended
+        ? "bg-slate-900/80 border-cyan-500/50 shadow-[0_0_40px_rgba(34,211,238,0.1)]"
+        : "bg-white/5 border-white/10"
+    )}
+  >
+    {recommended && (
+      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+        Most Popular
+      </div>
+    )}
+    <h3 className="text-lg font-medium text-slate-300 mb-2">{tier}</h3>
+    <div className="text-4xl font-bold text-white mb-6">
+      {price}
+      <span className="text-sm text-slate-500 font-normal">/mo</span>
+    </div>
+    <div className="space-y-4 mb-8 flex-1">
+      {features.map((feat, i) => (
+        <div key={i} className="flex items-start gap-3 text-sm text-slate-400">
+          <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+          {feat}
+        </div>
+      ))}
+    </div>
+    <button
+      className={cn(
+        "w-full py-3 rounded-lg font-bold text-sm transition-all",
+        recommended
+          ? "bg-cyan-500 text-black hover:bg-cyan-400"
+          : "bg-white/10 text-white hover:bg-white/20"
+      )}
+    >
+      Choose {tier}
+    </button>
+  </motion.div>
+);
+
+const PricingSection = () => {
+  return (
+    <section
+      id="pricing"
+      className="py-32 px-6 bg-[#020617] border-t border-white/5"
+    >
+      <Reveal className="text-center mb-16">
+        <h2 className="text-4xl font-bold mb-4">Simple, transparent pricing</h2>
+        <p className="text-slate-400">
+          Start building for free. Upgrade for power.
+        </p>
+      </Reveal>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto"
+      >
+        <PricingCard
+          tier="Starter"
+          price="$0"
+          features={[
+            "Unlimited Chat History",
+            "50 AI Generations/mo",
+            "Basic Execution Sandbox",
+            "Community Support",
+          ]}
+        />
+        <PricingCard
+          tier="Developer"
+          price="$15"
+          recommended={true}
+          features={[
+            "Unlimited AI Generations",
+            "Advanced File Tree Generation",
+            "Private Projects",
+            "Priority Support",
+          ]}
+        />
+        <PricingCard
+          tier="Team"
+          price="$49"
+          features={[
+            "Everything in Developer",
+            "Team Context Sharing",
+            "SSO & Audit Logs",
+            "Dedicated Server",
+          ]}
+        />
+      </motion.div>
+    </section>
+  );
+};
+
+// ==========================================
+// 🚀 FINAL CTA (Get Started)
+// ==========================================
+const GetStartedSection = () => {
+  return (
+    <section className="py-32 px-6 text-center relative overflow-hidden bg-[#020617]">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-cyan-900/10 pointer-events-none" />
+      <Reveal>
+        <div className="relative z-10 max-w-3xl mx-auto">
+          <h2 className="text-5xl font-extrabold mb-6 tracking-tight">
+            Ready to code at the speed of thought?
+          </h2>
+          <p className="text-xl text-slate-400 mb-10">
+            Join thousands of developers using DevDialogue to build faster.
+          </p>
+          <button className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg hover:bg-cyan-50 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.3)] transform hover:scale-105 duration-200">
+            Get Started Now
+          </button>
+        </div>
+      </Reveal>
+    </section>
+  );
+};
+
+// ==========================================
+// 🦶 FOOTER
 // ==========================================
 const Footer = () => (
   <footer className="border-t border-white/10 bg-[#020617] pt-20 pb-10 px-6 relative overflow-hidden">
-    {/* Background Mesh */}
-    <div
-      className="absolute inset-0 z-0 opacity-10"
-      style={{
-        backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)",
-        backgroundSize: "30px 30px",
-      }}
-    />
-
-    <div className="relative z-10 max-w-7xl mx-auto flex flex-col items-center text-center">
-      <h2 className="text-5xl font-extrabold mb-8 tracking-tight">
-        Stop switching context. <br /> Start shipping.
-      </h2>
-      <button className="bg-white text-black px-10 py-4 rounded-xl font-bold text-lg hover:bg-cyan-50 transition-colors shadow-[0_0_40px_rgba(255,255,255,0.2)] mb-20">
-        Get Early Access
-      </button>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 w-full gap-8 text-left border-t border-white/10 pt-12">
+    <div className="relative z-10 max-w-7xl mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-4 w-full gap-8 text-left mb-12">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded flex items-center justify-center">
               <Terminal className="text-white w-4 h-4" />
             </div>
-            <span className="font-bold text-xl">DevDialogue</span>
+            <span className="font-bold text-xl text-white">DevDialogue</span>
           </div>
           <p className="text-sm text-slate-500">
             The chat that codes with you.
@@ -1051,17 +1359,17 @@ const Footer = () => (
           <ul className="space-y-2 text-sm text-slate-400">
             <li>
               <a href="#" className="hover:text-cyan-400">
-                Manifesto
+                Features
               </a>
             </li>
             <li>
               <a href="#" className="hover:text-cyan-400">
-                Collaboration
+                Integrations
               </a>
             </li>
             <li>
               <a href="#" className="hover:text-cyan-400">
-                Security
+                Pricing
               </a>
             </li>
           </ul>
@@ -1076,12 +1384,12 @@ const Footer = () => (
             </li>
             <li>
               <a href="#" className="hover:text-cyan-400">
-                Changelog
+                API Reference
               </a>
             </li>
             <li>
               <a href="#" className="hover:text-cyan-400">
-                Community Discord
+                Community
               </a>
             </li>
           </ul>
@@ -1103,12 +1411,12 @@ const Footer = () => (
         </div>
       </div>
 
-      <div className="mt-12 w-full flex justify-between items-center text-xs text-slate-600">
-        <p>© 2024 DevDialogue Inc.</p>
-        <div className="flex gap-4">
-          <Github className="w-4 h-4 hover:text-white cursor-pointer" />
-          <Twitter className="w-4 h-4 hover:text-white cursor-pointer" />
-          <Disc className="w-4 h-4 hover:text-white cursor-pointer" />
+      <div className="border-t border-white/10 pt-8 w-full flex flex-col md:flex-row justify-between items-center text-xs text-slate-600">
+        <p>© 2024 DevDialogue Inc. All rights reserved.</p>
+        <div className="flex gap-4 mt-4 md:mt-0">
+          <Github className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
+          <Twitter className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
+          <Disc className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
         </div>
       </div>
     </div>
@@ -1121,11 +1429,14 @@ const Footer = () => (
 const LandingPage = () => {
   return (
     <div className="bg-[#020617] min-h-screen text-white font-sans selection:bg-cyan-500/30">
+      <Navbar />
       <HeroSection />
-      <TechMarquee />
+      <StandardChatSection />
       <NeuralChatSection />
       <FileTreeSection />
       <ExecutionSection />
+      <PricingSection />
+      <GetStartedSection />
       <Footer />
     </div>
   );
