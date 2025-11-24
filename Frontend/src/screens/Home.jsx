@@ -73,9 +73,9 @@ const GlowCard = ({ children, className = "", onClick }) => {
       transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
       onClick={onClick}
       className={`relative rounded-[2rem] border border-[#1a1f2e] bg-[#0f131a] p-6 overflow-hidden cursor-pointer group z-20
-                 hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
-                 transition-all duration-700 ease-out
-                 ${className}`}
+                  hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
+                  transition-all duration-700 ease-out
+                  ${className}`}
     >
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
       <div className="relative h-full z-10 flex flex-col">{children}</div>
@@ -356,8 +356,11 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 6. User Profile */}
-        <GlowCard className="col-span-1 row-span-2 justify-between text-center">
+        {/* 6. User Profile (FIXED: Added onClick) */}
+        <GlowCard
+          className="col-span-1 row-span-2 justify-between text-center"
+          onClick={() => navigate("/profile")}
+        >
           <div className="flex flex-col items-center mt-4">
             <div className="relative mb-4 group/avatar">
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[3px] shadow-[0_0_20px_rgba(6,182,212,0.3)] group-hover/avatar:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-shadow duration-500">

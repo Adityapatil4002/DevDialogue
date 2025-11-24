@@ -33,21 +33,27 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null, // Frontend will handle default image if null
   },
+  // ... inside userSchema
   settings: {
     theme: {
       type: String,
       default: "dracula",
-      enum: ["dracula", "monokai", "github-dark"], // Restrict to valid themes
+      enum: ["dracula", "monokai", "github-dark"],
     },
-    fontSize: {
-      type: Number,
-      default: 14,
-    },
-    aiModel: {
-      type: String,
-      default: "gemini-pro",
-    },
+    fontSize: { type: Number, default: 14 },
+    aiModel: { type: String, default: "gemini-pro" },
+    // [NEW] Add these lines:
+    wordWrap: { type: Boolean, default: true },
+    showLineNumbers: { type: Boolean, default: true },
+    cursorStyle: { type: String, default: "line" }, // line, block, underline
   },
+  // [NEW] Add location field if you want it in profile
+  location: { type: String, default: "Remote" },
+  socials: {
+    github: { type: String, default: "" },
+    linkedin: { type: String, default: "" },
+  },
+  // ...,
 });
 
 userSchema.statics.hashPassword = async function (password) {
