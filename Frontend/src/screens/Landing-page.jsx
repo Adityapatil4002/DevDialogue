@@ -1115,20 +1115,17 @@ const NeuralChatSection = () => {
 // 📂 FEATURE 4: GENERATIVE FILE TREE (Continuous Animation)
 // ==========================================
 const FileTreeSection = () => {
-  // Define the file structure to generate
+  // Define the file structure to generate (Reduced count for smoother flow)
   const treeItems = [
     { id: 1, name: "src", type: "folder", depth: 0, color: "text-blue-400" },
     { id: 2, name: "components", type: "folder", depth: 1, color: "text-blue-400" },
     { id: 3, name: "Button.tsx", type: "file", depth: 2, color: "text-yellow-300" },
-    { id: 4, name: "Navbar.tsx", type: "file", depth: 2, color: "text-yellow-300" },
-    { id: 5, name: "Card.tsx", type: "file", depth: 2, color: "text-yellow-300" },
-    { id: 6, name: "hooks", type: "folder", depth: 1, color: "text-blue-400" },
-    { id: 7, name: "useAuth.ts", type: "file", depth: 2, color: "text-cyan-300" },
-    { id: 8, name: "pages", type: "folder", depth: 1, color: "text-blue-400" },
-    { id: 9, name: "index.tsx", type: "file", depth: 2, color: "text-cyan-300" },
-    { id: 10, name: "dashboard.tsx", type: "file", depth: 2, color: "text-cyan-300" },
-    { id: 11, name: "api", type: "folder", depth: 0, color: "text-green-400" },
-    { id: 12, name: "server.js", type: "file", depth: 1, color: "text-slate-300" },
+    { id: 4, name: "Header.tsx", type: "file", depth: 2, color: "text-yellow-300" },
+    { id: 5, name: "lib", type: "folder", depth: 1, color: "text-blue-400" },
+    { id: 6, name: "utils.ts", type: "file", depth: 2, color: "text-cyan-300" },
+    { id: 7, name: "app", type: "folder", depth: 0, color: "text-green-400" },
+    { id: 8, name: "page.tsx", type: "file", depth: 1, color: "text-slate-300" },
+    { id: 9, name: "layout.tsx", type: "file", depth: 1, color: "text-slate-300" },
   ];
 
   const [visibleCount, setVisibleCount] = useState(0);
@@ -1139,12 +1136,12 @@ const FileTreeSection = () => {
       setVisibleCount((prev) => {
         // If all files are shown, wait a bit then reset
         if (prev >= treeItems.length) {
-          setTimeout(() => setVisibleCount(0), 4000); // 4s pause before reset
+          setTimeout(() => setVisibleCount(0), 3000); // 3s pause before reset
           return prev;
         }
         return prev + 1;
       });
-    }, 400); // Speed of file creation (ms)
+    }, 250); // Faster speed (250ms) for smoother flow
 
     return () => clearInterval(interval);
   }, [treeItems.length]);
@@ -1153,7 +1150,7 @@ const FileTreeSection = () => {
     <section className="py-32 relative bg-[#020617] border-t border-white/5">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
         
-        {/* RIGHT SIDE: Text Info (Order 2 on Mobile, 2 on Desktop) */}
+        {/* RIGHT SIDE: Text Info */}
         <Reveal delay={0.2} className="order-1 lg:order-2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
             <LayoutTemplate className="w-3 h-3" /> Full Scaffolding
@@ -1176,9 +1173,9 @@ const FileTreeSection = () => {
           </div>
         </Reveal>
 
-        {/* LEFT SIDE: Animation (Order 1 on Mobile, 1 on Desktop) */}
+        {/* LEFT SIDE: Animation */}
         <Reveal
-          className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-[#0B1120] p-6 lg:p-8 shadow-2xl min-h-[500px] flex flex-col"
+          className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-[#0B1120] p-6 lg:p-8 shadow-2xl min-h-[450px] flex flex-col"
           style={{ perspective: "1000px" }}
         >
           {/* Header */}
@@ -1195,16 +1192,17 @@ const FileTreeSection = () => {
 
           {/* Tree Visualization */}
           <div className="relative z-10 space-y-1 font-mono text-sm flex-1 overflow-hidden">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {treeItems.slice(0, visibleCount).map((item, i) => (
                 <motion.div
                   key={item.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+                  layout // Smooth layout adjustment
+                  initial={{ opacity: 0, x: -15, scale: 0.98 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.4, ease: "circOut" }}
                   className="relative group"
                 >
-                  {/* Connector Lines (Simple Indentation visuals) */}
+                  {/* Connector Lines */}
                   {item.depth > 0 && (
                     <div 
                         className="absolute left-0 top-0 bottom-0 border-l border-white/10" 
@@ -1232,12 +1230,12 @@ const FileTreeSection = () => {
 
                     {/* "Just Created" Flash Effect */}
                     <motion.div
-                        initial={{ opacity: 1 }}
-                        animate={{ opacity: 0 }}
-                        transition={{ duration: 1, delay: 0.2 }}
+                        initial={{ opacity: 1, scale: 1.2 }}
+                        animate={{ opacity: 0, scale: 1 }}
+                        transition={{ duration: 0.8, delay: 0.1 }}
                         className="ml-auto text-[9px] text-green-400 font-bold px-2 py-0.5 bg-green-500/10 rounded"
                     >
-                        CREATED
+                        NEW
                     </motion.div>
                   </div>
                 </motion.div>
@@ -1263,7 +1261,7 @@ const FileTreeSection = () => {
                     creating <span className="text-slate-300">{treeItems[visibleCount]?.name || '...'}</span>
                 </span>
             ) : (
-                <span className="text-green-400">Generation complete. 12 files created.</span>
+                <span className="text-green-400">Generation complete. 9 files created.</span>
             )}
             <motion.div
                 animate={{ opacity: [1, 0] }}
