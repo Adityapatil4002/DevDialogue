@@ -1,37 +1,41 @@
-import { Router } from "express";
-import * as userController from "../Controllers/User.Controller.js";
-import { authUser } from "../Middleware/auth.middleware.js";
-import { body } from "express-validator";
+import jwt from "jsonwebtoken";
+import redisClient from "../Services/redis.service.js";
 
-const router = Router();
 
-router.post(
-  "/register",
-  body("email").isEmail().withMessage("Email must be a valid email address"),
-  body("password")
-    .isLength({ min: 3 })
-    .withMessage("Password must be at least 3 characters long"),
-  userController.createUser
-);
+export const authUser = async (req, res, next) => {
+  try {
+    let token;
 
-router.post(
-  "/login",
-  body("email").isEmail().withMessage("Email must be a valid email address"),
-  body("password")
-    .isLength({ min: 3 })
-    .withMessage("Password must be at least 3 characters long"),
-  userController.loginController
-);
+    // Check for token in Authorization header
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer ")
+    ) {
+      // Correctly get token from "Bearer <token>"
+      token = req.headers.authorization.split(" ")[1];
+    }
+    // If not in header, check for token in cookies
+    else if (req.cookies.token) {
+      token = req.cookies.token;
+    }
 
-// --- NEW ROUTES FOR PROFILE ---
+    // If no token is found in either place, send error
+    if (!token) {
+      return res.status(401).send({ error: "Unauthorized: No token provided" });
+    }
 
-// GET /users/profile - Get current user data
-router.get("/profile", authUser, userController.profileController);
-
-// PUT /users/update - Update profile settings (Bio, Theme, etc.)
-router.put("/update", authUser, userController.updateProfileController);
-
-router.get("/logout", authUser, userController.logoutController);
-router.get("/all", authUser, userController.getAllUsersController);
-
-export default router;
+    const isBlackListed = await redisClient.get(token);
+      if (isBlackListed) {
+          res.cookie('token', '');
+      return res.status(401).send({ error: "Unauthorized: Token is blacklisted" });
+    }
+      
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Attach user payload to request
+    next(); // Move to the next function (profileController)
+  } catch (error) {
+    console.log(error);
+    res.status(401).json({ error: "Unauthorized: Invalid token" });
+  }
+};
