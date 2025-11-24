@@ -17,23 +17,36 @@ const userSchema = new mongoose.Schema({
     required: true,
     select: false,
   },
-  // --- NEW FIELDS ---
+  // --- NEW FIELDS ADDED FOR PROFILE PAGE ---
   name: {
     type: String,
-    default: "New Developer",
+    // Default to the part of email before '@' if not provided
+    default: function () {
+      return this.email ? this.email.split("@")[0] : "Developer";
+    },
   },
   bio: {
     type: String,
-    default: "I love coding!",
+    default: "I am a developer using DevDialogue.",
   },
   avatar: {
     type: String,
-    default: "https://ui-avatars.com/api/?background=0D8ABC&color=fff",
+    default: null, // Frontend will handle default image if null
   },
   settings: {
-    theme: { type: String, default: "dracula" },
-    fontSize: { type: Number, default: 14 },
-    aiModel: { type: String, default: "gemini-pro" },
+    theme: {
+      type: String,
+      default: "dracula",
+      enum: ["dracula", "monokai", "github-dark"], // Restrict to valid themes
+    },
+    fontSize: {
+      type: Number,
+      default: 14,
+    },
+    aiModel: {
+      type: String,
+      default: "gemini-pro",
+    },
   },
 });
 
