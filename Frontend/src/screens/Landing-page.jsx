@@ -1277,19 +1277,54 @@ const FileTreeSection = () => {
 };
 
 // ==========================================
-// 🚀 FEATURE 5: LIVE EXECUTION (Continuous Animation)
+// 🚀 FEATURE 5: LIVE EXECUTION (Node.js/Express Animation)
 // ==========================================
 const ExecutionSection = () => {
-  // State for continuous execution loop
-  const [executionState, setExecutionState] = useState(0); // 0: Waiting, 1: Running, 2: Output, 3: Reset
+  // State for the log entries
+  const [logs, setLogs] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+
+  // The sequence of logs to display
+  const logSequence = [
+    { text: "> npm run dev", color: "text-white", delay: 500 },
+    { text: "> nodemon server.js", color: "text-slate-500", delay: 1200 },
+    { text: "[info] Starting Express server...", color: "text-blue-400", delay: 2000 },
+    { text: "[db] Connecting to MongoDB...", color: "text-yellow-400", delay: 3000 },
+    { text: "[success] Connected to Database", color: "text-green-400", delay: 4000 },
+    { text: "🚀 Server ready at http://localhost:3000", color: "text-cyan-400", delay: 5000 },
+    { text: "GET /api/status 200 12ms", color: "text-slate-400", delay: 6500 },
+    { text: "POST /api/auth/login 201 145ms", color: "text-green-300", delay: 7500 },
+    { text: "GET /api/user/profile 200 45ms", color: "text-blue-300", delay: 8500 },
+  ];
 
   useEffect(() => {
-    // Loop cycle: Wait -> Run -> Show Output -> Clear
-    const interval = setInterval(() => {
-      setExecutionState((prev) => (prev + 1) % 4);
-    }, 2000);
+    let timeouts = [];
+    
+    const runSimulation = () => {
+      setLogs([]); // Clear logs
+      setIsRunning(true);
 
-    return () => clearInterval(interval);
+      // Schedule each log entry
+      logSequence.forEach((log) => {
+        const timeout = setTimeout(() => {
+          setLogs((prev) => [...prev, log]);
+        }, log.delay);
+        timeouts.push(timeout);
+      });
+
+      // Reset loop
+      const resetTimeout = setTimeout(() => {
+        setIsRunning(false);
+        // Small pause before restarting
+        const restartTimeout = setTimeout(runSimulation, 2000);
+        timeouts.push(restartTimeout);
+      }, 11000); // Total cycle time
+      timeouts.push(resetTimeout);
+    };
+
+    runSimulation();
+
+    return () => timeouts.forEach(clearTimeout);
   }, []);
 
   return (
@@ -1298,17 +1333,19 @@ const ExecutionSection = () => {
       <motion.div
         animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 6, repeat: Infinity }}
-        className="absolute top-0 right-0 w-[600px] h-[600px] bg-pink-500/5 blur-[120px] rounded-full pointer-events-none"
+        className="absolute top-0 right-0 w-[600px] h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none"
       />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        
+        {/* LEFT TEXT */}
         <Reveal className="space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-pink-500/30 bg-pink-500/5 text-pink-300 text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
             <Play className="w-3 h-3" /> Interactive Runtime
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
             Write. Run. Fix. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-orange-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400">
               Inside the Chat.
             </span>
           </h2>
@@ -1316,10 +1353,11 @@ const ExecutionSection = () => {
             Why switch to VS Code to test a logic snippet? DevDialogue comes
             with a built-in sandbox. The AI generates code, and you can{" "}
             <strong className="text-white">Execute</strong> it instantly. Works
-            for JavaScript, Python, and more.
+            for Node.js, Python, and more.
           </p>
         </Reveal>
 
+        {/* RIGHT VISUALIZATION */}
         <Reveal
           delay={0.2}
           className="rounded-xl border border-white/10 bg-[#1e1e2e] shadow-2xl overflow-hidden font-mono text-sm"
@@ -1327,84 +1365,66 @@ const ExecutionSection = () => {
           {/* Toolbar */}
           <div className="flex items-center justify-between p-3 border-b border-white/5 bg-[#181825]">
             <div className="flex gap-4">
-              <span className="text-xs text-slate-400 px-2 py-1 bg-white/5 rounded">
-                script.py
+              <span className="text-xs text-slate-400 px-2 py-1 bg-white/5 rounded flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-yellow-400"/> server.js
               </span>
             </div>
             <div className="flex items-center gap-2">
               <motion.button
-                animate={
-                  executionState === 1
-                    ? { scale: 0.95, opacity: 0.8 }
-                    : { scale: 1, opacity: 1 }
-                }
+                animate={isRunning ? { boxShadow: "0 0 10px rgba(74, 222, 128, 0.2)" } : {}}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-colors border",
-                  executionState === 1
-                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20"
+                    "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-colors border",
+                    isRunning
+                        ? "bg-green-500/10 text-green-400 border-green-500/30 cursor-default"
+                        : "bg-slate-700 text-slate-400 border-transparent"
                 )}
               >
-                <Play className="w-3 h-3 fill-current" />{" "}
-                {executionState === 1 ? "RUNNING..." : "RUN"}
+                <Play className="w-3 h-3 fill-current" /> {isRunning ? "Running" : "Ready"}
               </motion.button>
             </div>
           </div>
 
-          <div className="grid grid-rows-2 h-[300px]">
+          <div className="grid grid-rows-2 h-[350px]">
+            {/* Code Editor Area */}
             <div className="p-4 text-slate-300 border-b border-white/5 bg-[#1e1e2e] overflow-hidden leading-relaxed">
-              <span className="text-pink-400">def</span>{" "}
-              <span className="text-blue-400">factorial</span>(n):
+              <div className="opacity-50 text-xs mb-2">// Express Server Setup</div>
+              <span className="text-purple-400">const</span> <span className="text-blue-400">express</span> = <span className="text-yellow-300">require</span>(<span className="text-green-400">'express'</span>);<br />
+              <span className="text-purple-400">const</span> app = <span className="text-blue-400">express</span>();<br />
               <br />
-              &nbsp;&nbsp;<span className="text-pink-400">if</span> n =={" "}
-              <span className="text-orange-400">0</span>:<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;
-              <span className="text-pink-400">return</span>{" "}
-              <span className="text-orange-400">1</span>
+              app.<span className="text-yellow-300">get</span>(<span className="text-green-400">'/api/status'</span>, (req, res) ={">"} {"{"}<br />
+              &nbsp;&nbsp;res.<span className="text-blue-400">json</span>({"{"} <span className="text-orange-400">status</span>: <span className="text-green-400">'OK'</span> {"}"});<br />
+              {"}"});<br />
               <br />
-              &nbsp;&nbsp;<span className="text-pink-400">else</span>:<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;
-              <span className="text-pink-400">return</span> n * factorial(n-
-              <span className="text-orange-400">1</span>)<br />
-              <br />
-              <span className="text-blue-400">print</span>(
-              <span className="text-green-400">
-                f"Factorial of 5 is: {"{factorial(5)}"} "
-              </span>
-              )
+              app.<span className="text-yellow-300">listen</span>(<span className="text-orange-400">3000</span>, () ={">"} {"{"}<br />
+              &nbsp;&nbsp;console.<span className="text-blue-400">log</span>(<span className="text-green-400">'Server running...'</span>);<br />
+              {"}"});
             </div>
 
-            <div className="bg-[#11111b] p-4 text-xs font-mono">
-              <div className="flex items-center gap-2 text-slate-500 mb-2">
+            {/* Terminal Output Area */}
+            <div className="bg-[#11111b] p-4 text-xs font-mono overflow-hidden relative">
+              <div className="flex items-center gap-2 text-slate-500 mb-3 border-b border-white/5 pb-2">
                 <Terminal className="w-3 h-3" />
                 <span>Console Output</span>
+                {isRunning && <span className="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"/>}
               </div>
-              <div className="space-y-1 min-h-[60px]">
-                {/* Simulated execution steps */}
-                {executionState >= 1 && executionState < 3 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-slate-300"
-                  >
-                    {">"} python script.py
-                  </motion.div>
-                )}
-                {executionState === 2 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-green-400"
-                  >
-                    Factorial of 5 is: 120
-                  </motion.div>
-                )}
-
+              
+              <div className="space-y-1.5 h-full overflow-y-auto pb-4">
+                {logs.map((log, i) => (
+                   <motion.div 
+                     key={i}
+                     initial={{ opacity: 0, x: 10 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     className={log.color}
+                   >
+                     {log.text}
+                   </motion.div>
+                ))}
+                
                 {/* Blinking Cursor */}
                 <motion.div
                   animate={{ opacity: [1, 0] }}
                   transition={{ duration: 1, repeat: Infinity }}
-                  className="w-2 h-4 bg-slate-500 mt-1"
+                  className="w-2 h-4 bg-slate-500 mt-1 inline-block"
                 />
               </div>
             </div>
@@ -1414,6 +1434,7 @@ const ExecutionSection = () => {
     </section>
   );
 };
+
 
 // ==========================================
 // 💎 CYBER PRICING SECTION

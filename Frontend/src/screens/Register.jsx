@@ -1,19 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../Config/axios.js";
+import { UserContext } from "../Context/user.context.jsx";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Added purely for UI button feedback
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Consume Context
+  const { setUser, user } = useContext(UserContext);
   const navigate = useNavigate();
 
+  // 1. Check if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/home");
+    }
+  }, [user, navigate]);
+
+  // 2. Submit Handler
   function submitHandler(e) {
     e.preventDefault();
-    setIsLoading(true); // UX enhancement: start loading state
+    setIsLoading(true);
 
     axios
       .post("/user/register", {
@@ -21,17 +32,32 @@ const Register = () => {
         password,
       })
       .then((res) => {
-        console.log(res.data);
+        // --- SUCCESS ---
+        console.log("Registration Success:", res.data);
+
+        // A. Store Token
+        localStorage.setItem("token", res.data.token);
+
+        // B. Set Global User Context
+        setUser(res.data.user);
+
+        // C. Navigate to Home and pass User Data specifically
+        navigate("/home", { state: { user: res.data.user } });
+
         setIsLoading(false);
-        navigate("/");
       })
       .catch((err) => {
-        console.log(err.response.data);
+        // --- FAILURE ---
+        console.error("Registration Failed:", err);
+        alert(
+          "Registration Failed: " +
+            (err.response?.data?.message || "Check console for details")
+        );
         setIsLoading(false);
       });
   }
 
-  // Chat animation data (Reused to maintain theme consistency)
+  // Chat animation data
   const chatMessages = [
     { type: "received", text: "New dev joining?" },
     { type: "sent", text: "Yes, sending invite code." },
@@ -254,7 +280,7 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Styles reused from Login to ensure consistency */}
+      {/* Styles */}
       <style jsx>{`
         .chat-fade-mask {
           -webkit-mask-image: linear-gradient(
@@ -331,7 +357,6 @@ const Register = () => {
             width: 3rem;
           }
         }
-
         @keyframes scroll-vertical {
           0% {
             transform: translateY(0);
@@ -340,7 +365,6 @@ const Register = () => {
             transform: translateY(-50%);
           }
         }
-
         @keyframes shine {
           from {
             left: -100%;
@@ -370,14 +394,12 @@ const Register = () => {
           animation: fade-in-up 0.6s ease-out forwards;
           opacity: 0;
         }
-
         .animate-scroll-vertical {
           animation: scroll-vertical 20s linear infinite;
         }
         .animate-scroll-vertical:hover {
           animation-play-state: paused;
         }
-
         .animate-shine {
           animation: shine 3s infinite linear;
         }

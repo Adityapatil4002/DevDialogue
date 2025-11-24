@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../Config/axios.js";
 import { UserContext } from "../Context/user.context.jsx";
@@ -11,9 +11,18 @@ const Login = () => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const { setUser } = useContext(UserContext);
+  // Consume Context
+  const { setUser, user } = useContext(UserContext);
   const navigate = useNavigate();
 
+  // 1. Check if user is already logged in on mount
+  useEffect(() => {
+    if (user) {
+      navigate("/home");
+    }
+  }, [user, navigate]);
+
+  // 2. Submit Handler
   function submitHandler(e) {
     e.preventDefault();
     setIsLoading(true);
@@ -24,17 +33,33 @@ const Login = () => {
         password,
       })
       .then((res) => {
-        console.log(res.data);
+        // --- SUCCESS ---
+        console.log("Login Success:", res.data);
+
+        // A. Store Token
         localStorage.setItem("token", res.data.token);
+
+        // B. Set Global User Context
         setUser(res.data.user);
-        navigate("/");
+
+        // C. Navigate to Home and pass User Data specifically
+        navigate("/home", { state: { user: res.data.user } });
+
+        setIsLoading(false);
       })
       .catch((err) => {
-        console.log(err.response.data);
+        // --- FAILURE ---
+        console.error("Login Failed:", err);
+        // Alert the user so you know why navigation didn't happen
+        alert(
+          "Login Failed: " +
+            (err.response?.data?.message || "Check console for details")
+        );
         setIsLoading(false);
       });
   }
 
+  // Chat Animation Data
   const chatMessages = [
     { type: "received", text: "Is the API live?" },
     { type: "sent", text: "Deployed to prod 🚀" },
@@ -75,7 +100,6 @@ const Login = () => {
 
           {/* Middle: Continuous Chat Animation (Dissolved Edges) */}
           <div className="relative flex-1 w-full flex flex-col justify-center my-6 overflow-hidden chat-fade-mask">
-            {/* The Scrolling Track */}
             <div className="w-full animate-scroll-vertical">
               <div className="flex flex-col space-y-4">
                 {infiniteChat.map((msg, index) => (
@@ -287,7 +311,6 @@ const Login = () => {
 
       {/* Custom Animations Styles */}
       <style jsx>{`
-        /* Masking for the dissolved background effect */
         .chat-fade-mask {
           -webkit-mask-image: linear-gradient(
             to bottom,
@@ -304,8 +327,6 @@ const Login = () => {
             transparent 100%
           );
         }
-
-        /* Card & Layout */
         @keyframes card-entry {
           0% {
             opacity: 0;
@@ -364,8 +385,6 @@ const Login = () => {
             width: 3rem;
           }
         }
-
-        /* Scrolling Chat Animation */
         @keyframes scroll-vertical {
           0% {
             transform: translateY(0);
@@ -374,8 +393,6 @@ const Login = () => {
             transform: translateY(-50%);
           }
         }
-
-        /* Button & Interactions */
         @keyframes shine {
           from {
             left: -100%;
@@ -416,15 +433,12 @@ const Login = () => {
           animation: fade-in-up 0.6s ease-out forwards;
           opacity: 0;
         }
-
-        /* Smooth infinite scroll */
         .animate-scroll-vertical {
           animation: scroll-vertical 20s linear infinite;
         }
         .animate-scroll-vertical:hover {
           animation-play-state: paused;
         }
-
         .animate-shine {
           animation: shine 3s infinite linear;
         }
@@ -434,7 +448,6 @@ const Login = () => {
         .animate-ping-once {
           animation: ping-once 0.3s cubic-bezier(0, 0, 0.2, 1);
         }
-
         .bg-grid-pattern {
           background-image: linear-gradient(
               rgba(255, 255, 255, 0.05) 1px,
@@ -447,7 +460,6 @@ const Login = () => {
             );
           background-size: 20px 20px;
         }
-
         .delay-100 {
           animation-delay: 100ms;
         }
