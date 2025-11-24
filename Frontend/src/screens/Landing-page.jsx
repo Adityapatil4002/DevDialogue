@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   motion,
   AnimatePresence,
@@ -28,26 +28,28 @@ import {
   X,
   Check,
   Globe,
+  LogIn,
 } from "lucide-react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 
 // --- Import your components ---
-// Ensure these files exist in your project structure
+// Note: Keeping LiquidEther as per your original file.
+// If you don't have this, you can remove the component usage in HeroSection.
 import LiquidEther from "../components/LiquidEther";
-import CardNav from "../components/CardNav";
-
-// --- Generate a placeholder logo since assets are missing ---
-// This creates a small SVG data URI to serve as a logo
-const logo = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2322d3ee'/%3E%3Cpath d='M30 50 L45 65 L70 35' stroke='black' stroke-width='10' fill='none'/%3E%3C/svg%3E`;
 
 // --- Utility ---
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+// --- Navigation Helper ---
+const handleLoginNavigation = () => {
+  // Navigate to login page
+  window.location.href = "/login";
+};
+
 // --- 🎬 ANIMATION WRAPPER (Scroll Reveal) ---
-// Wraps content to fade in smoothly as user scrolls
 const Reveal = ({ children, delay = 0, className }) => (
   <motion.div
     initial={{ opacity: 0, y: 40 }}
@@ -60,18 +62,125 @@ const Reveal = ({ children, delay = 0, className }) => (
   </motion.div>
 );
 
-// --- Stagger Container for Cards ---
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.2 },
-  },
-};
+// ==========================================
+// 🧭 NEW NAVBAR COMPONENT
+// ==========================================
+const Navbar = () => {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: "Features", href: "#features" },
+    { name: "Pricing", href: "#pricing" },
+    { name: "About", href: "#" },
+  ];
+
+  return (
+    <nav
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
+        scrolled
+          ? "bg-[#020617]/80 backdrop-blur-md border-white/10 py-4"
+          : "bg-transparent border-transparent py-6"
+      )}
+    >
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        {/* Logo */}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => window.scrollTo(0, 0)}
+        >
+          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
+            <Terminal className="text-white w-4 h-4" />
+          </div>
+          <span className="font-bold text-xl text-white tracking-tight">
+            DevDialogue
+          </span>
+        </div>
+
+        {/* Desktop Links */}
+        <div className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
+            <a
+              key={link.name}
+              href={link.href}
+              className="text-sm font-medium text-slate-400 hover:text-cyan-400 transition-colors"
+            >
+              {link.name}
+            </a>
+          ))}
+        </div>
+
+        {/* Desktop Actions */}
+        <div className="hidden md:flex items-center gap-4">
+          <button
+            onClick={handleLoginNavigation}
+            className="text-sm font-medium text-white hover:text-cyan-400 transition-colors"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={handleLoginNavigation}
+            className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-cyan-50 transition-all transform hover:scale-105"
+          >
+            Get Started
+          </button>
+        </div>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-white"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-[#0B1120] border-b border-white/10 overflow-hidden"
+          >
+            <div className="flex flex-col p-6 gap-4">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-slate-300 hover:text-cyan-400 font-medium"
+                >
+                  {link.name}
+                </a>
+              ))}
+              <hr className="border-white/10 my-2" />
+              <button
+                onClick={handleLoginNavigation}
+                className="text-left text-white font-medium"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={handleLoginNavigation}
+                className="w-full py-3 bg-cyan-500 text-white font-bold rounded-lg"
+              >
+                Get Started
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
+  );
 };
 
 // ==========================================
@@ -473,6 +582,7 @@ const HeroSection = () => {
           </motion.p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
             <motion.button
+              onClick={handleLoginNavigation}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="bg-gradient-to-r from-violet-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2"
@@ -534,13 +644,51 @@ const HeroSection = () => {
   );
 };
 
+
 // ==========================================
-// 💬 SECTION 2: STANDARD CHAT (Continuous Animation)
+// 💬 SECTION 2: LIVE GROUP CHAT (Continuous Animation)
 // ==========================================
 const StandardChatSection = () => {
+  // --- Animation Logic ---
+  
+  // 1. A pool of realistic developer messages to cycle through
+  const messagePool = [
+    { user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "Did you push the hotfix to staging?" },
+    { user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Yeah, building right now. 🚀" },
+    { user: "Elena", avatar: "E", color: "bg-pink-500", text: "The API latency is looking much better." },
+    { user: "David", avatar: "D", color: "bg-cyan-500", text: "Can someone review PR #420?" },
+    { user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "On it! Giving it a look." },
+    { user: "System", avatar: "🤖", color: "bg-slate-600", text: "Deployment successful: v2.4.0-beta" },
+    { user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Great work everyone! taking a break." },
+    { user: "Elena", avatar: "E", color: "bg-pink-500", text: "Don't forget to update the documentation." },
+  ];
+
+  // 2. Initial state with a few messages
+  const [messages, setMessages] = useState(messagePool.slice(0, 3));
+  
+  // 3. The Heartbeat: Add a message every 2 seconds
+  useEffect(() => {
+    let poolIndex = 3;
+    const interval = setInterval(() => {
+      poolIndex = (poolIndex + 1) % messagePool.length;
+      const newMessage = { ...messagePool[poolIndex], id: Date.now() }; // Unique ID is crucial for animation
+
+      setMessages((prevMessages) => {
+        // Keep strictly 4 messages to ensure the container doesn't overflow
+        const newHistory = [...prevMessages, newMessage];
+        if (newHistory.length > 4) {
+          return newHistory.slice(1); // Remove the oldest (top) message
+        }
+        return newHistory;
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section id="chat" className="py-32 bg-[#020617] relative overflow-hidden">
-      {/* Background Gradient - Continuous Pulse */}
+      {/* Background Glow */}
       <motion.div
         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
@@ -548,7 +696,8 @@ const StandardChatSection = () => {
       />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* LEFT: Info/Text */}
+        
+        {/* LEFT COLUMN: Text Content */}
         <Reveal>
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-xs font-bold uppercase tracking-wider">
@@ -566,7 +715,6 @@ const StandardChatSection = () => {
               with syntax highlighting, and sync with your team in real-time.
             </p>
 
-            {/* Feature List */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
               {[
                 "Threaded Conversations",
@@ -574,10 +722,7 @@ const StandardChatSection = () => {
                 "Secure Direct Messages",
                 "File Sharing",
               ].map((feat, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 text-slate-300 font-medium"
-                >
+                <div key={i} className="flex items-center gap-3 text-slate-300 font-medium">
                   <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
                     <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
                   </div>
@@ -588,164 +733,155 @@ const StandardChatSection = () => {
           </div>
         </Reveal>
 
-        {/* RIGHT: Animated Visualization */}
+        {/* RIGHT COLUMN: The Split Visualization */}
         <Reveal delay={0.2} className="relative">
-          <div className="relative rounded-xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex h-[450px]">
-            {/* Sidebar (Channels) */}
-            <div className="w-64 bg-[#0f172a]/50 border-r border-white/5 flex flex-col hidden sm:flex">
-              <div className="p-4 border-b border-white/5 font-bold text-slate-200 flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px]">
-                  D
-                </div>
-                DevTeam
+          {/* Main App Window Container */}
+          <div className="relative rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl overflow-hidden flex h-[500px] w-full max-w-lg mx-auto lg:mx-0">
+            
+            {/* --- SIDEBAR: GROUPS & CHANNELS (Left Side) --- */}
+            <div className="w-[30%] bg-[#0B1120] border-r border-white/5 flex flex-col">
+              {/* Sidebar Header */}
+              <div className="h-14 border-b border-white/5 flex items-center px-4">
+                <div className="font-bold text-slate-200 text-xs tracking-wide uppercase opacity-70">Workspaces</div>
               </div>
-              <div className="p-3 space-y-1">
-                <div className="px-3 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Channels
+              
+              <div className="flex-1 p-3 space-y-6">
+                
+                {/* 1. Groups Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 cursor-pointer">
+                    <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                      D
+                    </div>
+                    <div className="hidden sm:block">
+                      <div className="text-xs font-bold text-indigo-200">DevTeam</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer opacity-50 hover:opacity-100 transition-opacity">
+                    <div className="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                      M
+                    </div>
+                    <div className="hidden sm:block">
+                      <div className="text-xs font-bold text-slate-300">Marketing</div>
+                    </div>
+                  </div>
                 </div>
-                {["general", "announcements", "engineering", "design"].map(
-                  (channel, i) => (
-                    <motion.div
-                      key={channel}
-                      initial={{ x: -20, opacity: 0 }}
-                      whileInView={{ x: 0, opacity: 1 }}
-                      transition={{ delay: i * 0.1 }}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors text-sm",
-                        channel === "engineering"
-                          ? "bg-indigo-500/10 text-indigo-300"
-                          : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                      )}
-                    >
-                      <span className="opacity-50">#</span> {channel}
-                    </motion.div>
-                  )
-                )}
+
+                {/* 2. Channels Section */}
+                <div>
+                   <span className="text-[10px] text-slate-500 font-bold uppercase mb-2 block px-1">Channels</span>
+                   <ul className="space-y-1">
+                      {["general", "engineering", "design", "random"].map(channel => (
+                        <div 
+                          key={channel} 
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs",
+                            channel === "engineering" ? "bg-white/10 text-white font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                          )}
+                        >
+                          <span className="opacity-50">#</span> {channel}
+                        </div>
+                      ))}
+                   </ul>
+                </div>
               </div>
             </div>
 
-            {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col bg-[#0B1120]">
+            {/* --- MAIN CHAT AREA (Right Side) --- */}
+            <div className="flex-1 flex flex-col bg-[#0f172a] relative">
               {/* Chat Header */}
-              <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0B1120]/50 backdrop-blur-md">
+              <div className="h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0f172a]/80 backdrop-blur-md z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-lg">#</span>
-                  <span className="font-bold text-white">engineering</span>
+                  <span className="text-slate-400">#</span>
+                  <span className="font-bold text-slate-200 text-sm">engineering</span>
                 </div>
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className={`w-6 h-6 rounded-full border-2 border-[#0B1120] bg-slate-${
-                        i * 200 + 400
-                      }`}
-                    />
+                <div className="flex -space-x-1">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="w-5 h-5 rounded-full border border-[#0f172a] bg-slate-600" />
                   ))}
                 </div>
               </div>
 
-              {/* Messages Area (Animated) */}
-              <div className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col justify-end pb-8">
-                {/* Message 1: Sarah */}
-                <motion.div
-                  animate={{ y: [0, -4, 0] }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="flex gap-4"
-                >
-                  <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center text-xs font-bold text-white mt-1">
-                    S
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-slate-200 text-sm">
-                        Sarah Chen
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        10:02 AM
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Just pushed the new WebSocket service to staging. Can
-                      someone verify the connection stability?
-                    </p>
-                  </div>
-                </motion.div>
+              {/* Message Feed Container */}
+              <div className="flex-1 p-4 overflow-hidden flex flex-col justify-end">
+                
+                {/* Top Fade Gradient for smooth exit */}
+                <div className="absolute top-14 left-0 right-0 h-16 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none" />
 
-                {/* Message 2: Mike (Pulsing Highlight) */}
-                <motion.div
-                  animate={{
-                    backgroundColor: [
-                      "rgba(255,255,255,0.02)",
-                      "rgba(255,255,255,0.05)",
-                      "rgba(255,255,255,0.02)",
-                    ],
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="flex gap-4 p-2 -ml-2 rounded-lg"
-                >
-                  <div className="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center text-xs font-bold text-white mt-1">
-                    M
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-slate-200 text-sm">
-                        Mike Ross
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        10:05 AM
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-sm mt-1">
-                      On it. Logs are looking clean so far. 🟢
-                    </p>
-                  </div>
-                </motion.div>
+                <div className="space-y-4 relative z-0">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {messages.map((msg) => (
+                      <motion.div
+                        layout // Enables smooth sliding up
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="flex gap-3 group"
+                      >
+                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-lg mt-0.5", msg.color)}>
+                          {msg.avatar}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-bold text-slate-200 group-hover:text-cyan-400 transition-colors">
+                              {msg.user}
+                            </span>
+                            <span className="text-[10px] text-slate-600">
+                              {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-400 leading-relaxed break-words">
+                            {msg.text}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
 
-                {/* Typing Indicator (Always Animated) */}
-                <div className="flex gap-4 items-end">
-                  <div className="w-8 h-8 rounded bg-pink-500 flex items-center justify-center text-xs font-bold text-white">
-                    E
-                  </div>
-                  <div className="bg-slate-800 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1">
-                    <motion.div
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 0.6 }}
-                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                {/* Persistent "Someone is typing" indicator */}
+                <div className="h-6 mt-3 flex items-center gap-2 pl-11">
+                  <div className="flex gap-1">
+                    <motion.div 
+                      animate={{ y: [0, -3, 0] }} 
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} 
+                      className="w-1 h-1 bg-slate-500 rounded-full" 
                     />
-                    <motion.div
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 0.6,
-                        delay: 0.1,
-                      }}
-                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                    <motion.div 
+                      animate={{ y: [0, -3, 0] }} 
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} 
+                      className="w-1 h-1 bg-slate-500 rounded-full" 
                     />
-                    <motion.div
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 0.6,
-                        delay: 0.2,
-                      }}
-                      className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                    <motion.div 
+                      animate={{ y: [0, -3, 0] }} 
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} 
+                      className="w-1 h-1 bg-slate-500 rounded-full" 
                     />
                   </div>
+                  <span className="text-[10px] text-slate-600 font-medium">Someone is typing...</span>
                 </div>
               </div>
+
+              {/* Input Area (Visual Only) */}
+              <div className="p-4 pt-0">
+                <div className="h-10 bg-slate-800/50 rounded-lg border border-white/5 flex items-center px-3 gap-2">
+                  <div className="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center">
+                    <span className="text-[10px] text-slate-500">+</span>
+                  </div>
+                  <div className="text-xs text-slate-600">Message #engineering...</div>
+                </div>
+              </div>
+
             </div>
           </div>
+          
+          {/* Decorative Elements */}
+          <div className="absolute -z-10 top-20 -right-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[80px]" />
+          <div className="absolute -z-10 bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-[80px]" />
 
-          {/* Decorative Elements - Rotating Blob */}
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl"
-          />
         </Reveal>
       </div>
     </section>
@@ -756,6 +892,40 @@ const StandardChatSection = () => {
 // 🧠 FEATURE 3: THE @ai INVOCATION (Continuous Animation)
 // ==========================================
 const NeuralChatSection = () => {
+  // Continuous Loop State for Code Generation
+  const [typedCode, setTypedCode] = useState("");
+  const fullCode = `export const isValidEmail = (email: string): boolean => {
+  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  return re.test(email);
+};`;
+
+  useEffect(() => {
+    let currentIndex = 0;
+    let isTyping = true;
+    let timeout;
+
+    const typeLoop = () => {
+      if (isTyping) {
+        if (currentIndex < fullCode.length) {
+          setTypedCode(fullCode.slice(0, currentIndex + 1));
+          currentIndex++;
+          timeout = setTimeout(typeLoop, 30); // Typing speed
+        } else {
+          isTyping = false;
+          timeout = setTimeout(typeLoop, 3000); // Wait before clearing
+        }
+      } else {
+        setTypedCode("");
+        currentIndex = 0;
+        isTyping = true;
+        timeout = setTimeout(typeLoop, 500); // Wait before restarting
+      }
+    };
+
+    typeLoop();
+    return () => clearTimeout(timeout);
+  }, []);
+
   return (
     <section id="features" className="py-32 relative bg-[#020617]">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
@@ -860,37 +1030,9 @@ const NeuralChatSection = () => {
                   DevDialogue AI • 10:24 AM
                 </div>
                 <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg relative overflow-hidden">
-                  {/* Continuous Scan Effect */}
-                  <motion.div
-                    animate={{ top: ["-100%", "200%"] }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="absolute left-0 right-0 h-20 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent pointer-events-none"
-                  />
-                  <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative">
-                    <span className="text-violet-400">export const</span>{" "}
-                    <span className="text-blue-400">isValidEmail</span> =
-                    (email: <span className="text-orange-400">string</span>):{" "}
-                    <span className="text-orange-400">boolean</span> ={">"}{" "}
-                    {"{"}
-                    <br />
-                    &nbsp;&nbsp;<span className="text-violet-400">
-                      const
-                    </span>{" "}
-                    re ={" "}
-                    <span className="text-green-400">
-                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-                    </span>
-                    ;<br />
-                    &nbsp;&nbsp;<span className="text-violet-400">
-                      return
-                    </span>{" "}
-                    re.test(email);
-                    <br />
-                    {"}"};
+                  <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative min-h-[100px] whitespace-pre-wrap">
+                    {/* Animated Typewriter Code */}
+                    <span className="text-cyan-300">{typedCode}</span>
                     <motion.span
                       animate={{ opacity: [1, 0, 1] }}
                       transition={{ duration: 0.8, repeat: Infinity }}
@@ -947,8 +1089,8 @@ const FileTreeSection = () => {
           {/* Continuous Scanning Beam on Tree */}
           <motion.div
             animate={{ top: ["0%", "100%", "0%"] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent z-20 shadow-[0_0_10px_rgba(139,92,246,0.5)]"
+            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-violet-500 to-transparent z-20 shadow-[0_0_15px_rgba(139,92,246,0.5)]"
           />
 
           <div className="relative z-10 space-y-2 font-mono text-sm">
@@ -957,7 +1099,7 @@ const FileTreeSection = () => {
               <span>/project-root (Generated)</span>
             </div>
 
-            {/* Tree Items */}
+            {/* Tree Items with random pulse effect */}
             {[
               { name: "src", type: "folder", depth: 0, color: "text-blue-400" },
               {
@@ -1012,11 +1154,21 @@ const FileTreeSection = () => {
             ].map((item, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-2 hover:bg-white/5 p-1 rounded cursor-pointer transition-colors"
+                // Highlighting animation
+                animate={{
+                  backgroundColor: [
+                    "rgba(255,255,255,0)",
+                    "rgba(255,255,255,0.05)",
+                    "rgba(255,255,255,0)",
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: i * 0.3,
+                  repeatDelay: 2,
+                }}
+                className="flex items-center gap-2 p-1 rounded cursor-pointer"
                 style={{ paddingLeft: `${item.depth * 20}px` }}
               >
                 {item.type === "folder" ? (
@@ -1028,7 +1180,7 @@ const FileTreeSection = () => {
                 {item.color.includes("green") && (
                   <motion.span
                     animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
                     className="ml-auto text-[9px] bg-green-500/20 text-green-400 px-1.5 rounded border border-green-500/30"
                   >
                     NEW
@@ -1069,6 +1221,18 @@ const FileTreeSection = () => {
 // 🚀 FEATURE 5: LIVE EXECUTION (Continuous Animation)
 // ==========================================
 const ExecutionSection = () => {
+  // State for continuous execution loop
+  const [executionState, setExecutionState] = useState(0); // 0: Waiting, 1: Running, 2: Output, 3: Reset
+
+  useEffect(() => {
+    // Loop cycle: Wait -> Run -> Show Output -> Clear
+    const interval = setInterval(() => {
+      setExecutionState((prev) => (prev + 1) % 4);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden">
       {/* Background Pulse */}
@@ -1110,18 +1274,20 @@ const ExecutionSection = () => {
             </div>
             <div className="flex items-center gap-2">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                animate={{
-                  boxShadow: [
-                    "0 0 0px rgba(74, 222, 128, 0)",
-                    "0 0 10px rgba(74, 222, 128, 0.3)",
-                    "0 0 0px rgba(74, 222, 128, 0)",
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded hover:bg-green-500/20 transition-colors border border-green-500/20"
+                animate={
+                  executionState === 1
+                    ? { scale: 0.95, opacity: 0.8 }
+                    : { scale: 1, opacity: 1 }
+                }
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-colors border",
+                  executionState === 1
+                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20"
+                )}
               >
-                <Play className="w-3 h-3 fill-current" /> RUN
+                <Play className="w-3 h-3 fill-current" />{" "}
+                {executionState === 1 ? "RUNNING..." : "RUN"}
               </motion.button>
             </div>
           </div>
@@ -1154,25 +1320,28 @@ const ExecutionSection = () => {
                 <Terminal className="w-3 h-3" />
                 <span>Console Output</span>
               </div>
-              <div className="space-y-1">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.5 }}
-                  className="text-slate-300"
-                >
-                  {">"} python script.py
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 1.0 }}
-                  className="text-green-400"
-                >
-                  Factorial of 5 is: 120
-                </motion.div>
+              <div className="space-y-1 min-h-[60px]">
+                {/* Simulated execution steps */}
+                {executionState >= 1 && executionState < 3 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-slate-300"
+                  >
+                    {">"} python script.py
+                  </motion.div>
+                )}
+                {executionState === 2 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-green-400"
+                  >
+                    Factorial of 5 is: 120
+                  </motion.div>
+                )}
+
+                {/* Blinking Cursor */}
                 <motion.div
                   animate={{ opacity: [1, 0] }}
                   transition={{ duration: 1, repeat: Infinity }}
@@ -1188,7 +1357,7 @@ const ExecutionSection = () => {
 };
 
 // ==========================================
-// 💎 CYBER PRICING SECTION (New Design)
+// 💎 CYBER PRICING SECTION
 // ==========================================
 const CyberPricingCard = ({ tier, price, features, recommended, annual }) => {
   return (
@@ -1368,7 +1537,10 @@ const GetStartedSection = () => {
           <p className="text-xl text-slate-400 mb-10">
             Join thousands of developers using DevDialogue to build faster.
           </p>
-          <button className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg hover:bg-cyan-50 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.3)] transform hover:scale-105 duration-200">
+          <button
+            onClick={handleLoginNavigation}
+            className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg hover:bg-cyan-50 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.3)] transform hover:scale-105 duration-200"
+          >
             Get Started Now
           </button>
         </div>
@@ -1468,52 +1640,9 @@ const Footer = () => (
 // 🚀 MAIN LANDING PAGE
 // ==========================================
 const LandingPage = () => {
-  // 🧭 Navbar Configuration from your request
-  const navItems = [
-    {
-      label: "About",
-      bgColor: "#0D0716",
-      textColor: "#fff",
-      links: [
-        { label: "Company", ariaLabel: "About Company" },
-        { label: "Careers", ariaLabel: "About Careers" },
-      ],
-    },
-    {
-      label: "Projects",
-      bgColor: "#170D27",
-      textColor: "#fff",
-      links: [
-        { label: "Featured", ariaLabel: "Featured Projects" },
-        { label: "Case Studies", ariaLabel: "Project Case Studies" },
-      ],
-    },
-    {
-      label: "Contact",
-      bgColor: "#271E37",
-      textColor: "#fff",
-      links: [
-        { label: "Email", ariaLabel: "Email us" },
-        { label: "Twitter", ariaLabel: "Twitter" },
-        { label: "LinkedIn", ariaLabel: "LinkedIn" },
-      ],
-    },
-  ];
-
   return (
     <div className="bg-[#020617] min-h-screen text-white font-sans selection:bg-cyan-500/30">
-      {/* 1] Navbar Changed to CardNav */}
-      <CardNav
-        logo={logo}
-        logoAlt="Company Logo"
-        items={navItems}
-        baseColor="#0f172a"
-        menuColor="#000"
-        buttonBgColor="#111"
-        buttonTextColor="#fff"
-        ease="power3.out"
-      />
-
+      <Navbar />
       <HeroSection />
       <StandardChatSection />
       <NeuralChatSection />
