@@ -50,11 +50,9 @@ export const loginController = async (req, res) => {
   }
 };
 
-// --- MODIFIED: Get Full Profile Data ---
+// --- Get Full Profile Data ---
 export const profileController = async (req, res) => {
   try {
-    // req.user comes from middleware (contains only _id and email)
-    // We fetch the FULL document to get bio, name, settings, etc.
     const user = await userModel.findById(req.user._id).select("-password");
 
     if (!user) {
@@ -70,12 +68,12 @@ export const profileController = async (req, res) => {
   }
 };
 
-// --- NEW: Update Profile & Settings ---
+// --- Update Profile & Settings ---
 export const updateProfileController = async (req, res) => {
   try {
     const userId = req.user._id;
-    // Destructure allowed fields from request body
-    const { name, bio, settings } = req.body;
+    // [UPDATED] Destructure all new fields (location, socials)
+    const { name, bio, settings, location, socials } = req.body;
 
     // Find user and update
     const updatedUser = await userModel
@@ -85,10 +83,12 @@ export const updateProfileController = async (req, res) => {
           $set: {
             name: name,
             bio: bio,
-            settings: settings, // Expecting an object { theme, fontSize, aiModel }
+            location: location, // Added
+            socials: socials, // Added
+            settings: settings,
           },
         },
-        { new: true, runValidators: true } // Return the updated doc
+        { new: true, runValidators: true }
       )
       .select("-password");
 
@@ -100,6 +100,51 @@ export const updateProfileController = async (req, res) => {
       message: "Profile updated successfully",
       user: updatedUser,
     });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --- [NEW] Change Password ---
+export const changePasswordController = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    // 1. Get user with password field included
+    const user = await userModel.findById(userId).select("+password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // 2. Validate Current Password
+    const isMatch = await user.isValidPassword(currentPassword);
+    if (!isMatch)
+      return res.status(401).json({ error: "Incorrect current password" });
+
+    // 3. Hash New Password & Save
+    user.password = await userModel.hashPassword(newPassword);
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --- [NEW] Delete Account ---
+export const deleteAccountController = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Delete the user from MongoDB
+    await userModel.findByIdAndDelete(userId);
+
+    // Optionally black list the token in Redis here if you want extra security
+    // const token = req.cookies.token || req.headers.authorization.split(" ")[1];
+    // redisClient.set(token, "logout", "EX", 60 * 60 * 24);
+
+    res.status(200).json({ message: "Account deleted successfully" });
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: error.message });

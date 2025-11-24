@@ -25,11 +25,21 @@ router.post(
 
 // --- Profile Routes ---
 
-// Get current user details (Name, Bio, Settings)
+// Get current user details
 router.get("/profile", authUser, userController.profileController);
 
-// Update user details
+// Update user details (Bio, Name, Location, Socials, Settings)
 router.put("/update", authUser, userController.updateProfileController);
+
+// [NEW] Change Password
+router.put(
+  "/change-password",
+  authUser,
+  userController.changePasswordController
+);
+
+// [NEW] Delete Account
+router.delete("/delete", authUser, userController.deleteAccountController);
 
 // --- Utility Routes ---
 
