@@ -97,3 +97,36 @@ export const getAllUsersController = async (req, res) => {
     
     }
 }
+
+export const updateProfileController = async (req, res) => {
+    try {
+        const userId = req.user._id; // Assuming authMiddleware populates req.user
+        const { name, bio, settings } = req.body;
+
+        // Find user and update specific fields
+        const updatedUser = await userModel.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    name: name,
+                    bio: bio,
+                    settings: settings
+                }
+            },
+            { new: true } // Return the updated document
+        ).select('-password'); // Exclude password from result
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({
+            message: "Profile updated successfully",
+            user: updatedUser
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: error.message });
+    }
+}
