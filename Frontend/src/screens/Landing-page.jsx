@@ -892,43 +892,70 @@ const StandardChatSection = () => {
 // 🧠 FEATURE 3: THE @ai INVOCATION (Continuous Animation)
 // ==========================================
 const NeuralChatSection = () => {
-  // Continuous Loop State for Code Generation
+  // --- Animation Sequence State ---
+  const [step, setStep] = useState(0); 
   const [typedCode, setTypedCode] = useState("");
-  const fullCode = `export const isValidEmail = (email: string): boolean => {
-  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-  return re.test(email);
+  
+  // The code snippet to be typed out
+  const fullCode = `const Button = ({ children, variant }) => {
+  return (
+    <button className={\`btn-\${variant}\`}>
+      {children}
+    </button>
+  );
 };`;
 
+  // --- Master Timeline Loop ---
   useEffect(() => {
-    let currentIndex = 0;
-    let isTyping = true;
     let timeout;
-
-    const typeLoop = () => {
-      if (isTyping) {
-        if (currentIndex < fullCode.length) {
-          setTypedCode(fullCode.slice(0, currentIndex + 1));
-          currentIndex++;
-          timeout = setTimeout(typeLoop, 30); // Typing speed
-        } else {
-          isTyping = false;
-          timeout = setTimeout(typeLoop, 3000); // Wait before clearing
-        }
-      } else {
-        setTypedCode("");
-        currentIndex = 0;
-        isTyping = true;
-        timeout = setTimeout(typeLoop, 500); // Wait before restarting
-      }
+    
+    const runSequence = () => {
+      // Step 0: Initial Pause (Empty/Reset)
+      setStep(0);
+      setTypedCode("");
+      
+      // Step 1: John sends a message
+      timeout = setTimeout(() => setStep(1), 1000);
+      
+      // Step 2: User invokes @ai
+      timeout = setTimeout(() => setStep(2), 2500);
+      
+      // Step 3: AI appears & starts typing
+      timeout = setTimeout(() => setStep(3), 3500);
+      
+      // Step 4: End of typing (Wait time before reset)
+      // Note: Typing duration is handled in the effect below, 
+      // this timeout controls how long we view the result.
+      timeout = setTimeout(runSequence, 9000); 
     };
 
-    typeLoop();
+    runSequence();
+    
+    // Cleanup on unmount
     return () => clearTimeout(timeout);
   }, []);
+
+  // --- Typewriter Effect Logic ---
+  useEffect(() => {
+    if (step === 3) {
+      let charIndex = 0;
+      const typeInterval = setInterval(() => {
+        if (charIndex <= fullCode.length) {
+          setTypedCode(fullCode.slice(0, charIndex));
+          charIndex++;
+        } else {
+          clearInterval(typeInterval);
+        }
+      }, 30); // Typing speed (ms per char)
+      return () => clearInterval(typeInterval);
+    }
+  }, [step]);
 
   return (
     <section id="features" className="py-32 relative bg-[#020617]">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        
+        {/* LEFT SIDE: Description */}
         <Reveal>
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-300 text-xs font-bold uppercase tracking-wider">
@@ -962,11 +989,12 @@ const NeuralChatSection = () => {
           </div>
         </Reveal>
 
-        {/* Visual: Chat UI */}
+        {/* RIGHT SIDE: Animated Visualization */}
         <Reveal
           delay={0.2}
-          className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden"
+          className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden min-h-[480px] flex flex-col"
         >
+          {/* Header */}
           <div className="h-12 border-b border-white/5 bg-white/5 flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -975,7 +1003,7 @@ const NeuralChatSection = () => {
               </span>
             </div>
             <div className="flex -space-x-2">
-              <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-[#0B1120]" />
+              <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-[#0B1120] flex items-center justify-center text-xs font-bold text-white">JD</div>
               <motion.div
                 animate={{ borderColor: ["#0B1120", "#22d3ee", "#0B1120"] }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -986,9 +1014,16 @@ const NeuralChatSection = () => {
             </div>
           </div>
 
-          <div className="p-6 space-y-6 min-h-[400px]">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+          {/* Chat Content Area */}
+          <div className="p-6 space-y-6 flex-1 relative">
+            
+            {/* 1. Normal Team Message */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: step >= 1 ? 1 : 0, y: step >= 1 ? 0 : 10 }}
+              className="flex gap-4"
+            >
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white font-bold text-xs">
                 JD
               </div>
               <div className="space-y-1">
@@ -996,55 +1031,73 @@ const NeuralChatSection = () => {
                   John Doe • 10:23 AM
                 </div>
                 <div className="bg-slate-800 p-3 rounded-lg rounded-tl-none text-slate-300 text-sm">
-                  We need a function to validate email addresses before sending
-                  the invite.
+                  We need a reusable Button component for the new dashboard.
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex gap-4 flex-row-reverse">
-              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center shrink-0">
+            {/* 2. User @ai Invocation */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: step >= 2 ? 1 : 0, y: step >= 2 ? 0 : 10 }}
+              className="flex gap-4 flex-row-reverse"
+            >
+              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center shrink-0 text-white font-bold text-xs">
                 ME
               </div>
               <div className="space-y-1 text-right">
                 <div className="text-xs text-slate-500">You • 10:24 AM</div>
-                <div className="bg-violet-900/50 border border-violet-500/30 p-3 rounded-lg rounded-tr-none text-white text-sm text-left">
-                  <span className="text-cyan-400 font-bold">@ai</span> generate
-                  a regex utility for email validation in TypeScript.
+                <div className="bg-violet-900/50 border border-violet-500/30 p-3 rounded-lg rounded-tr-none text-white text-sm text-left inline-block">
+                  <span className="text-cyan-400 font-bold">@ai</span> create a React Button component with variants.
                 </div>
               </div>
-            </div>
+            </motion.div>
 
+            {/* 3. AI Response (Typewriter) */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              viewport={{ once: true }}
+              animate={{ opacity: step >= 3 ? 1 : 0, y: step >= 3 ? 0 : 10 }}
               className="flex gap-4"
             >
               <div className="w-10 h-10 rounded-full bg-cyan-900 border border-cyan-500 flex items-center justify-center shrink-0">
                 <Zap className="w-5 h-5 text-cyan-400" />
               </div>
-              <div className="space-y-2 w-full">
-                <div className="text-xs text-cyan-500 font-bold">
+              <div className="space-y-2 w-full max-w-[85%]">
+                <div className="text-xs text-cyan-500 font-bold flex items-center gap-2">
                   DevDialogue AI • 10:24 AM
+                  {step === 3 && typedCode.length < fullCode.length && (
+                     <span className="text-[10px] text-slate-500 animate-pulse">thinking...</span>
+                  )}
                 </div>
-                <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg relative overflow-hidden">
-                  <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative min-h-[100px] whitespace-pre-wrap">
-                    {/* Animated Typewriter Code */}
-                    <span className="text-cyan-300">{typedCode}</span>
-                    <motion.span
-                      animate={{ opacity: [1, 0, 1] }}
-                      transition={{ duration: 0.8, repeat: Infinity }}
-                      className="inline-block w-1.5 h-3 bg-cyan-400 ml-1 align-middle"
-                    />
+                
+                {/* AI Card */}
+                <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg relative overflow-hidden group">
+                  {/* Subtle Scanline Effect */}
+                  <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  
+                  <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative min-h-[120px]">
+                    <pre className="whitespace-pre-wrap font-mono">
+                        {/* Render highlighted code roughly (simplified for animation) */}
+                        <span className="text-violet-400">{typedCode.includes('const') ? 'const' : ''}</span>
+                        {typedCode.replace('const', '')}
+                        
+                        {/* Blinking Cursor */}
+                        {step === 3 && (
+                            <motion.span
+                            animate={{ opacity: [1, 0, 1] }}
+                            transition={{ duration: 0.8, repeat: Infinity }}
+                            className="inline-block w-1.5 h-3 bg-cyan-400 ml-1 align-middle"
+                            />
+                        )}
+                    </pre>
                   </div>
+
                   <div className="mt-3 flex gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 text-xs rounded border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors flex items-center gap-1"
                     >
-                      <PlayCircle className="w-3 h-3" /> Insert
+                      <PlayCircle className="w-3 h-3" /> Insert Code
                     </motion.button>
                   </div>
                 </div>
@@ -1057,140 +1110,50 @@ const NeuralChatSection = () => {
   );
 };
 
+
 // ==========================================
 // 📂 FEATURE 4: GENERATIVE FILE TREE (Continuous Animation)
 // ==========================================
 const FileTreeSection = () => {
+  // Define the file structure to generate
+  const treeItems = [
+    { id: 1, name: "src", type: "folder", depth: 0, color: "text-blue-400" },
+    { id: 2, name: "components", type: "folder", depth: 1, color: "text-blue-400" },
+    { id: 3, name: "Button.tsx", type: "file", depth: 2, color: "text-yellow-300" },
+    { id: 4, name: "Navbar.tsx", type: "file", depth: 2, color: "text-yellow-300" },
+    { id: 5, name: "Card.tsx", type: "file", depth: 2, color: "text-yellow-300" },
+    { id: 6, name: "hooks", type: "folder", depth: 1, color: "text-blue-400" },
+    { id: 7, name: "useAuth.ts", type: "file", depth: 2, color: "text-cyan-300" },
+    { id: 8, name: "pages", type: "folder", depth: 1, color: "text-blue-400" },
+    { id: 9, name: "index.tsx", type: "file", depth: 2, color: "text-cyan-300" },
+    { id: 10, name: "dashboard.tsx", type: "file", depth: 2, color: "text-cyan-300" },
+    { id: 11, name: "api", type: "folder", depth: 0, color: "text-green-400" },
+    { id: 12, name: "server.js", type: "file", depth: 1, color: "text-slate-300" },
+  ];
+
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  // Animation Loop: Increment visible items one by one
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisibleCount((prev) => {
+        // If all files are shown, wait a bit then reset
+        if (prev >= treeItems.length) {
+          setTimeout(() => setVisibleCount(0), 4000); // 4s pause before reset
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 400); // Speed of file creation (ms)
+
+    return () => clearInterval(interval);
+  }, [treeItems.length]);
+
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        <Reveal
-          className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-sm p-6 lg:p-10 shadow-2xl"
-          style={{ perspective: "1000px" }}
-        >
-          {/* Continuous Particles */}
-          <div className="absolute inset-0 z-0 overflow-hidden opacity-20">
-            {[...Array(5)].map((_, i) => (
-              <motion.div
-                key={i}
-                animate={{ y: [0, -400], opacity: [0, 0.5, 0] }}
-                transition={{
-                  duration: Math.random() * 5 + 3,
-                  repeat: Infinity,
-                  delay: Math.random() * 2,
-                  ease: "linear",
-                }}
-                className="absolute bg-violet-500 w-0.5 h-10 rounded-full"
-                style={{ left: `${Math.random() * 100}%`, top: "100%" }}
-              />
-            ))}
-          </div>
-
-          {/* Continuous Scanning Beam on Tree */}
-          <motion.div
-            animate={{ top: ["0%", "100%", "0%"] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-            className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-violet-500 to-transparent z-20 shadow-[0_0_15px_rgba(139,92,246,0.5)]"
-          />
-
-          <div className="relative z-10 space-y-2 font-mono text-sm">
-            <div className="flex items-center gap-2 text-slate-400 mb-4 border-b border-white/5 pb-2">
-              <FolderTree className="w-4 h-4 text-violet-400" />
-              <span>/project-root (Generated)</span>
-            </div>
-
-            {/* Tree Items with random pulse effect */}
-            {[
-              { name: "src", type: "folder", depth: 0, color: "text-blue-400" },
-              {
-                name: "components",
-                type: "folder",
-                depth: 1,
-                color: "text-blue-400",
-              },
-              {
-                name: "Button.tsx",
-                type: "file",
-                depth: 2,
-                color: "text-slate-300",
-              },
-              {
-                name: "Navbar.tsx",
-                type: "file",
-                depth: 2,
-                color: "text-green-300",
-              },
-              {
-                name: "hooks",
-                type: "folder",
-                depth: 1,
-                color: "text-blue-400",
-              },
-              {
-                name: "useAuth.ts",
-                type: "file",
-                depth: 2,
-                color: "text-slate-300",
-              },
-              {
-                name: "pages",
-                type: "folder",
-                depth: 1,
-                color: "text-blue-400",
-              },
-              {
-                name: "index.tsx",
-                type: "file",
-                depth: 2,
-                color: "text-slate-300",
-              },
-              { name: "api", type: "folder", depth: 0, color: "text-blue-400" },
-              {
-                name: "server.js",
-                type: "file",
-                depth: 1,
-                color: "text-green-300",
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                // Highlighting animation
-                animate={{
-                  backgroundColor: [
-                    "rgba(255,255,255,0)",
-                    "rgba(255,255,255,0.05)",
-                    "rgba(255,255,255,0)",
-                  ],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: i * 0.3,
-                  repeatDelay: 2,
-                }}
-                className="flex items-center gap-2 p-1 rounded cursor-pointer"
-                style={{ paddingLeft: `${item.depth * 20}px` }}
-              >
-                {item.type === "folder" ? (
-                  <div className="w-4 h-4 bg-slate-700 rounded" />
-                ) : (
-                  <FileCode className="w-4 h-4 text-slate-500" />
-                )}
-                <span className={item.color}>{item.name}</span>
-                {item.color.includes("green") && (
-                  <motion.span
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="ml-auto text-[9px] bg-green-500/20 text-green-400 px-1.5 rounded border border-green-500/30"
-                  >
-                    NEW
-                  </motion.span>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </Reveal>
-
+        
+        {/* RIGHT SIDE: Text Info (Order 2 on Mobile, 2 on Desktop) */}
         <Reveal delay={0.2} className="order-1 lg:order-2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
             <LayoutTemplate className="w-3 h-3" /> Full Scaffolding
@@ -1211,6 +1174,104 @@ const FileTreeSection = () => {
             <span className="text-cyan-400 font-bold">@ai</span> create a React
             project structure with Tailwind and a basic API route.
           </div>
+        </Reveal>
+
+        {/* LEFT SIDE: Animation (Order 1 on Mobile, 1 on Desktop) */}
+        <Reveal
+          className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-[#0B1120] p-6 lg:p-8 shadow-2xl min-h-[500px] flex flex-col"
+          style={{ perspective: "1000px" }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 text-slate-400 mb-6 border-b border-white/5 pb-4">
+            <FolderTree className="w-4 h-4 text-violet-400" />
+            <span className="text-sm font-mono">/project-root (Generated)</span>
+            {visibleCount < treeItems.length && (
+               <span className="ml-auto flex h-2 w-2 relative">
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+               </span>
+            )}
+          </div>
+
+          {/* Tree Visualization */}
+          <div className="relative z-10 space-y-1 font-mono text-sm flex-1 overflow-hidden">
+            <AnimatePresence>
+              {treeItems.slice(0, visibleCount).map((item, i) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+                  className="relative group"
+                >
+                  {/* Connector Lines (Simple Indentation visuals) */}
+                  {item.depth > 0 && (
+                    <div 
+                        className="absolute left-0 top-0 bottom-0 border-l border-white/10" 
+                        style={{ left: `${(item.depth * 20) - 10}px` }} 
+                    />
+                  )}
+                  
+                  <div 
+                    className="flex items-center gap-2 hover:bg-white/5 p-1.5 rounded cursor-pointer transition-colors"
+                    style={{ paddingLeft: `${item.depth * 20}px` }}
+                  >
+                    {/* Icon */}
+                    {item.type === "folder" ? (
+                      <div className="w-4 h-4 text-blue-400/80 fill-current">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+                           <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.422.422 1.012.659 1.59.659h4.319a3 3 0 0 1 3 3v.761A4.49 4.49 0 0 0 19.5 9h-15a4.49 4.49 0 0 0-3 1.146Z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <FileCode className="w-4 h-4 text-slate-500" />
+                    )}
+                    
+                    {/* Name */}
+                    <span className={item.color}>{item.name}</span>
+
+                    {/* "Just Created" Flash Effect */}
+                    <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: 0 }}
+                        transition={{ duration: 1, delay: 0.2 }}
+                        className="ml-auto text-[9px] text-green-400 font-bold px-2 py-0.5 bg-green-500/10 rounded"
+                    >
+                        CREATED
+                    </motion.div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {/* Empty State / Reset State Placeholder */}
+            {visibleCount === 0 && (
+                <div className="h-full flex items-center justify-center text-slate-600 italic">
+                    <div className="flex items-center gap-2">
+                         <span className="w-2 h-2 bg-slate-600 rounded-full animate-pulse" />
+                         Initializing generator...
+                    </div>
+                </div>
+            )}
+          </div>
+          
+          {/* Status Footer */}
+          <div className="mt-6 pt-4 border-t border-white/5 text-xs font-mono text-slate-500 flex items-center gap-2 h-8">
+            <span className="text-green-500 font-bold">{">"}</span>
+            {visibleCount < treeItems.length ? (
+                <span>
+                    creating <span className="text-slate-300">{treeItems[visibleCount]?.name || '...'}</span>
+                </span>
+            ) : (
+                <span className="text-green-400">Generation complete. 12 files created.</span>
+            )}
+            <motion.div
+                animate={{ opacity: [1, 0] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+                className="w-1.5 h-3 bg-green-500"
+            />
+          </div>
+
         </Reveal>
       </div>
     </section>
