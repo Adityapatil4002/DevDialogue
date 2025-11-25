@@ -1,23 +1,32 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        lowercase: true,
-        trim: true,
-        unique: [true, 'Project name must be unique']
+  name: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true,
+    unique: [true, "Project name must be unique"],
+  },
+  users: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
-    users: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    fileTree: {
-        type: Object,
-        default: {}
-    }
-})
+  ],
+  // [NEW] Track pending invitations
+  pendingInvites: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  fileTree: {
+    type: Object,
+    default: {},
+  },
+});
 
-const Project = mongoose.model('Project', projectSchema);
+const Project = mongoose.model("Project", projectSchema);
 
 export default Project;

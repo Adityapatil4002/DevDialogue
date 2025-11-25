@@ -12,7 +12,6 @@ import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
 
-// Helper to get language for syntax highlighting
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
   const ext = fileName.split(".").pop();
@@ -62,12 +61,11 @@ const Project = () => {
   const messageEndRef = useRef(null);
   const saveTimeout = useRef(null);
 
-  // --- MENU CONFIGURATION ---
   const menuItems = [
     { label: "Home", link: "/home" },
     { label: "Profile", link: "/profile" },
-    { label: "Settings", link: "/profile" }, // Navigates to Profile
-    { label: "Dashboard", link: "#" }, // No Navigation (Placeholder)
+    { label: "Settings", link: "/profile" },
+    { label: "Dashboard", link: "#" },
   ];
 
   const socialItems = [
@@ -76,7 +74,6 @@ const Project = () => {
     { label: "LinkedIn", link: "https://linkedin.com" },
   ];
 
-  // Load files from DB on mount
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -294,6 +291,35 @@ const Project = () => {
       });
   };
 
+  // --- NEW: Handle File Deletion ---
+  const handleDeleteFile = (e, fileName) => {
+    e.stopPropagation(); // Prevent opening the file
+
+    // Optional: Add confirmation dialog
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${fileName}?`
+    );
+    if (!confirmDelete) return;
+
+    // 1. Create a copy of the current file tree and delete the key
+    const newFileTree = { ...fileTree };
+    delete newFileTree[fileName];
+
+    // 2. Update local state
+    setFileTree(newFileTree);
+
+    // 3. If the deleted file is currently open, close it
+    if (openFiles.includes(fileName)) {
+      setOpenFiles((prev) => prev.filter((f) => f !== fileName));
+      if (CurrentFile === fileName) {
+        setCurrentFile(null); // Or switch to last open file logic if preferred
+      }
+    }
+
+    // 4. Save changes to backend
+    saveFileTree(newFileTree);
+  };
+
   const handleFileContentChange = (newValue) => {
     const newFileTree = {
       ...fileTree,
@@ -462,9 +488,9 @@ const Project = () => {
         <StaggeredMenu
           items={menuItems}
           socialItems={socialItems}
-          menuButtonColor="#9ca3af" // Gray when closed
-          openMenuButtonColor="#22d3ee" // CYAN when open
-          accentColor="#22d3ee" // Cyan accent for hover
+          menuButtonColor="#9ca3af"
+          openMenuButtonColor="#22d3ee"
+          accentColor="#22d3ee"
         />
       </div>
 
@@ -508,7 +534,6 @@ const Project = () => {
 
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
-          {/* ... Chat Content ... */}
           <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
             {messages.map((msg, i) => (
               <div
@@ -650,7 +675,7 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ---------- RIGHT PANEL ---------- */}
+      {/* ---------- RIGHT PANEL: FILE TREE + EDITOR + PREVIEW ---------- */}
       <section className="right flex-grow h-full flex bg-[#030712] relative overflow-hidden">
         {/* File Explorer */}
         <div className="explorer h-full max-w-64 min-w-52 bg-[#0d1117] flex flex-col border-r border-gray-800">
@@ -675,33 +700,46 @@ const Project = () => {
           >
             {Object.keys(fileTree).length > 0 ? (
               Object.keys(fileTree).map((file) => (
-                <button
+                <div
                   key={file}
-                  onClick={() => {
-                    setCurrentFile(file);
-                    setOpenFiles((prev) =>
-                      prev.includes(file) ? prev : [...prev, file]
-                    );
-                  }}
-                  className={`group w-full text-left px-4 py-1.5 flex items-center gap-2 transition-colors border-l-2 ${
+                  className={`group w-full text-left px-4 py-1.5 flex items-center gap-2 transition-colors border-l-2 cursor-pointer hover:bg-[#161b22] ${
                     CurrentFile === file
                       ? "bg-[#1f2937] border-blue-500 text-blue-400"
-                      : "border-transparent text-gray-400 hover:bg-[#161b22] hover:text-white"
+                      : "border-transparent text-gray-400 hover:text-white"
                   }`}
                 >
-                  <i
-                    className={`text-lg ${
-                      file.endsWith("jsx")
-                        ? "ri-reactjs-line text-blue-400"
-                        : file.endsWith("css")
-                        ? "ri-css3-line text-orange-400"
-                        : file.endsWith("js")
-                        ? "ri-javascript-line text-yellow-400"
-                        : "ri-file-code-line text-gray-500"
-                    }`}
-                  ></i>
-                  <span className="text-sm font-medium truncate">{file}</span>
-                </button>
+                  <div
+                    className="flex items-center gap-2 flex-grow overflow-hidden"
+                    onClick={() => {
+                      setCurrentFile(file);
+                      setOpenFiles((prev) =>
+                        prev.includes(file) ? prev : [...prev, file]
+                      );
+                    }}
+                  >
+                    <i
+                      className={`text-lg ${
+                        file.endsWith("jsx")
+                          ? "ri-reactjs-line text-blue-400"
+                          : file.endsWith("css")
+                          ? "ri-css3-line text-orange-400"
+                          : file.endsWith("js")
+                          ? "ri-javascript-line text-yellow-400"
+                          : "ri-file-code-line text-gray-500"
+                      }`}
+                    ></i>
+                    <span className="text-sm font-medium truncate">{file}</span>
+                  </div>
+
+                  {/* DELETE BUTTON - Visible on Group Hover */}
+                  <button
+                    onClick={(e) => handleDeleteFile(e, file)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all"
+                    title="Delete File"
+                  >
+                    <i className="ri-delete-bin-line text-xs"></i>
+                  </button>
+                </div>
               ))
             ) : (
               <div className="p-6 text-center text-gray-600">
@@ -714,7 +752,6 @@ const Project = () => {
 
         {/* Editor Area */}
         <div className="code-editor flex flex-col flex-grow h-full w-1/2 bg-[#0d1117]">
-          {/* ... (Existing Editor/Tab logic) ... */}
           <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12">
             <div className="files flex overflow-x-auto no-scrollbar">
               {openFiles.map((file) => (
@@ -891,14 +928,12 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ... (ADD USER MODAL logic remains) ... */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div
             className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ... Modal content ... */}
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-[#0d1117]">
               <h2 className="text-lg font-bold text-white">
                 Add Collaborators

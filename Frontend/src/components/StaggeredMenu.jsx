@@ -6,8 +6,8 @@ const StaggeredMenu = ({
   socialItems = [],
   displaySocials = true,
   menuButtonColor = "#fff",
-  openMenuButtonColor = "#22d3ee", // Cyan when open
-  accentColor = "#22d3ee", // Cyan accent
+  openMenuButtonColor = "#22d3ee", 
+  accentColor = "#22d3ee", 
   onMenuOpen,
   onMenuClose,
 }) => {
@@ -26,7 +26,7 @@ const StaggeredMenu = ({
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       // Initial Setups
-      gsap.set(panelRef.current, { xPercent: -100 }); // Start hidden left
+      gsap.set(panelRef.current, { xPercent: -100 }); 
       gsap.set(overlayRef.current, { opacity: 0, pointerEvents: "none" });
       gsap.set([line1Ref.current, line2Ref.current, line3Ref.current], {
         transformOrigin: "center center",
@@ -148,7 +148,6 @@ const StaggeredMenu = ({
       {/* --- MENU PANEL --- */}
       <aside
         ref={panelRef}
-        // Changed bg-white to bg-[#0b0f19] for dark theme
         className="fixed top-0 left-0 h-full w-[300px] md:w-[400px] bg-[#0b0f19] z-[95] flex flex-col p-10 shadow-2xl border-r border-gray-800"
       >
         <div className="mt-20 flex flex-col gap-6">
