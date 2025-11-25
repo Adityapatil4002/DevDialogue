@@ -10,7 +10,7 @@ import {
 import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
-import StaggeredMenu from "../components/StaggeredMenu.jsx"; // Import the updated menu
+import StaggeredMenu from "../components/StaggeredMenu";
 
 // Helper to get language for syntax highlighting
 const getLanguageFromFileName = (fileName) => {
@@ -62,16 +62,18 @@ const Project = () => {
   const messageEndRef = useRef(null);
   const saveTimeout = useRef(null);
 
-  // --- MENU ITEMS ---
+  // --- MENU CONFIGURATION ---
   const menuItems = [
     { label: "Home", link: "/home" },
     { label: "Profile", link: "/profile" },
-    { label: "Settings", link: "/profile" }, // Assuming settings is same as profile
+    { label: "Settings", link: "/profile" }, // Navigates to Profile
+    { label: "Dashboard", link: "#" }, // No Navigation (Placeholder)
   ];
 
   const socialItems = [
     { label: "GitHub", link: "https://github.com" },
     { label: "Twitter", link: "https://twitter.com" },
+    { label: "LinkedIn", link: "https://linkedin.com" },
   ];
 
   // Load files from DB on mount
@@ -455,10 +457,21 @@ const Project = () => {
         `}
       </style>
 
+      {/* --- STAGGERED MENU (Z-INDEX 50) --- */}
+      <div className="fixed top-4 left-4 z-50">
+        <StaggeredMenu
+          items={menuItems}
+          socialItems={socialItems}
+          menuButtonColor="#9ca3af" // Gray when closed
+          openMenuButtonColor="#22d3ee" // CYAN when open
+          accentColor="#22d3ee" // Cyan accent for hover
+        />
+      </div>
+
       {/* ---------- LEFT CHAT PANEL ---------- */}
       <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-[#0b0f19] border-r border-gray-800 z-10">
         {/* HEADER */}
-        <header className="flex justify-between items-center p-4 bg-[#0d1117] border-b border-gray-800 shadow-sm">
+        <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm">
           {/* Left: Back Button + Title */}
           <div className="flex items-center gap-3">
             <button
@@ -480,31 +493,22 @@ const Project = () => {
             </div>
           </div>
 
-          {/* Right: Menu + Collaborators */}
-          {/* Inside the Left Header section */}
-          <div className="flex items-center gap-2">
-            {/* Staggered Menu Button */}
-            <StaggeredMenu
-              items={menuItems}
-              socialItems={socialItems}
-              menuButtonColor="#9ca3af" // Matches tailwind text-gray-400
-              accentColor="#2563eb" // Matches tailwind blue-600
-            />
-
-            {/* Collaborators Button */}
-            <button
-              onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-              className="p-2 rounded-md hover:bg-gray-800 transition-all duration-200 text-gray-400 hover:text-white group relative"
-              title="Collaborators"
-            >
-              <i className="ri-group-line text-xl"></i>
-            </button>
-          </div>
+          {/* Right: Collaborators Button */}
+          <button
+            onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
+            className="p-2 rounded-md hover:bg-gray-800 transition-all duration-200 text-gray-400 hover:text-white group relative"
+            title="Collaborators"
+          >
+            <i className="ri-group-line text-xl"></i>
+            <span className="absolute -bottom-8 right-0 bg-black/80 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              Collaborators
+            </span>
+          </button>
         </header>
 
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
-          {/* ... (Conversation logic remains the same) ... */}
+          {/* ... Chat Content ... */}
           <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
             {messages.map((msg, i) => (
               <div
@@ -646,7 +650,7 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ---------- RIGHT PANEL: FILE TREE + EDITOR + PREVIEW ---------- */}
+      {/* ---------- RIGHT PANEL ---------- */}
       <section className="right flex-grow h-full flex bg-[#030712] relative overflow-hidden">
         {/* File Explorer */}
         <div className="explorer h-full max-w-64 min-w-52 bg-[#0d1117] flex flex-col border-r border-gray-800">
@@ -710,7 +714,7 @@ const Project = () => {
 
         {/* Editor Area */}
         <div className="code-editor flex flex-col flex-grow h-full w-1/2 bg-[#0d1117]">
-          {/* ... (Editor and Tab logic remains same) ... */}
+          {/* ... (Existing Editor/Tab logic) ... */}
           <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12">
             <div className="files flex overflow-x-auto no-scrollbar">
               {openFiles.map((file) => (
@@ -767,7 +771,6 @@ const Project = () => {
             </div>
           </div>
 
-          {/* Editor */}
           <div className="bottom flex flex-grow overflow-hidden relative">
             {CurrentFile &&
             fileTree[CurrentFile] &&
@@ -801,7 +804,6 @@ const Project = () => {
 
         {/* Preview / Terminal Panel */}
         <div className="flex-grow min-w-[400px] flex flex-col h-full border-l border-gray-800 bg-[#0d1117]">
-          {/* Tabs */}
           <div className="tabs flex items-center bg-[#010409] border-b border-gray-800 p-2 gap-2">
             <button
               onClick={() => setActiveTab("browser")}
@@ -825,7 +827,6 @@ const Project = () => {
             </button>
           </div>
 
-          {/* Browser Content */}
           {activeTab === "browser" && (
             <div className="flex flex-col h-full bg-[#161b22]">
               <div className="address-bar p-2 bg-[#0d1117] border-b border-gray-800 flex items-center gap-2">
@@ -867,7 +868,6 @@ const Project = () => {
             </div>
           )}
 
-          {/* Terminal Content */}
           {activeTab === "terminal" && (
             <div className="w-full h-full bg-[#0d1117] p-4 overflow-y-auto font-mono text-sm border-t border-gray-800">
               <div className="flex items-center justify-between mb-2 opacity-50">
@@ -891,14 +891,14 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ... (ADD USER MODAL - Same as before) ... */}
+      {/* ... (ADD USER MODAL logic remains) ... */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
-          {/* ... Modal Content ... */}
           <div
             className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* ... Modal content ... */}
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-[#0d1117]">
               <h2 className="text-lg font-bold text-white">
                 Add Collaborators
@@ -912,7 +912,6 @@ const Project = () => {
             </div>
 
             <div className="p-6">
-              {/* ... Search Input ... */}
               <div className="mb-4">
                 <label className="block text-gray-400 text-xs font-bold mb-2 uppercase tracking-wide">
                   Find by email
