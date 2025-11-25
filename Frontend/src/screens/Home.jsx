@@ -9,7 +9,7 @@ import {
   useSpring,
 } from "framer-motion";
 
-// --- LOADER COMPONENT (Internal for easy use) ---
+// --- LOADER COMPONENT ---
 const Loader = () => {
   return (
     <motion.div
@@ -32,16 +32,7 @@ const Loader = () => {
           animate={{ rotate: -360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-        <motion.div
-          className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.8)]"
-          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-      <div className="mt-8 flex flex-col items-center gap-2">
-        <h3 className="text-white font-bold tracking-[0.3em] text-xs uppercase">
-          Initializing
-        </h3>
+        <div className="mt-8 flex flex-col items-center gap-2"></div>
       </div>
     </motion.div>
   );
@@ -86,8 +77,14 @@ const GlowCard = ({ children, className = "", onClick }) => {
 const Home = () => {
   const { user } = useContext(UserContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Delete Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+
   const [projectName, setProjectName] = useState("");
   const [project, setProject] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -120,12 +117,14 @@ const Home = () => {
       .catch((error) => console.log(error));
   }
 
+  // Fetch Projects AND Invites
   useEffect(() => {
     axios
       .get("/project/all")
       .then((res) => {
         setProject(res.data.projects);
-        setTimeout(() => setIsLoading(false), 1000); // Small delay for smoothness
+        setInvites(res.data.invites || []);
+        setTimeout(() => setIsLoading(false), 1000);
       })
       .catch((err) => {
         console.log(err);
@@ -133,13 +132,54 @@ const Home = () => {
       });
   }, []);
 
-  const collaborators = [
-    { name: "Dev_Alex", status: "online" },
-    { name: "CodeMaster", status: "busy" },
-    { name: "Sarah_JS", status: "offline" },
-    { name: "React_Pro", status: "online" },
-    { name: "Backend_Guy", status: "busy" },
-  ];
+  const handleAccept = async (projectId) => {
+    try {
+      await axios.put("/project/accept-invite", { projectId });
+      const acceptedProject = invites.find((i) => i._id === projectId);
+      setInvites((prev) => prev.filter((i) => i._id !== projectId));
+      setProject((prev) => [...prev, acceptedProject]);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReject = async (projectId) => {
+    try {
+      await axios.put("/project/reject-invite", { projectId });
+      setInvites((prev) => prev.filter((i) => i._id !== projectId));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // [NEW] Project Deletion Logic
+  const confirmDeleteProject = (e, proj) => {
+    e.stopPropagation();
+    setProjectToDelete(proj);
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!projectToDelete) return;
+
+    // Optimistic UI update (Remove immediately)
+    setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
+    setIsDeleteModalOpen(false);
+
+    try {
+      // Assuming backend route is DELETE /project/delete
+      // You might need to create this route in backend if not exists
+      await axios.delete(`/project/delete`, {
+        data: { projectId: projectToDelete._id },
+      });
+    } catch (error) {
+      console.error("Failed to delete", error);
+      // Revert if failed (Optional, but good practice)
+      alert("Failed to delete project");
+      window.location.reload();
+    }
+  };
 
   if (isLoading) return <Loader />;
 
@@ -214,65 +254,96 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 3. Collaborators */}
+        {/* 3. INBOX (With Empty State Animation) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden">
           <div className="flex justify-between items-center mb-6 z-10 relative">
             <div>
-              <h2 className="text-xl font-bold text-white mb-1">
-                Team Members
-              </h2>
-              <p className="text-xs text-neutral-500">Active contributors</p>
+              <h2 className="text-xl font-bold text-white mb-1">Inbox</h2>
+              <p className="text-xs text-neutral-500">Pending invitations</p>
             </div>
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 rounded-full text-xs font-medium text-cyan-400 border border-cyan-500/20">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-              </span>
-              Live Info
+              {invites.length} New
             </span>
           </div>
 
-          <div className="relative flex-1 overflow-hidden -mx-6 px-6 mask-gradient-vertical">
-            <motion.div
-              animate={{ y: ["0%", "-33.33%"] }}
-              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-              className="space-y-2"
-            >
-              {[...collaborators, ...collaborators, ...collaborators].map(
-                (user, i) => (
+          {/* Removed .mask-gradient-vertical to show full borders */}
+          <div className="relative flex-1 overflow-hidden -mx-6 px-6 h-full">
+            <div className="space-y-2 overflow-y-auto h-full custom-scrollbar pb-4">
+              {invites.length > 0 ? (
+                invites.map((invite, i) => (
                   <div
-                    key={i}
-                    className="flex items-center gap-4 p-3 rounded-xl bg-[#141820] border border-[#1f2533] hover:bg-[#1a1f2e] hover:border-cyan-500/30 transition-all duration-200 group/item"
+                    key={invite._id}
+                    className="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#141820] border border-[#1f2533] hover:bg-[#1a1f2e] hover:border-cyan-500/30 transition-all duration-200 group/item"
                   >
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-[#0a0a0a] border border-[#2a3040] flex items-center justify-center text-sm font-bold text-neutral-300 group-hover/item:text-cyan-400 transition-colors">
-                        {user.name[0]}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg text-white">
+                        <i className="ri-mail-unread-line"></i>
                       </div>
-                      {user.status === "online" && (
-                        <div className="absolute bottom-0 right-0">
-                          <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-500 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-[#141820]"></span>
+                      <div>
+                        <div className="text-sm font-medium text-neutral-200 group-hover/item:text-white">
+                          {invite.name}
                         </div>
-                      )}
+                        <div className="text-[11px] text-neutral-500">
+                          Invited to collaborate
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-neutral-200 group-hover/item:text-white">
-                        {user.name}
-                      </div>
-                      <div className="text-[11px] text-neutral-500 uppercase tracking-wider mt-0.5 font-medium">
-                        {user.status}
-                      </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAccept(invite._id)}
+                        className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white transition-all border border-green-500/20"
+                      >
+                        <i className="ri-check-line text-lg"></i>
+                      </button>
+                      <button
+                        onClick={() => handleReject(invite._id)}
+                        className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                      >
+                        <i className="ri-close-line text-lg"></i>
+                      </button>
                     </div>
-                    <i className="ri-more-2-fill text-neutral-600 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
                   </div>
-                )
+                ))
+              ) : (
+                // [NEW] Empty State Animation
+                <div className="flex flex-col items-center justify-center h-full text-neutral-600 mt-4 relative overflow-hidden rounded-xl border border-dashed border-[#1f2533]">
+                  <motion.div
+                    animate={{
+                      y: [0, -10, 0],
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="flex flex-col items-center"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-b from-[#1f2533] to-transparent flex items-center justify-center mb-3">
+                      <i className="ri-inbox-line text-3xl text-cyan-500/50"></i>
+                    </div>
+                    <p className="text-sm font-medium">All caught up!</p>
+                    <p className="text-xs opacity-50">No pending requests</p>
+                  </motion.div>
+
+                  {/* Background Moving Mesh for Empty State */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 20,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="absolute -top-20 -left-20 w-60 h-60 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"
+                  />
+                </div>
               )}
-            </motion.div>
+            </div>
           </div>
         </GlowCard>
 
-        {/* 4. Projects List (CLEAN GRID LAYOUT) */}
+        {/* 4. Projects List (With Deletion) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
           <div className="flex justify-between items-end mb-6 relative z-10 shrink-0">
             <div>
@@ -286,8 +357,8 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Grid Layout + Scroll Mask to fix clutter */}
-          <div className="relative flex-1 overflow-hidden -mx-2 px-2 mask-gradient-vertical">
+          {/* Removed .mask-gradient-vertical */}
+          <div className="relative flex-1 overflow-hidden -mx-2 px-2 h-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-y-auto pr-2 custom-scrollbar max-h-full pb-4">
               {project.map((proj) => (
                 <div
@@ -308,14 +379,19 @@ const Home = () => {
                           {proj.name}
                         </h3>
                         <p className="text-[10px] text-neutral-500">
-                          Last active 2m ago
+                          Last active recently
                         </p>
                       </div>
                     </div>
 
-                    <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center opacity-0 -translate-x-2 group-hover/project:opacity-100 group-hover/project:translate-x-0 transition-all duration-300 bg-[#1f2533] text-cyan-400">
-                      <i className="ri-arrow-right-up-line text-sm"></i>
-                    </div>
+                    {/* [NEW] Delete Button (Visible on Hover) */}
+                    <button
+                      onClick={(e) => confirmDeleteProject(e, proj)}
+                      className="w-8 h-8 rounded-full border border-transparent hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover/project:opacity-100 transition-all duration-200 bg-[#1f2533] text-gray-500 hover:text-red-500 hover:bg-red-500/10 z-20"
+                      title="Delete Project"
+                    >
+                      <i className="ri-delete-bin-line text-sm"></i>
+                    </button>
                   </div>
 
                   <div className="relative z-10 mt-auto pt-3 flex items-center gap-2 text-[10px] text-neutral-500 font-medium border-t border-white/5">
@@ -337,26 +413,46 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 5. System Status */}
-        <GlowCard className="col-span-1 row-span-2 justify-center relative overflow-hidden">
-          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl animate-pulse pointer-events-none"></div>
-          <h3 className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-4">
-            System Status
-          </h3>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></span>
+        {/* 5. DASHBOARD CARD (Updated Icon) */}
+        <GlowCard className="col-span-1 row-span-2 justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start z-10 relative">
+            <div>
+              <h3 className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-1">
+                Dashboard
+              </h3>
+              <p className="text-xs text-gray-500">Quick Overview</p>
             </div>
-            <span className="text-white font-bold text-xl">Operational</span>
+            {/* [NEW] Arrow Icon linking to Dashboard page */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("/dashboard");
+              }}
+              className="p-1.5 rounded-lg bg-[#1f2533] text-cyan-400 hover:text-white hover:bg-cyan-600 transition-all"
+            >
+              <i className="ri-arrow-right-up-line text-lg"></i>
+            </button>
           </div>
-          <div className="flex items-center justify-between text-xs text-neutral-500 font-mono border-t border-[#1f2533] pt-4">
-            <span>API LATENCY</span>
-            <span className="text-emerald-400 font-bold">24ms • Stable</span>
+
+          <div className="z-10 relative mt-auto space-y-2">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[#141820] border border-[#1f2533]">
+              <span className="text-xs text-gray-400">Total Projects</span>
+              <span className="text-sm font-bold text-white">
+                {project.length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[#141820] border border-[#1f2533]">
+              <span className="text-xs text-gray-400">Invites</span>
+              <span className="text-sm font-bold text-cyan-400">
+                {invites.length}
+              </span>
+            </div>
           </div>
+
+          <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
         </GlowCard>
 
-        {/* 6. User Profile (FIXED: Added onClick) */}
+        {/* 6. User Profile */}
         <GlowCard
           className="col-span-1 row-span-2 justify-between text-center"
           onClick={() => navigate("/profile")}
@@ -388,7 +484,7 @@ const Home = () => {
         </GlowCard>
       </motion.div>
 
-      {/* --- Modal --- */}
+      {/* --- CREATE PROJECT MODAL --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div
@@ -405,23 +501,19 @@ const Home = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.3, type: "spring", bounce: 0.3 }}
               className="bg-[#0f131a] border border-[#1f2533] w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative overflow-hidden z-10"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold text-white">New Project</h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="w-10 h-10 rounded-full bg-[#1a1f2e] flex items-center justify-center text-neutral-400 hover:text-white hover:bg-[#2a3040] transition-colors"
+                  className="w-10 h-10 rounded-full bg-[#1a1f2e] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
                 >
                   <i className="ri-close-line text-xl"></i>
                 </button>
               </div>
-
               <form onSubmit={createProject}>
                 <div className="mb-8">
                   <label className="block text-sm font-bold text-neutral-300 mb-3">
@@ -433,7 +525,7 @@ const Home = () => {
                       type="text"
                       value={projectName}
                       onChange={(e) => setProjectName(e.target.value)}
-                      className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 pl-10 pr-4 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-neutral-600 text-base font-medium"
+                      className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 pl-10 pr-4 focus:outline-none focus:border-cyan-500 transition-all placeholder-neutral-600"
                       placeholder="e.g. Quantum Dashboard"
                       required
                       autoFocus
@@ -461,24 +553,61 @@ const Home = () => {
           </div>
         )}
       </AnimatePresence>
-      <style jsx>{`
-        .mask-gradient-vertical {
-          mask-image: linear-gradient(
-            to bottom,
-            transparent 0%,
-            black 10%,
-            black 90%,
-            transparent 100%
-          );
-          -webkit-mask-image: linear-gradient(
-            to bottom,
-            transparent 0%,
-            black 10%,
-            black 90%,
-            transparent 100%
-          );
-        }
-      `}</style>
+
+      {/* --- DELETE CONFIRMATION MODAL (High Level) --- */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div
+            className="fixed inset-0 z-[60] flex justify-center items-center p-4"
+            onClick={() => setIsDeleteModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#0f131a] border border-red-900/50 w-full max-w-sm p-6 rounded-2xl shadow-2xl relative overflow-hidden z-20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                  <i className="ri-alert-line text-3xl text-red-500"></i>
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">
+                  Delete Project?
+                </h2>
+                <p className="text-sm text-gray-400 mb-6">
+                  Are you sure you want to delete{" "}
+                  <span className="text-white font-bold">
+                    "{projectToDelete?.name}"
+                  </span>
+                  ? <br />
+                  This action cannot be undone.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setIsDeleteModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl bg-[#1a1f2e] hover:bg-[#2a3040] text-white text-sm font-bold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={executeDelete}
+                    className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors shadow-lg shadow-red-900/20"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 };
