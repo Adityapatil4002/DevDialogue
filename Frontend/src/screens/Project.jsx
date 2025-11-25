@@ -32,6 +32,16 @@ const getLanguageFromFileName = (fileName) => {
   }
 };
 
+// Utility to clean terminal output (remove ANSI escape codes)
+const cleanTerminalOutput = (text) => {
+  if (!text) return "";
+  // Regex to strip ANSI escape codes
+  return text.replace(
+    /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+    ""
+  );
+};
+
 const Project = () => {
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
@@ -42,6 +52,10 @@ const Project = () => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+
+  // Delete Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
 
   // Data States
   const [searchEmail, setSearchEmail] = useState("");
@@ -57,6 +71,7 @@ const Project = () => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [remoteTypingUser, setRemoteTypingUser] = useState("");
+  const [isAiThinking, setIsAiThinking] = useState(false);
 
   const [fileTree, setFileTree] = useState({});
   const [CurrentFile, setCurrentFile] = useState(null);
@@ -69,6 +84,7 @@ const Project = () => {
   const [activeTab, setActiveTab] = useState("browser");
 
   const messageEndRef = useRef(null);
+  const terminalEndRef = useRef(null); // Ref for auto-scrolling terminal
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -134,6 +150,10 @@ const Project = () => {
 
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
+              if (data.isAi) {
+                setIsAiThinking(false);
+              }
+
               setMessages((prev) => {
                 if (data.sender?._id === user?._id) {
                   let replaced = false;
@@ -198,7 +218,14 @@ const Project = () => {
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isAiThinking]);
+
+  // Auto-scroll terminal
+  useEffect(() => {
+    if (activeTab === "terminal") {
+      terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [terminalOutput, activeTab]);
 
   // --- TYPING HANDLER ---
   const handleTyping = (e) => {
@@ -274,19 +301,30 @@ const Project = () => {
       .catch((err) => console.error(err));
   };
 
-  const handleDeleteFile = (e, fileName) => {
+  // Trigger the delete modal
+  const handleDeleteClick = (e, fileName) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete ${fileName}?`)) return;
+    setFileToDelete(fileName);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Actually delete the file
+  const confirmDeleteFile = () => {
+    if (!fileToDelete) return;
 
     const newFileTree = { ...fileTree };
-    delete newFileTree[fileName];
+    delete newFileTree[fileToDelete];
     setFileTree(newFileTree);
 
-    if (openFiles.includes(fileName)) {
-      setOpenFiles((prev) => prev.filter((f) => f !== fileName));
-      if (CurrentFile === fileName) setCurrentFile(null);
+    if (openFiles.includes(fileToDelete)) {
+      setOpenFiles((prev) => prev.filter((f) => f !== fileToDelete));
+      if (CurrentFile === fileToDelete) setCurrentFile(null);
     }
     saveFileTree(newFileTree);
+
+    // Close modal
+    setIsDeleteModalOpen(false);
+    setFileToDelete(null);
   };
 
   const handleCloseFile = (e, fileToClose) => {
@@ -317,6 +355,9 @@ const Project = () => {
 
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
+
+    setIsAiThinking(true);
+
     const messageData = {
       projectId,
       message,
@@ -392,6 +433,14 @@ const Project = () => {
     }
   };
 
+  const handleClear = () => {
+    if (activeTab === "browser") {
+      setIframeUrl(null);
+    } else {
+      setTerminalOutput("");
+    }
+  };
+
   const AiMessage = ({ raw }) => {
     try {
       const msgObj = JSON.parse(raw);
@@ -433,7 +482,9 @@ const Project = () => {
         .message-box::-webkit-scrollbar { width: 6px; }
         .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
         .typing-indicator span { animation: blink 1.4s infinite both; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
@@ -473,7 +524,6 @@ const Project = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Notification Bell */}
             <button
               onClick={() =>
                 setIsNotificationPanelOpen(!isNotificationPanelOpen)
@@ -485,7 +535,6 @@ const Project = () => {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
             </button>
-            {/* Collaborators Toggle */}
             <button
               onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
               className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white"
@@ -542,7 +591,24 @@ const Project = () => {
               </div>
             ))}
 
-            {/* Typing Indicator Bubble */}
+            {/* AI Thinking Bubble */}
+            {isAiThinking && (
+              <div className="flex justify-start animate-fade-in">
+                <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
+                  <i className="ri-robot-2-line text-blue-400 animate-spin-slow"></i>
+                  <span className="text-xs font-medium text-gray-300">
+                    AI is thinking...
+                  </span>
+                  <div className="typing-indicator flex gap-1">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Typing Indicator Bubble (Human) */}
             {remoteTypingUser && (
               <div className="flex justify-start animate-fade-in">
                 <div className="bg-[#1f2937] px-3 py-2 rounded-full rounded-bl-none border border-gray-700 flex items-center gap-2">
@@ -681,8 +747,11 @@ const Project = () => {
             onClick={() => setIsExplorerOpen(!isExplorerOpen)}
             className="p-3 border-b border-gray-800 flex items-center justify-between cursor-pointer hover:bg-[#161b22]"
           >
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
               Explorer
+              {isAiThinking && (
+                <i className="ri-loader-4-line animate-spin text-blue-400"></i>
+              )}
             </span>
             <i
               className={`ri-arrow-down-s-line text-gray-500 transition-transform ${
@@ -695,10 +764,11 @@ const Project = () => {
               isExplorerOpen ? "opacity-100" : "opacity-0 max-h-0"
             }`}
           >
-            {Object.keys(fileTree).map((file) => (
+            {Object.keys(fileTree).map((file, index) => (
               <div
                 key={file}
-                className={`group w-full text-left px-4 py-1.5 flex items-center gap-2 transition-colors border-l-2 cursor-pointer ${
+                style={{ animationDelay: `${index * 0.05}s` }}
+                className={`group w-full text-left px-4 py-1.5 flex items-center gap-2 transition-colors border-l-2 cursor-pointer animate-slide-in ${
                   CurrentFile === file
                     ? "bg-[#1f2937] border-blue-500 text-blue-400"
                     : "border-transparent text-gray-400 hover:text-white"
@@ -715,7 +785,7 @@ const Project = () => {
                   <span className="text-sm font-medium truncate">{file}</span>
                 </div>
                 <button
-                  onClick={(e) => handleDeleteFile(e, file)}
+                  onClick={(e) => handleDeleteClick(e, file)}
                   className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500"
                 >
                   <i className="ri-delete-bin-line"></i>
@@ -725,8 +795,8 @@ const Project = () => {
           </div>
         </div>
 
-        {/* EDITOR */}
-        <div className="code-editor flex flex-col flex-grow h-full w-1/2 bg-[#0d1117]">
+        {/* EDITOR (Width 60%) */}
+        <div className="code-editor flex flex-col h-full w-3/5 bg-[#0d1117]">
           <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12">
             <div className="files flex overflow-x-auto no-scrollbar">
               {openFiles.map((file) => (
@@ -775,16 +845,18 @@ const Project = () => {
           </div>
           <div className="bottom flex flex-grow overflow-hidden relative">
             {CurrentFile && fileTree[CurrentFile]?.file ? (
-              <Editor
-                height="100%"
-                width="100%"
-                path={CurrentFile}
-                language={getLanguageFromFileName(CurrentFile)}
-                theme="vs-dark"
-                value={fileTree[CurrentFile].file.contents}
-                onChange={handleFileContentChange}
-                options={{ fontSize: 14, minimap: { enabled: false } }}
-              />
+              <div key={CurrentFile} className="h-full w-full animate-fade-in">
+                <Editor
+                  height="100%"
+                  width="100%"
+                  path={CurrentFile}
+                  language={getLanguageFromFileName(CurrentFile)}
+                  theme="vs-dark"
+                  value={fileTree[CurrentFile].file.contents}
+                  onChange={handleFileContentChange}
+                  options={{ fontSize: 14, minimap: { enabled: false } }}
+                />
+              </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-600">
                 Select a file
@@ -793,35 +865,45 @@ const Project = () => {
           </div>
         </div>
 
-        {/* PREVIEW */}
-        <div className="flex-grow min-w-[400px] flex flex-col h-full border-l border-gray-800 bg-[#0d1117]">
+        {/* PREVIEW (Width 40% - Fixed Layout Shift) */}
+        <div className="flex flex-col h-full w-2/5 border-l border-gray-800 bg-[#0d1117] min-w-0">
           {/* Tabs */}
-          <div className="tabs flex items-center bg-[#010409] border-b border-gray-800 p-2 gap-2">
+          <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("browser")}
+                className={`px-4 py-1.5 text-xs font-medium rounded ${
+                  activeTab === "browser"
+                    ? "bg-[#1f2937] text-blue-400"
+                    : "text-gray-500"
+                }`}
+              >
+                Browser
+              </button>
+              <button
+                onClick={() => setActiveTab("terminal")}
+                className={`px-4 py-1.5 text-xs font-medium rounded ${
+                  activeTab === "terminal"
+                    ? "bg-[#1f2937] text-green-400"
+                    : "text-gray-500"
+                }`}
+              >
+                Terminal
+              </button>
+            </div>
+            {/* Clear Button */}
             <button
-              onClick={() => setActiveTab("browser")}
-              className={`px-4 py-1.5 text-xs font-medium rounded ${
-                activeTab === "browser"
-                  ? "bg-[#1f2937] text-blue-400"
-                  : "text-gray-500"
-              }`}
+              onClick={handleClear}
+              className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+              title="Clear"
             >
-              Browser
-            </button>
-            <button
-              onClick={() => setActiveTab("terminal")}
-              className={`px-4 py-1.5 text-xs font-medium rounded ${
-                activeTab === "terminal"
-                  ? "bg-[#1f2937] text-green-400"
-                  : "text-gray-500"
-              }`}
-            >
-              Terminal
+              <i className="ri-delete-bin-line"></i>
             </button>
           </div>
 
-          {/* BROWSER CONTENT (Modified Theme & Animation) */}
+          {/* BROWSER CONTENT */}
           {activeTab === "browser" && (
-            <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center">
+            <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
               {iframeUrl ? (
                 <iframe
                   src={iframeUrl}
@@ -842,8 +924,9 @@ const Project = () => {
 
           {/* TERMINAL CONTENT */}
           {activeTab === "terminal" && (
-            <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap">
-              {terminalOutput || "Waiting for output..."}
+            <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
+              {cleanTerminalOutput(terminalOutput) || "Waiting for output..."}
+              <div ref={terminalEndRef} />
             </div>
           )}
         </div>
@@ -900,6 +983,45 @@ const Project = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-[#161b22] border border-red-900/50 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
+            <div className="p-6 flex flex-col items-center text-center gap-4">
+              <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center">
+                <i className="ri-alarm-warning-line text-red-500 text-2xl"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white mb-1">
+                  Delete File?
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Are you sure you want to delete{" "}
+                  <span className="text-white font-mono bg-gray-800 px-1 rounded">
+                    {fileToDelete}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex border-t border-gray-800">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 py-3 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors border-r border-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteFile}
+                className="flex-1 py-3 text-sm font-bold text-red-500 hover:bg-red-900/20 transition-colors"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
