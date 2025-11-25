@@ -37,4 +37,9 @@ router.put('/update-file-tree',
     projectController.updateFileTree
 )
 
+router.get("/user-search", authUser, projectController.getUserByExactEmail);
+router.post("/send-invite", authUser, projectController.sendInvite);
+router.put("/accept-invite", authUser, projectController.acceptInvite);
+router.put("/reject-invite", authUser, projectController.rejectInvite);
+
 export default router;
