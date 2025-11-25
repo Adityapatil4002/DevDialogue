@@ -32,7 +32,16 @@ const Loader = () => {
           animate={{ rotate: -360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-        <div className="mt-8 flex flex-col items-center gap-2"></div>
+        <motion.div
+          className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.8)]"
+          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+      <div className="mt-8 flex flex-col items-center gap-2">
+        <h3 className="text-white font-bold tracking-[0.3em] text-xs uppercase">
+          Initializing
+        </h3>
       </div>
     </motion.div>
   );
@@ -78,7 +87,7 @@ const Home = () => {
   const { user } = useContext(UserContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Delete Modal State
+  // Delete/Leave Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
 
@@ -153,30 +162,35 @@ const Home = () => {
     }
   };
 
-  // [NEW] Project Deletion Logic
+  // --- DELETE / LEAVE LOGIC ---
   const confirmDeleteProject = (e, proj) => {
     e.stopPropagation();
     setProjectToDelete(proj);
     setIsDeleteModalOpen(true);
   };
 
-  const executeDelete = async () => {
+  const executeDeleteOrLeave = async () => {
     if (!projectToDelete) return;
 
-    // Optimistic UI update (Remove immediately)
+    const isOwner = projectToDelete.owner === user._id;
+
+    // Optimistic UI update
     setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
     setIsDeleteModalOpen(false);
 
     try {
-      // Assuming backend route is DELETE /project/delete
-      // You might need to create this route in backend if not exists
-      await axios.delete(`/project/delete`, {
-        data: { projectId: projectToDelete._id },
-      });
+      if (isOwner) {
+        // Owner deletes
+        await axios.delete(`/project/delete`, {
+          data: { projectId: projectToDelete._id },
+        });
+      } else {
+        // Collaborator leaves
+        await axios.put(`/project/leave`, { projectId: projectToDelete._id });
+      }
     } catch (error) {
-      console.error("Failed to delete", error);
-      // Revert if failed (Optional, but good practice)
-      alert("Failed to delete project");
+      console.error("Failed to remove project", error);
+      alert("Failed to remove project");
       window.location.reload();
     }
   };
@@ -266,7 +280,6 @@ const Home = () => {
             </span>
           </div>
 
-          {/* Removed .mask-gradient-vertical to show full borders */}
           <div className="relative flex-1 overflow-hidden -mx-6 px-6 h-full">
             <div className="space-y-2 overflow-y-auto h-full custom-scrollbar pb-4">
               {invites.length > 0 ? (
@@ -306,7 +319,6 @@ const Home = () => {
                   </div>
                 ))
               ) : (
-                // [NEW] Empty State Animation
                 <div className="flex flex-col items-center justify-center h-full text-neutral-600 mt-4 relative overflow-hidden rounded-xl border border-dashed border-[#1f2533]">
                   <motion.div
                     animate={{
@@ -326,8 +338,6 @@ const Home = () => {
                     <p className="text-sm font-medium">All caught up!</p>
                     <p className="text-xs opacity-50">No pending requests</p>
                   </motion.div>
-
-                  {/* Background Moving Mesh for Empty State */}
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{
@@ -343,7 +353,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 4. Projects List (With Deletion) */}
+        {/* 4. Projects List (With Deletion/Leave Logic) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
           <div className="flex justify-between items-end mb-6 relative z-10 shrink-0">
             <div>
@@ -357,7 +367,6 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Removed .mask-gradient-vertical */}
           <div className="relative flex-1 overflow-hidden -mx-2 px-2 h-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-y-auto pr-2 custom-scrollbar max-h-full pb-4">
               {project.map((proj) => (
@@ -384,13 +393,21 @@ const Home = () => {
                       </div>
                     </div>
 
-                    {/* [NEW] Delete Button (Visible on Hover) */}
+                    {/* Delete/Leave Button */}
                     <button
                       onClick={(e) => confirmDeleteProject(e, proj)}
                       className="w-8 h-8 rounded-full border border-transparent hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover/project:opacity-100 transition-all duration-200 bg-[#1f2533] text-gray-500 hover:text-red-500 hover:bg-red-500/10 z-20"
-                      title="Delete Project"
+                      title={
+                        proj.owner === user?._id
+                          ? "Delete Project"
+                          : "Leave Project"
+                      }
                     >
-                      <i className="ri-delete-bin-line text-sm"></i>
+                      {proj.owner === user?._id ? (
+                        <i className="ri-delete-bin-line text-sm"></i>
+                      ) : (
+                        <i className="ri-logout-box-r-line text-sm"></i>
+                      )}
                     </button>
                   </div>
 
@@ -413,7 +430,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 5. DASHBOARD CARD (Updated Icon) */}
+        {/* 5. DASHBOARD CARD (Arrow Icon) */}
         <GlowCard className="col-span-1 row-span-2 justify-between relative overflow-hidden">
           <div className="flex justify-between items-start z-10 relative">
             <div>
@@ -422,7 +439,6 @@ const Home = () => {
               </h3>
               <p className="text-xs text-gray-500">Quick Overview</p>
             </div>
-            {/* [NEW] Arrow Icon linking to Dashboard page */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -554,7 +570,7 @@ const Home = () => {
         )}
       </AnimatePresence>
 
-      {/* --- DELETE CONFIRMATION MODAL (High Level) --- */}
+      {/* --- DELETE/LEAVE CONFIRMATION MODAL --- */}
       <AnimatePresence>
         {isDeleteModalOpen && (
           <div
@@ -576,18 +592,37 @@ const Home = () => {
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                  <i className="ri-alert-line text-3xl text-red-500"></i>
+                  <i
+                    className={`text-3xl text-red-500 ${
+                      projectToDelete?.owner === user?._id
+                        ? "ri-delete-bin-line"
+                        : "ri-logout-box-r-line"
+                    }`}
+                  ></i>
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">
-                  Delete Project?
+                  {projectToDelete?.owner === user?._id
+                    ? "Delete Project?"
+                    : "Leave Project?"}
                 </h2>
                 <p className="text-sm text-gray-400 mb-6">
-                  Are you sure you want to delete{" "}
-                  <span className="text-white font-bold">
-                    "{projectToDelete?.name}"
-                  </span>
-                  ? <br />
-                  This action cannot be undone.
+                  {projectToDelete?.owner === user?._id ? (
+                    <>
+                      Are you sure you want to delete{" "}
+                      <span className="text-white font-bold">
+                        "{projectToDelete?.name}"
+                      </span>
+                      ? <br /> This action cannot be undone.
+                    </>
+                  ) : (
+                    <>
+                      Are you sure you want to leave{" "}
+                      <span className="text-white font-bold">
+                        "{projectToDelete?.name}"
+                      </span>
+                      ?
+                    </>
+                  )}
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
@@ -597,10 +632,10 @@ const Home = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={executeDelete}
+                    onClick={executeDeleteOrLeave}
                     className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors shadow-lg shadow-red-900/20"
                   >
-                    Delete
+                    {projectToDelete?.owner === user?._id ? "Delete" : "Leave"}
                   </button>
                 </div>
               </div>

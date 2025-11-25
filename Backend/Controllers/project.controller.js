@@ -3,26 +3,84 @@ import * as projectService from "../Services/project.service.js";
 import userModel from "../Models/user.model.js";
 import { validationResult } from "express-validator";
 
-export const createProject = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  try {
-    const { name } = req.body;
-    const loggedInUser = await userModel.findOne({ email: req.user.email });
-    const userId = loggedInUser._id;
+// ... imports
 
-    const newProject = await projectService.createProject({
-      name,
-      userId,
-    });
-    res.status(201).json(newProject);
-  } catch (err) {
-    res.status(400).send(err.message);
-    console.log(err);
-  }
-};
+export const createProject = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+    }
+    try {
+        const { name } = req.body;
+        const loggedInUser = await userModel.findOne({ email: req.user.email });
+        const userId = loggedInUser._id;
+
+        const newProject = await projectService.createProject({
+            name,
+            userId
+        })
+        
+        // [FIX] Ensure Owner is set (Service usually handles this, but ensure it's saved)
+        // If your service does it, great. If not, make sure newProject.owner = userId
+        
+        res.status(201).json(newProject);
+    } catch (err) {
+        res.status(400).send(err.message);
+        console.log(err);
+    }
+}
+
+// [NEW] Leave Project (For Collaborators)
+export const leaveProject = async (req, res) => {
+    try {
+        const { projectId } = req.body;
+        const userId = req.user._id;
+
+        const project = await projectModel.findById(projectId);
+        if (!project) return res.status(404).json({ message: "Project not found" });
+
+        // Prevent Owner from leaving (They must delete)
+        if (project.owner.toString() === userId.toString()) {
+            return res.status(400).json({ message: "Owner cannot leave project. Delete it instead." });
+        }
+
+        // Remove user from users array
+        project.users = project.users.filter(id => id.toString() !== userId.toString());
+        await project.save();
+
+        res.status(200).json({ message: "Left project successfully" });
+
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({ message: error.message });
+    }
+}
+
+// [NEW] Delete Project (Owner Only)
+export const deleteProject = async (req, res) => {
+    try {
+        const { projectId } = req.body; // or req.params
+        const userId = req.user._id;
+
+        const project = await projectModel.findById(projectId);
+        if (!project) return res.status(404).json({ message: "Project not found" });
+
+        // Check Ownership
+        if (project.owner.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Only the owner can delete this project." });
+        }
+
+        await projectModel.findByIdAndDelete(projectId);
+
+        res.status(200).json({ message: "Project deleted successfully" });
+
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({ message: error.message });
+    }
+}
+
+// ... (Keep getAllProjects, sendInvite, etc.)
 
 export const getAllProjects = async (req, res) => {
   try {

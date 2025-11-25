@@ -5,6 +5,11 @@ import * as authMiddleWare from "../Middleware/auth.middleware.js";
 
 const router = Router();
 
+
+router.put('/leave', authMiddleWare.authUser, projectController.leaveProject);
+router.delete('/delete', authMiddleWare.authUser, projectController.deleteProject);
+
+
 router.post(
   "/create",
   authMiddleWare.authUser,

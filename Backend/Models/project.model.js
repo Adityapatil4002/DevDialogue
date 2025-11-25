@@ -8,13 +8,18 @@ const projectSchema = new mongoose.Schema({
     trim: true,
     unique: [true, "Project name must be unique"],
   },
+  // [NEW] Add Owner Field
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   users: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
   ],
-  // [NEW] Track pending invitations
   pendingInvites: [
     {
       type: mongoose.Schema.Types.ObjectId,

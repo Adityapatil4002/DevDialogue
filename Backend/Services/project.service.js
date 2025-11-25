@@ -17,6 +17,7 @@ export const createProject = async ({ name, userId }) => {
     project = await projectModel.create({
       name,
       users: [userId],
+      owner: userId, // <--- CRITICAL FIX: This sets the leadership!
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -107,7 +108,6 @@ export const getProjectById = async (projectId, userId) => {
     throw new Error("Invalid projectId");
   }
 
-  // --- ADDED VALIDATION ---
   if (!userId) {
     throw new Error("User ID is required for authorization");
   }
@@ -118,33 +118,37 @@ export const getProjectById = async (projectId, userId) => {
   const project = await projectModel
     .findOne({
       _id: projectId,
-      users: userId, // Checks if userId is in the users array
+      users: userId,
     })
-    .populate("users"); // Populates the user details
+    .populate("users");
 
-  return project; // This will be null if no project matches BOTH conditions
+  return project;
 };
 
 export const updateFileTree = async ({ projectId, fileTree }) => {
   if (!projectId) {
-    throw new Error("projectId is required")
+    throw new Error("projectId is required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(projectId)) {
-    throw new Error("Invalid projectId")
+    throw new Error("Invalid projectId");
   }
 
   if (!fileTree) {
-    throw new Error("File tree is reauired")
+    throw new Error("File tree is reauired");
   }
 
-  const project = await projectModel.findOneAndUpdate({
-    _id: projectId
-  }, {
-    fileTree
-  }, {
-    new: true
-  })
+  const project = await projectModel.findOneAndUpdate(
+    {
+      _id: projectId,
+    },
+    {
+      fileTree,
+    },
+    {
+      new: true,
+    }
+  );
 
   return project;
-}
+};
