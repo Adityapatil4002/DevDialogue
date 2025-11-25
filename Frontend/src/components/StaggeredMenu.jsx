@@ -6,6 +6,8 @@ const StaggeredMenu = ({
   socialItems = [],
   displaySocials = true,
   menuButtonColor = "#fff",
+  openMenuButtonColor = "#fff",
+  changeMenuColorOnOpen = true,
   accentColor = "#5227FF",
   onMenuOpen,
   onMenuClose,
@@ -119,23 +121,21 @@ const StaggeredMenu = ({
       {/* --- TOGGLE BUTTON --- */}
       <button
         onClick={toggleMenu}
-        className="relative z-[100] w-10 h-10 flex flex-col justify-center items-center gap-[6px] bg-transparent border-none cursor-pointer focus:outline-none"
+        className="relative z-[100] w-10 h-10 flex flex-col justify-center items-center gap-[6px] bg-transparent border-none cursor-pointer focus:outline-none transition-colors duration-300"
         aria-label="Toggle Menu"
+        style={{ color: isOpen ? openMenuButtonColor : menuButtonColor }}
       >
         <span
           ref={line1Ref}
-          className="w-6 h-[2px] rounded-full"
-          style={{ backgroundColor: menuButtonColor }}
+          className="w-6 h-[2px] bg-current rounded-full"
         ></span>
         <span
           ref={line2Ref}
-          className="w-6 h-[2px] rounded-full"
-          style={{ backgroundColor: menuButtonColor }}
+          className="w-6 h-[2px] bg-current rounded-full"
         ></span>
         <span
           ref={line3Ref}
-          className="w-6 h-[2px] rounded-full"
-          style={{ backgroundColor: menuButtonColor }}
+          className="w-6 h-[2px] bg-current rounded-full"
         ></span>
       </button>
 
@@ -149,9 +149,32 @@ const StaggeredMenu = ({
       {/* --- MENU PANEL --- */}
       <aside
         ref={panelRef}
-        className="fixed top-0 left-0 h-full w-[300px] md:w-[400px] bg-white z-[95] flex flex-col p-10 shadow-2xl"
+        className="fixed top-0 left-0 h-full w-[300px] md:w-[400px] bg-white z-[95] flex flex-col p-8 shadow-2xl"
       >
-        <div className="mt-20 flex flex-col gap-6">
+        {/* Extra Close Button Inside Panel */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={toggleMenu}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-10 flex flex-col gap-6">
           {/* Menu Items */}
           <nav className="flex flex-col gap-4">
             {items.length > 0 ? (
@@ -159,6 +182,9 @@ const StaggeredMenu = ({
                 <a
                   key={idx}
                   href={item.link}
+                  onClick={(e) => {
+                    if (item.link === "#") e.preventDefault(); // Handle placeholder
+                  }}
                   className="menu-item text-4xl font-bold text-black hover:text-[var(--accent)] transition-colors no-underline uppercase tracking-tighter"
                   style={{ "--accent": accentColor }}
                 >
