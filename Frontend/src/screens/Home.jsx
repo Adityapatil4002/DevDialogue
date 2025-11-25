@@ -32,16 +32,7 @@ const Loader = () => {
           animate={{ rotate: -360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-        <motion.div
-          className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.8)]"
-          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-      <div className="mt-8 flex flex-col items-center gap-2">
-        <h3 className="text-white font-bold tracking-[0.3em] text-xs uppercase">
-          Initializing
-        </h3>
+        <div className="mt-8 flex flex-col items-center gap-2"></div>
       </div>
     </motion.div>
   );
@@ -268,7 +259,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 3. INBOX (With Empty State Animation) */}
+        {/* 3. INBOX (Updated: RADAR ANIMATION) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden">
           <div className="flex justify-between items-center mb-6 z-10 relative">
             <div>
@@ -319,41 +310,39 @@ const Home = () => {
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-neutral-600 mt-4 relative overflow-hidden rounded-xl border border-dashed border-[#1f2533]">
-                  <motion.div
-                    animate={{
-                      y: [0, -10, 0],
-                      opacity: [0.3, 0.6, 0.3],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-b from-[#1f2533] to-transparent flex items-center justify-center mb-3">
-                      <i className="ri-inbox-line text-3xl text-cyan-500/50"></i>
+                // [NEW] "Radar Scan" Animation for Empty Inbox
+                <div className="flex flex-col items-center justify-center h-full text-neutral-600 mt-2 relative">
+                  <div className="relative w-24 h-24 flex items-center justify-center mb-4">
+                    {/* Concentric pulsing circles */}
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute inset-0 border border-cyan-500/20 rounded-full"
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5] }}
+                        transition={{
+                          duration: 2.5,
+                          repeat: Infinity,
+                          delay: i * 0.8,
+                          ease: "linear",
+                        }}
+                      />
+                    ))}
+                    {/* Center Icon */}
+                    <div className="relative z-10 w-12 h-12 bg-[#1f2533] rounded-full flex items-center justify-center border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                      <i className="ri-radar-line text-xl text-cyan-400"></i>
                     </div>
-                    <p className="text-sm font-medium">All caught up!</p>
-                    <p className="text-xs opacity-50">No pending requests</p>
-                  </motion.div>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 20,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="absolute -top-20 -left-20 w-60 h-60 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"
-                  />
+                  </div>
+                  <p className="text-xs font-mono tracking-widest text-cyan-500/60 uppercase">
+                    Scanning for invites...
+                  </p>
                 </div>
               )}
             </div>
           </div>
         </GlowCard>
 
-        {/* 4. Projects List (With Deletion/Leave Logic) */}
+        {/* 4. Projects List (Updated: LEVITATING HOLOGRAM ANIMATION) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
           <div className="flex justify-between items-end mb-6 relative z-10 shrink-0">
             <div>
@@ -393,7 +382,6 @@ const Home = () => {
                       </div>
                     </div>
 
-                    {/* Delete/Leave Button */}
                     <button
                       onClick={(e) => confirmDeleteProject(e, proj)}
                       className="w-8 h-8 rounded-full border border-transparent hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover/project:opacity-100 transition-all duration-200 bg-[#1f2533] text-gray-500 hover:text-red-500 hover:bg-red-500/10 z-20"
@@ -421,9 +409,35 @@ const Home = () => {
               ))}
 
               {project.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center h-40 text-neutral-600 border-2 border-dashed border-[#1f2533] rounded-2xl bg-[#141820]/50">
-                  <i className="ri-folder-add-line text-3xl mb-2 opacity-50"></i>
-                  <p className="text-sm font-medium">No active projects</p>
+                // [NEW] Levitating Hologram Animation for Empty Projects
+                <div className="col-span-full flex flex-col items-center justify-center h-40 text-neutral-600 mt-2">
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="relative mb-4"
+                  >
+                    <i className="ri-folder-add-line text-5xl text-blue-500/40 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]"></i>
+                    {/* Floating Shadow underneath */}
+                    <motion.div
+                      animate={{ scale: [1, 0.8, 1], opacity: [0.5, 0.2, 0.5] }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500/30 rounded-full blur-sm"
+                    />
+                  </motion.div>
+                  <p className="text-sm font-medium text-gray-500">
+                    No active projects
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Initialize a new workspace
+                  </p>
                 </div>
               )}
             </div>

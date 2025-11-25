@@ -3,7 +3,7 @@ import axios from "axios";
 // 1. Create the axios instance
 const instance = axios.create({
   // SET YOUR BACKEND'S BASE URL HERE
-  baseURL: "http://localhost:8080",
+  baseURL: "http://localhost:4000",
 });
 
 // 2. Add a request "interceptor"

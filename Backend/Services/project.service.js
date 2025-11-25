@@ -1,6 +1,7 @@
 import projectModel from "../Models/project.model.js";
 import mongoose from "mongoose";
 
+
 export const createProject = async ({ name, userId }) => {
   if (!name) {
     throw new Error("Project name is required");
@@ -17,7 +18,39 @@ export const createProject = async ({ name, userId }) => {
     project = await projectModel.create({
       name,
       users: [userId],
-      owner: userId, // <--- CRITICAL FIX: This sets the leadership!
+      owner: userId,
+      // [ADDED] Default File Tree so the project isn't empty
+      fileTree: {
+        "app.js": {
+          file: {
+            contents: `import express from 'express';
+const app = express();
+const port = 3000;
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.listen(port, () => {
+  console.log(\`Server running at http://localhost:\${port}\`);
+});`,
+          },
+        },
+        "package.json": {
+          file: {
+            contents: `{
+  "name": "temp-server",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "scripts": {
+    "start": "node app.js"
+  }
+}`,
+          },
+        },
+      },
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -28,6 +61,8 @@ export const createProject = async ({ name, userId }) => {
 
   return project;
 };
+
+// ... keep getAllProjectByUserId, addUsersToProject, getProjectById, updateFileTree, addMessage as they are in your code
 
 export const getAllProjectByUserId = async (userId) => {
   if (!userId) {
@@ -151,4 +186,23 @@ export const updateFileTree = async ({ projectId, fileTree }) => {
   );
 
   return project;
+};
+
+export const addMessage = async ({ projectId, sender, senderId, message, isAi }) => {
+    const project = await projectModel.findByIdAndUpdate(
+        projectId,
+        {
+            $push: {
+                messages: {
+                    sender,
+                    senderId,
+                    message,
+                    isAi,
+                    timestamp: new Date()
+                }
+            }
+        },
+        { new: true }
+    );
+    return project;
 };

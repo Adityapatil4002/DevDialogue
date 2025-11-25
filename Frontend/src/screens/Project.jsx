@@ -128,6 +128,9 @@ const Project = () => {
           setFileTree(projectRes.data.project.fileTree || {});
           setPendingInvites(allProjectsRes.data.invites || []);
 
+          setMessages(projectRes.data.project.messages || []); 
+
+
           initializeSocket(projectId);
 
           if (!webContainer) {

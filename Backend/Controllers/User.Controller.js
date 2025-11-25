@@ -2,6 +2,7 @@ import userModel from "../Models/user.model.js";
 import * as userService from "../Services/User.service.js";
 import { validationResult } from "express-validator";
 import redisClient from "../Services/redis.service.js";
+import projectModel from "../Models/project.model.js";
 
 export const createUser = async (req, res) => {
   const errors = validationResult(req);
@@ -183,4 +184,124 @@ export const getAllUsersController = async (req, res) => {
     console.log(error);
     res.status(400).send(error.message);
   }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Fetch all projects for the user
+    const projects = await projectModel
+      .find({ users: userId })
+      .populate("users", "email");
+
+    // 2. Calculate Basic Stats
+    const totalProjects = projects.length;
+
+    // Calculate unique collaborators (excluding the current user)
+    const collaboratorSet = new Set();
+    projects.forEach((project) => {
+      project.users.forEach((u) => {
+        if (u._id.toString() !== userId.toString()) {
+          collaboratorSet.add(u.email);
+        }
+      });
+    });
+    const totalCollaborators = collaboratorSet.size;
+
+    // 3. Calculate File & Language Stats
+    let totalFiles = 0;
+    const languageMap = {};
+
+    // Helper to traverse file tree
+    const traverseTree = (tree) => {
+      for (const key in tree) {
+        if (tree[key].file) {
+          totalFiles++;
+          const ext = key.split(".").pop() || "plaintext";
+          const lang = getLanguageName(ext);
+          languageMap[lang] = (languageMap[lang] || 0) + 1;
+        } else if (tree[key].directory) {
+          traverseTree(tree[key].directory);
+        }
+      }
+    };
+
+    projects.forEach((project) => {
+      if (project.fileTree) {
+        traverseTree(project.fileTree);
+      }
+    });
+
+    // Format language stats for the chart (Top 5 + Others)
+    const sortedLanguages = Object.entries(languageMap).sort(
+      ([, a], [, b]) => b - a
+    );
+    const topLanguages = sortedLanguages
+      .slice(0, 5)
+      .map(([label, data]) => ({ label, data }));
+    const otherCount = sortedLanguages
+      .slice(5)
+      .reduce((sum, [, data]) => sum + data, 0);
+    if (otherCount > 0) {
+      topLanguages.push({ label: "Other", data: otherCount });
+    }
+
+    // 4. Calculate 30-Day Activity (Project Creation Trend)
+    const activityMap = {};
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      activityMap[d.toISOString().split("T")[0]] = 0;
+    }
+
+    projects.forEach((project) => {
+      const dateStr = project.createdAt.toISOString().split("T")[0];
+      if (activityMap[dateStr] !== undefined) {
+        activityMap[dateStr]++;
+      }
+    });
+
+    const activityChartData = Object.keys(activityMap).map((date) => ({
+      date,
+      count: activityMap[date],
+    }));
+
+    res.status(200).json({
+      totalProjects,
+      totalCollaborators,
+      totalFiles,
+      languageStats: topLanguages,
+      activityChartData,
+    });
+  } catch (error) {
+    console.error("Dashboard Stats Error:", error);
+    res.status(500).json({ message: "Failed to fetch dashboard stats" });
+  }
+};
+
+// Helper function to map extensions to language names
+const getLanguageName = (ext) => {
+  const map = {
+    js: "JavaScript",
+    jsx: "JavaScript",
+    ts: "TypeScript",
+    tsx: "TypeScript",
+    html: "HTML",
+    css: "CSS",
+    scss: "CSS",
+    json: "JSON",
+    md: "Markdown",
+    py: "Python",
+    java: "Java",
+    c: "C",
+    cpp: "C++",
+    go: "Go",
+    rs: "Rust",
+    php: "PHP",
+    rb: "Ruby",
+    sql: "SQL",
+  };
+  return map[ext.toLowerCase()] || "Other";
 };
