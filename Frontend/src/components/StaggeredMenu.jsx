@@ -6,9 +6,8 @@ const StaggeredMenu = ({
   socialItems = [],
   displaySocials = true,
   menuButtonColor = "#fff",
-  openMenuButtonColor = "#fff",
-  changeMenuColorOnOpen = true,
-  accentColor = "#5227FF",
+  openMenuButtonColor = "#22d3ee", // Cyan when open
+  accentColor = "#22d3ee", // Cyan accent
   onMenuOpen,
   onMenuClose,
 }) => {
@@ -149,32 +148,10 @@ const StaggeredMenu = ({
       {/* --- MENU PANEL --- */}
       <aside
         ref={panelRef}
-        className="fixed top-0 left-0 h-full w-[300px] md:w-[400px] bg-white z-[95] flex flex-col p-8 shadow-2xl"
+        // Changed bg-white to bg-[#0b0f19] for dark theme
+        className="fixed top-0 left-0 h-full w-[300px] md:w-[400px] bg-[#0b0f19] z-[95] flex flex-col p-10 shadow-2xl border-r border-gray-800"
       >
-        {/* Extra Close Button Inside Panel */}
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={toggleMenu}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-10 flex flex-col gap-6">
+        <div className="mt-20 flex flex-col gap-6">
           {/* Menu Items */}
           <nav className="flex flex-col gap-4">
             {items.length > 0 ? (
@@ -183,9 +160,10 @@ const StaggeredMenu = ({
                   key={idx}
                   href={item.link}
                   onClick={(e) => {
-                    if (item.link === "#") e.preventDefault(); // Handle placeholder
+                    if (item.link === "#") e.preventDefault();
                   }}
-                  className="menu-item text-4xl font-bold text-black hover:text-[var(--accent)] transition-colors no-underline uppercase tracking-tighter"
+                  // Changed text-black to text-white
+                  className="menu-item text-4xl font-bold text-white hover:text-[var(--accent)] transition-colors no-underline uppercase tracking-tighter"
                   style={{ "--accent": accentColor }}
                 >
                   {item.label}
@@ -197,7 +175,7 @@ const StaggeredMenu = ({
           </nav>
 
           {/* Divider */}
-          <div className="w-full h-[1px] bg-gray-200 my-4 menu-item"></div>
+          <div className="w-full h-[1px] bg-gray-800 my-4 menu-item"></div>
 
           {/* Social Items */}
           {displaySocials && (
@@ -212,7 +190,8 @@ const StaggeredMenu = ({
                     href={social.link}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-lg font-medium text-black hover:text-[var(--accent)] transition-colors no-underline"
+                    // Changed text-black to text-gray-200
+                    className="text-lg font-medium text-gray-200 hover:text-[var(--accent)] transition-colors no-underline"
                     style={{ "--accent": accentColor }}
                   >
                     {social.label}
