@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Or your frontend URL
+    origin: "*",
   },
 });
 
@@ -43,11 +43,13 @@ io.use(async (socket, next) => {
 
     if (!decoded || !decoded._id) {
       return next(new Error("Authentication error: Invalid token"));
-    } // Check if user is part of the project
+    }
 
+    // Check if user is part of the project (Active users only)
     const isUserInProject = project.users.some(
       (userId) => userId.toString() === decoded._id
     );
+
     if (!isUserInProject) {
       return next(new Error("Authentication error: User not in project"));
     }
@@ -56,7 +58,7 @@ io.use(async (socket, next) => {
     next();
   } catch (error) {
     console.error("Socket Auth Error:", error.message);
-    next(new Error("Authentication error")); // Send generic error to client
+    next(new Error("Authentication error"));
   }
 });
 
@@ -69,54 +71,55 @@ io.on("connection", (socket) => {
 
   socket.join(socket.roomId);
 
+  // [NEW] Typing Indicators
+  socket.on("typing", () => {
+    // Broadcast to everyone EXCEPT the sender
+    socket.to(socket.roomId).emit("typing", {
+      email: socket.user.email,
+    });
+  });
+
+  socket.on("stop-typing", () => {
+    socket.to(socket.roomId).emit("stop-typing", {
+      email: socket.user.email,
+    });
+  });
+
   socket.on("project-message", async (data) => {
-    // Check for AI prompt
     const message = data.message;
     const aiIsPresentInMessage = message.includes("@ai");
 
     if (aiIsPresentInMessage) {
       try {
-        const prompt = message.replace("@ai", "").trim(); // Get the prompt
+        const prompt = message.replace("@ai", "").trim();
 
-        // 1. Immediately send the user's prompt to everyone
-        // This lets others know what was asked
         io.to(socket.roomId).emit("project-message", {
           ...data,
           timestamp: new Date(),
         });
 
-        // 2. Call the AI
         const result = await generateResult(prompt);
 
-        // 3. Send the AI's response to everyone
-        // --- THIS IS THE FIX ---
-        // 'result' is already a complete message object, so we send it directly
-        // instead of wrapping it in a new object.
         io.to(socket.roomId).emit("project-message", result);
-        // --- END OF FIX ---
       } catch (error) {
-        // If AI fails, send an error message just to the sender
         console.error("AI Handler Error:", error.message);
         socket.emit("project-message", {
           message: JSON.stringify({
-            // Send error in same format as AI
             text: "Sorry, the AI feature is not available right now.",
           }),
-          isAi: true, // Mark as AI so it still renders correctly
+          isAi: true,
           sender: { _id: "ai-error", email: "AI Error" },
           timestamp: new Date(),
         });
       }
-      return; // Stop execution to prevent broadcasting the '@ai' message again
+      return;
     }
 
-    // If it's a regular message, broadcast to everyone (including sender)
     console.log(
       `Message received for project ${socket.projectIdString}:`,
       data.message
     );
 
-    // Use io.to() to send to everyone in the room
     io.to(socket.roomId).emit("project-message", {
       ...data,
       timestamp: new Date(),
