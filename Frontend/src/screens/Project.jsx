@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "../Config/axios";
 import {
   initializeSocket,
@@ -10,6 +10,7 @@ import {
 import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
+import StaggeredMenu from "../components/StaggeredMenu.jsx"; // Import the updated menu
 
 // Helper to get language for syntax highlighting
 const getLanguageFromFileName = (fileName) => {
@@ -35,9 +36,11 @@ const getLanguageFromFileName = (fileName) => {
 const Project = () => {
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
   const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -54,12 +57,24 @@ const Project = () => {
   const [runProcess, setRunProcess] = useState(null);
   const [isInstalling, setIsInstalling] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState("");
-  const [activeTab, setActiveTab] = useState("browser"); // 'browser' or 'terminal'
+  const [activeTab, setActiveTab] = useState("browser");
 
   const messageEndRef = useRef(null);
   const saveTimeout = useRef(null);
 
-  // 2. Load files from DB on mount
+  // --- MENU ITEMS ---
+  const menuItems = [
+    { label: "Home", link: "/home" },
+    { label: "Profile", link: "/profile" },
+    { label: "Settings", link: "/profile" }, // Assuming settings is same as profile
+  ];
+
+  const socialItems = [
+    { label: "GitHub", link: "https://github.com" },
+    { label: "Twitter", link: "https://twitter.com" },
+  ];
+
+  // Load files from DB on mount
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -98,8 +113,6 @@ const Project = () => {
           }
 
           cleanupMessageListener = recieveMessage("project-message", (data) => {
-            console.log("Received message:", data);
-
             if (isMounted) {
               setMessages((prev) => {
                 if (data.sender?._id === user?._id) {
@@ -301,6 +314,21 @@ const Project = () => {
     }, 1500);
   };
 
+  const handleCloseFile = (e, fileToClose) => {
+    e.stopPropagation();
+    setOpenFiles((prev) => {
+      const newOpenFiles = prev.filter((f) => f !== fileToClose);
+      if (CurrentFile === fileToClose) {
+        if (newOpenFiles.length > 0) {
+          setCurrentFile(newOpenFiles[newOpenFiles.length - 1]);
+        } else {
+          setCurrentFile(null);
+        }
+      }
+      return newOpenFiles;
+    });
+  };
+
   const handleRunClick = async () => {
     if (!webContainer) return;
 
@@ -411,32 +439,72 @@ const Project = () => {
           .animate-fade-in {
             animation: fadeIn 0.3s ease-out forwards;
           }
+
+          .file-tree-container {
+             transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+             overflow: hidden;
+          }
+          .file-tree-container.closed {
+             max-height: 0;
+             opacity: 0;
+          }
+          .file-tree-container.open {
+             max-height: 500px;
+             opacity: 1;
+          }
         `}
       </style>
 
       {/* ---------- LEFT CHAT PANEL ---------- */}
       <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-[#0b0f19] border-r border-gray-800 z-10">
-        {/* Header */}
+        {/* HEADER */}
         <header className="flex justify-between items-center p-4 bg-[#0d1117] border-b border-gray-800 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
-            <h1
-              className="text-lg font-bold truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
-              title={project.name}
+          {/* Left: Back Button + Title */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/home")}
+              className="p-1.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              title="Back to Home"
             >
-              {project.name}
-            </h1>
+              <i className="ri-arrow-left-line text-lg"></i>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+              <h1
+                className="text-lg font-bold truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent max-w-[120px]"
+                title={project.name}
+              >
+                {project.name}
+              </h1>
+            </div>
           </div>
-          <button
-            onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-            className="p-2 rounded-full hover:bg-gray-800 transition-all duration-200 text-gray-400 hover:text-white"
-          >
-            <i className="ri-group-line text-xl"></i>
-          </button>
+
+          {/* Right: Menu + Collaborators */}
+          {/* Inside the Left Header section */}
+          <div className="flex items-center gap-2">
+            {/* Staggered Menu Button */}
+            <StaggeredMenu
+              items={menuItems}
+              socialItems={socialItems}
+              menuButtonColor="#9ca3af" // Matches tailwind text-gray-400
+              accentColor="#2563eb" // Matches tailwind blue-600
+            />
+
+            {/* Collaborators Button */}
+            <button
+              onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
+              className="p-2 rounded-md hover:bg-gray-800 transition-all duration-200 text-gray-400 hover:text-white group relative"
+              title="Collaborators"
+            >
+              <i className="ri-group-line text-xl"></i>
+            </button>
+          </div>
         </header>
 
         {/* Conversation Area */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
+          {/* ... (Conversation logic remains the same) ... */}
           <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
             {messages.map((msg, i) => (
               <div
@@ -535,7 +603,7 @@ const Project = () => {
         <div
           className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
-          } top-0 z-30 border-r border-gray-800`}
+          } top-0 z-40 border-r border-gray-800`}
         >
           <header className="flex justify-between items-center p-4 bg-[#0d1117] border-b border-gray-800">
             <h2 className="font-bold text-gray-200">Collaborators</h2>
@@ -566,7 +634,6 @@ const Project = () => {
                     <span className="text-sm font-bold uppercase">
                       {u.email?.[0] ?? "?"}
                     </span>
-                    {/* Online status indicator mock */}
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#1f2937] rounded-full"></span>
                   </div>
                   <h1 className="font-medium text-gray-300 text-sm truncate">
@@ -583,13 +650,25 @@ const Project = () => {
       <section className="right flex-grow h-full flex bg-[#030712] relative overflow-hidden">
         {/* File Explorer */}
         <div className="explorer h-full max-w-64 min-w-52 bg-[#0d1117] flex flex-col border-r border-gray-800">
-          <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+          <div
+            className="p-3 border-b border-gray-800 flex items-center justify-between cursor-pointer hover:bg-[#161b22] transition-colors"
+            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+          >
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
               Explorer
             </span>
-            <i className="ri-folder-3-line text-gray-500"></i>
+            <i
+              className={`ri-arrow-down-s-line text-gray-500 transition-transform duration-300 ${
+                isExplorerOpen ? "" : "-rotate-90"
+              }`}
+            ></i>
           </div>
-          <div className="file-tree w-full flex-grow overflow-y-auto pt-2">
+
+          <div
+            className={`file-tree w-full flex-grow overflow-y-auto pt-2 file-tree-container ${
+              isExplorerOpen ? "open" : "closed"
+            }`}
+          >
             {Object.keys(fileTree).length > 0 ? (
               Object.keys(fileTree).map((file) => (
                 <button
@@ -606,7 +685,6 @@ const Project = () => {
                       : "border-transparent text-gray-400 hover:bg-[#161b22] hover:text-white"
                   }`}
                 >
-                  {/* Simple Icon Logic based on ext */}
                   <i
                     className={`text-lg ${
                       file.endsWith("jsx")
@@ -632,7 +710,7 @@ const Project = () => {
 
         {/* Editor Area */}
         <div className="code-editor flex flex-col flex-grow h-full w-1/2 bg-[#0d1117]">
-          {/* Top Bar (Tabs + Run) */}
+          {/* ... (Editor and Tab logic remains same) ... */}
           <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12">
             <div className="files flex overflow-x-auto no-scrollbar">
               {openFiles.map((file) => (
@@ -647,11 +725,8 @@ const Project = () => {
                 >
                   <span className="mr-2">{file}</span>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Optional: Add logic to close file if needed, visually present
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-gray-700 text-gray-400"
+                    onClick={(e) => handleCloseFile(e, file)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-gray-700 text-gray-400 transition-opacity"
                   >
                     <i className="ri-close-line text-xs"></i>
                   </button>
@@ -816,9 +891,10 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ---------- ADD USER MODAL ---------- */}
+      {/* ... (ADD USER MODAL - Same as before) ... */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          {/* ... Modal Content ... */}
           <div
             className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -836,6 +912,7 @@ const Project = () => {
             </div>
 
             <div className="p-6">
+              {/* ... Search Input ... */}
               <div className="mb-4">
                 <label className="block text-gray-400 text-xs font-bold mb-2 uppercase tracking-wide">
                   Find by email
