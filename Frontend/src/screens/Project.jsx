@@ -1,3 +1,4 @@
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import React, { useState, useEffect, useContext, useRef } from "react";
@@ -472,12 +473,9 @@ const Project = () => {
 
     try {
       const mountStructure = JSON.parse(JSON.stringify(fileTree));
-      // CHECK: Does package.json exist?
       const hasPackageJson = !!mountStructure["package.json"];
 
-      // -------------------------------------------
       // SCENARIO 1: PROJECT MODE (package.json exists)
-      // -------------------------------------------
       if (hasPackageJson) {
         setIsInstalling(true);
 
@@ -546,21 +544,17 @@ const Project = () => {
 
         setRunProcess(tempRunProcess);
 
-        // Listen for server URL updates
         webContainer.on("server-ready", (port, url) => {
           setIframeUrl(url);
           setActiveTab("browser");
         });
       }
 
-      // -------------------------------------------
       // SCENARIO 2: SCRIPT MODE (No package.json)
-      // -------------------------------------------
       else {
         setIsInstalling(false);
         await webContainer.mount(mountStructure);
 
-        // Find the first JavaScript file to run
         const jsFile = Object.keys(mountStructure).find((filename) =>
           filename.endsWith(".js")
         );
@@ -577,7 +571,6 @@ const Project = () => {
 
         if (runProcess) runProcess.kill();
 
-        // Run "node filename.js" directly (No npm install needed)
         let tempRunProcess = await webContainer.spawn("node", [jsFile]);
 
         tempRunProcess.output.pipeTo(
@@ -598,21 +591,15 @@ const Project = () => {
 
   const downloadProject = async () => {
     const zip = new JSZip();
-
-    // Iterate through the fileTree and add files to the zip
     Object.keys(fileTree).forEach((path) => {
       const fileContent = fileTree[path].file?.contents;
       if (fileContent) {
-        // JSZip automatically creates folders based on the path (e.g., "src/App.jsx")
         zip.file(path, fileContent);
       }
     });
 
     try {
-      // Generate the zip file
       const content = await zip.generateAsync({ type: "blob" });
-
-      // Trigger the download
       const safeName =
         project?.name?.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";
       saveAs(content, `${safeName}.zip`);
@@ -653,7 +640,6 @@ const Project = () => {
         </div>
       );
     } catch {
-      // Fallback for simple strings or error messages
       return <p className="text-sm whitespace-pre-wrap break-words">{raw}</p>;
     }
   };
@@ -673,8 +659,14 @@ const Project = () => {
       </div>
     );
 
+  const ResizeHandle = ({ className = "" }) => (
+    <PanelResizeHandle
+      className={`w-[2px] bg-gray-800 hover:bg-blue-500 transition-colors cursor-col-resize z-50 ${className}`}
+    />
+  );
+
   return (
-    <main className="h-screen w-screen flex bg-[#030712] text-white overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
+    <main className="h-screen w-screen flex flex-col bg-[#030712] text-white overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
       <style>{`
         .message-box::-webkit-scrollbar { width: 6px; }
         .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
@@ -683,6 +675,418 @@ const Project = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
+      {/* Main Resizable Layout */}
+      <PanelGroup direction="horizontal">
+        {/* --- LEFT PANEL: CHAT --- */}
+        <Panel defaultSize={20} minSize={15} maxSize={30}>
+          <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
+            {/* Header */}
+            <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/home")}
+                  className="p-1.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                >
+                  <i className="ri-arrow-left-line text-lg"></i>
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 shadow-green-500/50 shadow-lg"></div>
+                  <h1 className="text-lg font-bold truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent max-w-[120px]">
+                    {project?.name}
+                  </h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setIsNotificationPanelOpen(!isNotificationPanelOpen)
+                  }
+                  className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white relative"
+                >
+                  <i className="ri-notification-3-line text-xl"></i>
+                  {pendingInvites.length > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
+                  className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white"
+                >
+                  <i className="ri-group-line text-xl"></i>
+                </button>
+              </div>
+            </header>
+
+            {/* Conversation Area */}
+            <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
+              <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
+                {messages.map((msg, i) => {
+                  const isOwnMessage =
+                    msg.sender?._id?.toString() === user?._id?.toString() ||
+                    msg.senderId?.toString() === user?._id?.toString();
+                  const senderEmail = msg.sender?.email || msg.sender;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`flex w-full animate-fade-in ${
+                        isOwnMessage ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative break-words overflow-hidden ${
+                          isOwnMessage
+                            ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
+                            : "bg-gray-800 border-gray-700 text-gray-100 rounded-bl-none"
+                        }`}
+                      >
+                        {!isOwnMessage && !msg.isAi && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
+                              {typeof senderEmail === "string"
+                                ? senderEmail[0]?.toUpperCase()
+                                : "?"}
+                            </div>
+                            <small className="opacity-70 text-xs font-medium text-gray-300">
+                              {typeof senderEmail === "string"
+                                ? senderEmail
+                                : "User"}
+                            </small>
+                          </div>
+                        )}
+                        {msg.isAi ? (
+                          <div className="flex gap-2">
+                            <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
+                            <div className="overflow-hidden w-full">
+                              <AiMessage raw={msg.message} />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {msg.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {isAiThinking && (
+                  <div className="flex justify-start animate-fade-in">
+                    <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
+                      <i className="ri-robot-2-line text-blue-400 animate-spin-slow"></i>
+                      <span className="text-xs font-medium text-gray-300">
+                        Processing...
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messageEndRef} />
+              </div>
+
+              <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19] to-transparent z-20">
+                <div className="flex items-center gap-2 bg-[#161b22] p-2 pr-2 rounded-full border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors">
+                  <input
+                    value={message}
+                    onChange={handleTyping}
+                    onKeyPress={(e) => e.key === "Enter" && send()}
+                    className="flex-grow bg-transparent text-white px-4 py-2 border-none outline-none placeholder-gray-500 text-sm"
+                    placeholder="Type a message to @ai..."
+                  />
+                  <button
+                    onClick={send}
+                    className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 disabled:opacity-50"
+                    disabled={!message.trim()}
+                  >
+                    <i className="ri-send-plane-2-fill"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Collaborators Slide Panel */}
+            <div
+              className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
+                isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
+              } top-0 z-30 border-r border-gray-800`}
+            >
+              <header className="flex justify-between items-center p-4 border-b border-gray-800 h-16">
+                <h2 className="font-bold text-gray-200">Collaborators</h2>
+                <button
+                  onClick={() => setisSidePanelOpen(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <i className="ri-close-line text-2xl"></i>
+                </button>
+              </header>
+              <div className="p-4 flex-grow overflow-y-auto">
+                <button
+                  onClick={() => setAddUserModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-500 mb-4"
+                >
+                  <i className="ri-user-add-line"></i> Invite New Member
+                </button>
+                {project?.users?.map((u) => (
+                  <div
+                    key={u._id}
+                    className="p-3 flex gap-3 items-center rounded-lg hover:bg-[#1f2937] transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-xs font-bold">
+                      {u.email[0].toUpperCase()}
+                    </div>
+                    <h1 className="font-medium text-gray-300 text-sm truncate">
+                      {u.email}
+                    </h1>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notifications Panel */}
+            {isNotificationPanelOpen && (
+              <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
+                {pendingInvites.map((invite) => (
+                  <div
+                    key={invite._id}
+                    className="flex justify-between items-center bg-[#0d1117] p-3 mb-2 rounded-lg border border-gray-700"
+                  >
+                    <p className="text-sm font-bold text-white">
+                      {invite.name}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleInviteResponse(invite._id, true)}
+                        className="px-2 text-green-400"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleInviteResponse(invite._id, false)}
+                        className="px-2 text-red-400"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {pendingInvites.length === 0 && (
+                  <p className="text-gray-500 text-sm">No notifications</p>
+                )}
+              </div>
+            )}
+          </section>
+        </Panel>
+
+        <ResizeHandle />
+
+        {/* --- RIGHT PANEL: WORKSPACE (Explorer | Editor | Terminal) --- */}
+        <Panel>
+          <PanelGroup direction="horizontal">
+            {/* EXPLORER */}
+            {isExplorerOpen && (
+              <>
+                <Panel defaultSize={18} minSize={10} maxSize={25}>
+                  <div className="h-full w-full bg-[#0d1117] flex flex-col border-r border-gray-800">
+                    <div
+                      onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+                      className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] p-2 pr-4 cursor-pointer hover:bg-[#161b22]"
+                    >
+                      <div className="flex flex-grow items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                          Explorer
+                        </span>
+                        <i
+                          className={`ri-arrow-down-s-line text-gray-500 transition-transform ${
+                            isExplorerOpen ? "" : "-rotate-90"
+                          }`}
+                        ></i>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadProject();
+                        }}
+                        className="text-gray-400 hover:text-white transition-colors"
+                        title="Download Project as ZIP"
+                      >
+                        <i className="ri-download-cloud-2-line text-lg"></i>
+                      </button>
+                    </div>
+
+                    <div className="file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-700">
+                      {isAiThinking ? (
+                        <FileTreeSkeleton />
+                      ) : (
+                        <div className="-ml-2">
+                          {Object.keys(folderStructure).map((key) => (
+                            <FileTreeNode
+                              key={key}
+                              fileName={key}
+                              nodes={folderStructure[key]}
+                              onSelect={handleFileSelect}
+                              onDelete={onRequestDelete}
+                              path={key}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Panel>
+                <ResizeHandle />
+              </>
+            )}
+
+            {/* EDITOR */}
+            <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
+              <div className="flex flex-col h-full w-full bg-[#0d1117]">
+                <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12 flex-shrink-0">
+                  <div className="files flex overflow-x-auto no-scrollbar">
+                    {openFiles.map((file) => (
+                      <div
+                        key={file}
+                        onClick={() => setCurrentFile(file)}
+                        className={`group relative flex items-center min-w-fit px-4 h-12 text-sm border-r border-gray-800 cursor-pointer ${
+                          currentFile === file
+                            ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500"
+                            : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"
+                        }`}
+                      >
+                        <span className="mr-2">{file.split("/").pop()}</span>
+                        <button
+                          onClick={(e) => handleCloseFile(e, file)}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white"
+                        >
+                          <i className="ri-close-line"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="actions px-3 flex-shrink-0">
+                    {!runProcess ? (
+                      <button
+                        onClick={handleRunClick}
+                        disabled={isInstalling}
+                        className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-blue-600 text-white hover:bg-blue-500"
+                      >
+                        {isInstalling ? (
+                          <i className="ri-loader-4-line animate-spin"></i>
+                        ) : (
+                          <i className="ri-play-fill"></i>
+                        )}{" "}
+                        Run
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStopClick}
+                        className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                      >
+                        <i className="ri-stop-fill"></i> Stop
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bottom flex-grow overflow-hidden relative h-full w-full">
+                  {currentFile && fileTree[currentFile]?.file ? (
+                    <div
+                      key={currentFile}
+                      className="h-full w-full animate-fade-in"
+                    >
+                      <Editor
+                        height="100%"
+                        width="100%"
+                        path={currentFile}
+                        language={getLanguageFromFileName(currentFile)}
+                        theme="vs-dark"
+                        value={fileTree[currentFile].file.contents}
+                        onChange={handleFileContentChange}
+                        options={{ fontSize: 14, minimap: { enabled: false } }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-600 bg-[#0d1117]">
+                      <div className="text-center">
+                        <i className="ri-code-s-slash-line text-4xl mb-2 opacity-50"></i>
+                        <p>Select a file to edit</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Panel>
+
+            <ResizeHandle />
+
+            {/* TERMINAL / BROWSER */}
+            <Panel defaultSize={40} minSize={20}>
+              <div className="flex flex-col h-full w-full border-l border-gray-800 bg-[#0d1117]">
+                <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setActiveTab("browser")}
+                      className={`px-4 py-1.5 text-xs font-medium rounded ${
+                        activeTab === "browser"
+                          ? "bg-[#1f2937] text-blue-400"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Browser
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("terminal")}
+                      className={`px-4 py-1.5 text-xs font-medium rounded ${
+                        activeTab === "terminal"
+                          ? "bg-[#1f2937] text-green-400"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Terminal
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleClear}
+                    className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                    title="Clear"
+                  >
+                    <i className="ri-delete-bin-line"></i>
+                  </button>
+                </div>
+
+                {activeTab === "browser" && (
+                  <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
+                    {iframeUrl ? (
+                      <iframe
+                        src={iframeUrl}
+                        className="w-full h-full border-none"
+                      ></iframe>
+                    ) : (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center animate-pulse">
+                          <i className="ri-rocket-2-fill text-3xl text-blue-500"></i>
+                        </div>
+                        <div className="text-gray-400 text-sm font-medium animate-fade-in">
+                          Ready to Launch
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "terminal" && (
+                  <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
+                    {cleanTerminalOutput(terminalOutput) ||
+                      "Waiting for output..."}
+                    <div ref={terminalEndRef} />
+                  </div>
+                )}
+              </div>
+            </Panel>
+          </PanelGroup>
+        </Panel>
+      </PanelGroup>
+
+      {/* EXTERNAL COMPONENTS (Modals, Menu) */}
       {!isSidePanelOpen && (
         <div className="fixed top-4 left-4 z-50">
           <StaggeredMenu
@@ -695,386 +1099,6 @@ const Project = () => {
         </div>
       )}
 
-      {/* LEFT CHAT PANEL */}
-      <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-[#0b0f19] border-r border-gray-800 z-10">
-        <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/home")}
-              className="p-1.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
-            >
-              <i className="ri-arrow-left-line text-lg"></i>
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 shadow-green-500/50 shadow-lg"></div>
-              <h1 className="text-lg font-bold truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent max-w-[120px]">
-                {project?.name}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                setIsNotificationPanelOpen(!isNotificationPanelOpen)
-              }
-              className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white relative"
-            >
-              <i className="ri-notification-3-line text-xl"></i>
-              {pendingInvites.length > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              )}
-            </button>
-            <button
-              onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-              className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white"
-            >
-              <i className="ri-group-line text-xl"></i>
-            </button>
-          </div>
-        </header>
-
-        <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
-          <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
-            {messages.map((msg, i) => {
-              const isOwnMessage =
-                msg.sender?._id?.toString() === user?._id?.toString() ||
-                msg.senderId?.toString() === user?._id?.toString();
-              const senderEmail = msg.sender?.email || msg.sender;
-
-              return (
-                <div
-                  key={i}
-                  className={`flex w-full animate-fade-in ${
-                    isOwnMessage ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative break-words overflow-hidden ${
-                      isOwnMessage
-                        ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
-                        : "bg-gray-800 border-gray-700 text-gray-100 rounded-bl-none"
-                    }`}
-                  >
-                    {!isOwnMessage && !msg.isAi && (
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
-                          {typeof senderEmail === "string"
-                            ? senderEmail[0]?.toUpperCase()
-                            : "?"}
-                        </div>
-                        <small className="opacity-70 text-xs font-medium text-gray-300">
-                          {typeof senderEmail === "string"
-                            ? senderEmail
-                            : "User"}
-                        </small>
-                      </div>
-                    )}
-                    {msg.isAi ? (
-                      <div className="flex gap-2">
-                        <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
-                        <div className="overflow-hidden w-full">
-                          <AiMessage raw={msg.message} />
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap break-words">
-                        {msg.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {isAiThinking && (
-              <div className="flex justify-start animate-fade-in">
-                <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
-                  <i className="ri-robot-2-line text-blue-400 animate-spin-slow"></i>
-                  <span className="text-xs font-medium text-gray-300">
-                    Processing...
-                  </span>
-                </div>
-              </div>
-            )}
-            <div ref={messageEndRef} />
-          </div>
-
-          <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19] to-transparent z-20">
-            <div className="flex items-center gap-2 bg-[#161b22] p-2 pr-2 rounded-full border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors">
-              <input
-                value={message}
-                onChange={handleTyping}
-                onKeyPress={(e) => e.key === "Enter" && send()}
-                className="flex-grow bg-transparent text-white px-4 py-2 border-none outline-none placeholder-gray-500 text-sm"
-                placeholder="Type a message to @ai..."
-              />
-              <button
-                onClick={send}
-                className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 disabled:opacity-50"
-                disabled={!message.trim()}
-              >
-                <i className="ri-send-plane-2-fill"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* COLLABORATORS SIDE PANEL */}
-        <div
-          className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
-            isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
-          } top-0 z-30 border-r border-gray-800`}
-        >
-          <header className="flex justify-between items-center p-4 border-b border-gray-800 h-16">
-            <h2 className="font-bold text-gray-200">Collaborators</h2>
-            <button
-              onClick={() => setisSidePanelOpen(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              <i className="ri-close-line text-2xl"></i>
-            </button>
-          </header>
-          <div className="p-4 flex-grow overflow-y-auto">
-            <button
-              onClick={() => setAddUserModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-500 mb-4"
-            >
-              <i className="ri-user-add-line"></i> Invite New Member
-            </button>
-            {project?.users?.map((u) => (
-              <div
-                key={u._id}
-                className="p-3 flex gap-3 items-center rounded-lg hover:bg-[#1f2937] transition-colors"
-              >
-                <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-xs font-bold">
-                  {u.email[0].toUpperCase()}
-                </div>
-                <h1 className="font-medium text-gray-300 text-sm truncate">
-                  {u.email}
-                </h1>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* NOTIFICATIONS */}
-        {isNotificationPanelOpen && (
-          <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
-            {pendingInvites.map((invite) => (
-              <div
-                key={invite._id}
-                className="flex justify-between items-center bg-[#0d1117] p-3 mb-2 rounded-lg border border-gray-700"
-              >
-                <p className="text-sm font-bold text-white">{invite.name}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleInviteResponse(invite._id, true)}
-                    className="px-2 text-green-400"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => handleInviteResponse(invite._id, false)}
-                    className="px-2 text-red-400"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-            {pendingInvites.length === 0 && (
-              <p className="text-gray-500 text-sm">No notifications</p>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* RIGHT PANEL (Explorer + Code) */}
-      <section className="right flex-grow h-full flex bg-[#030712] relative overflow-hidden">
-        {/* EXPLORER */}
-        <div className="explorer h-full max-w-64 min-w-52 bg-[#0d1117] flex flex-col border-r border-gray-800">
-          <div
-            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-            className="p-3 border-b border-gray-800 flex items-center justify-between cursor-pointer hover:bg-[#161b22]"
-          >
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              Explorer
-            </span>
-            <i
-              className={`ri-arrow-down-s-line text-gray-500 transition-transform ${
-                isExplorerOpen ? "" : "-rotate-90"
-              }`}
-            ></i>
-            <button
-              onClick={downloadProject}
-              className="text-gray-400 hover:text-white transition-colors"
-              title="Download Project as ZIP"
-            >
-              <i className="ri-download-cloud-2-line text-lg"></i>
-            </button>
-          </div>
-
-          <div
-            className={`file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-700 ${
-              isExplorerOpen ? "opacity-100" : "opacity-0 max-h-0"
-            }`}
-          >
-            {isAiThinking ? (
-              <FileTreeSkeleton />
-            ) : (
-              <div className="-ml-2">
-                {Object.keys(folderStructure).map((key) => (
-                  <FileTreeNode
-                    key={key}
-                    fileName={key}
-                    nodes={folderStructure[key]}
-                    onSelect={handleFileSelect}
-                    onDelete={onRequestDelete}
-                    path={key}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* CODE EDITOR */}
-        <div className="code-editor flex flex-col h-full w-3/5 bg-[#0d1117] min-w-0">
-          <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12 flex-shrink-0">
-            <div className="files flex overflow-x-auto no-scrollbar">
-              {openFiles.map((file) => (
-                <div
-                  key={file}
-                  onClick={() => setCurrentFile(file)}
-                  className={`group relative flex items-center min-w-fit px-4 h-12 text-sm border-r border-gray-800 cursor-pointer ${
-                    currentFile === file
-                      ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500"
-                      : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"
-                  }`}
-                >
-                  <span className="mr-2">{file.split("/").pop()}</span>
-                  <button
-                    onClick={(e) => handleCloseFile(e, file)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white"
-                  >
-                    <i className="ri-close-line"></i>
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="actions px-3 flex-shrink-0">
-              {!runProcess ? (
-                <button
-                  onClick={handleRunClick}
-                  disabled={isInstalling}
-                  className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-blue-600 text-white hover:bg-blue-500"
-                >
-                  {isInstalling ? (
-                    <i className="ri-loader-4-line animate-spin"></i>
-                  ) : (
-                    <i className="ri-play-fill"></i>
-                  )}{" "}
-                  Run
-                </button>
-              ) : (
-                <button
-                  onClick={handleStopClick}
-                  className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                >
-                  <i className="ri-stop-fill"></i> Stop
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bottom flex-grow overflow-hidden relative h-full w-full">
-            {currentFile && fileTree[currentFile]?.file ? (
-              <div key={currentFile} className="h-full w-full animate-fade-in">
-                <Editor
-                  height="100%"
-                  width="100%"
-                  path={currentFile}
-                  language={getLanguageFromFileName(currentFile)}
-                  theme="vs-dark"
-                  value={fileTree[currentFile].file.contents}
-                  onChange={handleFileContentChange}
-                  options={{ fontSize: 14, minimap: { enabled: false } }}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-600 bg-[#0d1117]">
-                <div className="text-center">
-                  <i className="ri-code-s-slash-line text-4xl mb-2 opacity-50"></i>
-                  <p>Select a file to edit</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col h-full w-2/5 border-l border-gray-800 bg-[#0d1117] min-w-0">
-          <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab("browser")}
-                className={`px-4 py-1.5 text-xs font-medium rounded ${
-                  activeTab === "browser"
-                    ? "bg-[#1f2937] text-blue-400"
-                    : "text-gray-500"
-                }`}
-              >
-                Browser
-              </button>
-              <button
-                onClick={() => setActiveTab("terminal")}
-                className={`px-4 py-1.5 text-xs font-medium rounded ${
-                  activeTab === "terminal"
-                    ? "bg-[#1f2937] text-green-400"
-                    : "text-gray-500"
-                }`}
-              >
-                Terminal
-              </button>
-            </div>
-            <button
-              onClick={handleClear}
-              className="p-2 text-gray-500 hover:text-red-400 transition-colors"
-              title="Clear"
-            >
-              <i className="ri-delete-bin-line"></i>
-            </button>
-          </div>
-
-          {activeTab === "browser" && (
-            <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
-              {iframeUrl ? (
-                <iframe
-                  src={iframeUrl}
-                  className="w-full h-full border-none"
-                ></iframe>
-              ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center animate-pulse">
-                    <i className="ri-rocket-2-fill text-3xl text-blue-500"></i>
-                  </div>
-                  <div className="text-gray-400 text-sm font-medium animate-fade-in">
-                    Ready to Launch
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === "terminal" && (
-            <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
-              {cleanTerminalOutput(terminalOutput) || "Waiting for output..."}
-              <div ref={terminalEndRef} />
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* MODALS */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
