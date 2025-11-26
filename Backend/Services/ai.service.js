@@ -76,6 +76,7 @@ const model = genAI.getGenerativeModel({
     5. Do not use placeholder comments like "// rest of code here". Write the full code.
     6. IMPORTANT: If you provide a "package.json", it MUST include a "start" script. 
        Example: "scripts": { "start": "node server.js" } or { "start": "vite" }.
+    7. If generating a standalone script (like a simple .js file), always include 2-3 console.log() statements at the bottom so the user sees output when running it.
 
     Now, analyze the user's input and determine the correct scenario.
   `,

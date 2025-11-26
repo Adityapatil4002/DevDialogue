@@ -8,7 +8,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import projectModel from "./Models/project.model.js";
 import { generateResult } from "./Services/ai.service.js";
-import * as projectService from "./Services/project.service.js"; // [NEW] Import Service
+import * as projectService from "./Services/project.service.js";
 
 const port = process.env.PORT || 4000;
 
@@ -70,7 +70,6 @@ io.on("connection", (socket) => {
 
   socket.join(socket.roomId);
 
-  // Typing Events
   socket.on("typing", () => {
     socket.to(socket.roomId).emit("typing", { email: socket.user.email });
   });
@@ -79,39 +78,55 @@ io.on("connection", (socket) => {
     socket.to(socket.roomId).emit("stop-typing", { email: socket.user.email });
   });
 
-  // Message Handling
   socket.on("project-message", async (data) => {
     const message = data.message;
-    const aiIsPresentInMessage = message.includes("@ai");
+
+    // --- [NEW] INTELLIGENT PARSING ---
+    // Check if the message contains the hidden context block we added in frontend
+    const contextDelimiter = "***\nCONTEXT FOR AI";
+    const hasContext = message.includes(contextDelimiter);
+
+    // 1. Prepare Message for HUMANS (DB & Broadcast)
+    // If context exists, we strip it out so the chat log stays clean.
+    let messageForDb = message;
+    if (hasContext) {
+      messageForDb = message.split(contextDelimiter)[0].trim();
+    }
+
+    const aiIsPresentInMessage = messageForDb.includes("@ai");
     const projectId = socket.projectIdString;
 
     try {
-      // 1. SAVE USER MESSAGE TO DB [NEW]
+      // 2. SAVE CLEAN USER MESSAGE TO DB
       await projectService.addMessage({
         projectId,
         sender: socket.user.email,
         senderId: socket.user._id,
-        message: message,
+        message: messageForDb, // Saving only the clean text
         isAi: false,
       });
 
-      // 2. Broadcast User Message (Include sender info so frontend displays it right)
-      const msgPayload = {
-        message,
+      // 3. BROADCAST CLEAN USER MESSAGE
+      // This ensures other users don't see the massive code block in the chat bubble
+      io.to(socket.roomId).emit("project-message", {
+        message: messageForDb,
         sender: { _id: socket.user._id, email: socket.user.email },
         timestamp: new Date(),
         isAi: false,
-      };
+      });
 
-      // Send to everyone including sender (for consistency)
-      io.to(socket.roomId).emit("project-message", msgPayload);
-
-      // 3. Handle AI
+      // 4. HANDLE AI
       if (aiIsPresentInMessage) {
+        // --- PREPARE PROMPT FOR AI ---
+        // We want to remove "@ai" but KEEP the context/code if it exists.
+        // We use the ORIGINAL 'message' variable which still has the code.
         const prompt = message.replace("@ai", "").trim();
+
+        console.log("🤖 AI Prompt received. Has context:", hasContext);
+
         const result = await generateResult(prompt);
 
-        // 4. SAVE AI RESPONSE TO DB [NEW]
+        // 5. SAVE AI RESPONSE TO DB
         await projectService.addMessage({
           projectId,
           sender: "AI",
@@ -120,7 +135,7 @@ io.on("connection", (socket) => {
           isAi: true,
         });
 
-        // 5. Broadcast AI Message
+        // 6. BROADCAST AI MESSAGE
         io.to(socket.roomId).emit("project-message", {
           ...result,
           isAi: true,

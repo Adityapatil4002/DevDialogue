@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as userController from "../Controllers/user.controller.js";
-import { authUser } from "../Middleware/auth.middleware.js"; // Correct Import
 import { body } from "express-validator";
+import * as authMiddleware from "../Middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -11,7 +11,7 @@ router.post(
   body("password")
     .isLength({ min: 3 })
     .withMessage("Password must be at least 3 characters long"),
-  userController.createUser // Make sure this matches your controller export (createUser or createAccount)
+  userController.createUser
 );
 
 router.post(
@@ -20,40 +20,41 @@ router.post(
   body("password")
     .isLength({ min: 3 })
     .withMessage("Password must be at least 3 characters long"),
-  userController.loginController // Make sure this matches your controller export
+  userController.loginController
 );
 
-// --- Profile Routes ---
-
-// Get current user details
-router.get("/profile", authUser, userController.profileController);
-
-// Update user details
-router.put("/update", authUser, userController.updateProfileController);
-
-// Change Password
-router.put(
-  "/change-password",
-  authUser,
-  userController.changePasswordController
+router.get(
+  "/profile",
+  authMiddleware.authUser,
+  userController.profileController
 );
-
-// Delete Account
-router.delete("/delete", authUser, userController.deleteAccountController);
-
-// --- Utility Routes ---
-
-router.get("/logout", authUser, userController.logoutController);
-
-router.get("/all", authUser, userController.getAllUsersController);
-
-// --- Dashboard Route (Fixed) ---
-router.get("/dashboard", authUser, userController.getDashboardStats);
-
+router.get("/logout", authMiddleware.authUser, userController.logoutController);
+router.get(
+  "/all",
+  authMiddleware.authUser,
+  userController.getAllUsersController
+);
 router.get(
   "/dashboard",
   authMiddleware.authUser,
   userController.getDashboardStats
+);
+
+// --- NEW PROFILE ROUTES ---
+router.put(
+  "/update",
+  authMiddleware.authUser,
+  userController.updateProfileController
+);
+router.put(
+  "/change-password",
+  authMiddleware.authUser,
+  userController.changePasswordController
+);
+router.delete(
+  "/delete",
+  authMiddleware.authUser,
+  userController.deleteAccountController
 );
 
 export default router;

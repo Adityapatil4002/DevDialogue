@@ -441,24 +441,47 @@ const Project = () => {
 
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
+
+    let messageToSend = message;
+
+    // --- SMART CONTEXT INJECTION ---
+    // If the user is talking to AI (@ai) and has a file open,
+    // we attach the file content automatically.
     if (message.trim().toLowerCase().includes("@ai")) {
       setIsAiThinking(true);
+
+      if (currentFile && fileTree[currentFile]?.file) {
+        const fileContent = fileTree[currentFile].file.contents;
+
+        // We append the code with a clear delimiter so the AI knows this is context
+        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
+      }
     }
+    // -------------------------------
+
     const messageData = {
       projectId,
-      message,
+      message: messageToSend, // We send the version WITH code to the server
       sender: { _id: user._id, email: user.email },
     };
+
     sendMessage("project-message", messageData);
+
+    // OPTIMISTIC UI UPDATE
+    // We display the "clean" message to the user immediately,
+    // but the server will process the "messageToSend" (with code).
     setMessages((prev) => [
       ...prev,
       {
         ...messageData,
+        message: message, // Keep the UI clean (don't show the massive code block)
         isOptimistic: true,
         timestamp: new Date().toISOString(),
       },
     ]);
+
     setMessage("");
+
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setIsTyping(false);
     const socket = initializeSocket(projectId);
