@@ -1,3 +1,5 @@
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "../Config/axios";
@@ -11,6 +13,8 @@ import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
+
+// --- UTILITY FUNCTIONS ---
 
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
@@ -32,15 +36,99 @@ const getLanguageFromFileName = (fileName) => {
   }
 };
 
-// Utility to clean terminal output (remove ANSI escape codes)
 const cleanTerminalOutput = (text) => {
   if (!text) return "";
-  // Regex to strip ANSI escape codes
   return text.replace(
     /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
     ""
   );
 };
+
+// --- COMPONENTS ---
+
+const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
+  const isDir = !!nodes;
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    if (isDir) setIsOpen(!isOpen);
+    else onSelect(path);
+  };
+
+  return (
+    <div className="ml-4 select-none">
+      <div
+        onClick={handleToggle}
+        className={`group flex items-center justify-between cursor-pointer py-1 px-2 rounded-md transition-colors text-sm ${
+          !isDir
+            ? "hover:bg-gray-800 text-gray-300"
+            : "hover:text-white text-gray-400 font-semibold"
+        }`}
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          <i
+            className={
+              isDir
+                ? isOpen
+                  ? "ri-folder-open-fill text-yellow-500"
+                  : "ri-folder-fill text-yellow-500"
+                : "ri-file-code-line text-blue-400"
+            }
+          ></i>
+          <span
+            className={`truncate ${!isDir ? "text-gray-300" : "text-gray-200"}`}
+          >
+            {fileName}
+          </span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(path);
+          }}
+          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity p-1"
+          title="Delete"
+        >
+          <i className="ri-delete-bin-line"></i>
+        </button>
+      </div>
+      {isDir && isOpen && (
+        <div className="border-l border-gray-700 ml-2">
+          {Object.keys(nodes).map((child) => (
+            <FileTreeNode
+              key={child}
+              fileName={child}
+              nodes={nodes[child]}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              path={`${path}/${child}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FileTreeSkeleton = () => (
+  <div className="p-4 space-y-3 opacity-60">
+    <div className="flex items-center gap-2 animate-pulse">
+      <div className="w-4 h-4 bg-gray-600 rounded"></div>
+      <div className="h-4 bg-gray-600 rounded w-24"></div>
+    </div>
+    <div className="ml-4 space-y-2">
+      <div className="flex items-center gap-2 animate-pulse">
+        <div className="w-4 h-4 bg-gray-600 rounded"></div>
+        <div className="h-4 bg-gray-600 rounded w-16"></div>
+      </div>
+    </div>
+    <div className="text-xs text-blue-400 mt-2 animate-pulse flex items-center gap-2">
+      <i className="ri-loader-4-line animate-spin"></i>
+      Generating structure...
+    </div>
+  </div>
+);
 
 const Project = () => {
   const { projectId } = useParams();
@@ -52,8 +140,6 @@ const Project = () => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
-
-  // Delete Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
 
@@ -61,7 +147,6 @@ const Project = () => {
   const [searchEmail, setSearchEmail] = useState("");
   const [searchedUser, setSearchedUser] = useState(null);
   const [pendingInvites, setPendingInvites] = useState([]);
-
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -74,7 +159,7 @@ const Project = () => {
   const [isAiThinking, setIsAiThinking] = useState(false);
 
   const [fileTree, setFileTree] = useState({});
-  const [CurrentFile, setCurrentFile] = useState(null);
+  const [currentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
   const [webContainer, setWebContainer] = useState(null);
   const [iframeUrl, setIframeUrl] = useState(null);
@@ -84,11 +169,30 @@ const Project = () => {
   const [activeTab, setActiveTab] = useState("browser");
 
   const messageEndRef = useRef(null);
-  const terminalEndRef = useRef(null); // Ref for auto-scrolling terminal
+  const terminalEndRef = useRef(null);
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // --- MENU ---
+  const buildStructure = (files) => {
+    if (!files || Object.keys(files).length === 0) return {};
+    const root = {};
+    Object.keys(files).forEach((filePath) => {
+      const parts = filePath.split("/");
+      let current = root;
+      parts.forEach((part, index) => {
+        if (index === parts.length - 1) {
+          current[part] = null;
+        } else {
+          current[part] = current[part] || {};
+          current = current[part];
+        }
+      });
+    });
+    return root;
+  };
+
+  const folderStructure = buildStructure(fileTree);
+
   const menuItems = [
     { label: "Home", link: "/home" },
     { label: "Profile", link: "/profile" },
@@ -102,7 +206,6 @@ const Project = () => {
     { label: "LinkedIn", link: "https://linkedin.com" },
   ];
 
-  // --- INITIALIZATION ---
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -113,7 +216,6 @@ const Project = () => {
         setLoading(false);
         return;
       }
-
       setLoading(true);
       setError(null);
 
@@ -127,38 +229,27 @@ const Project = () => {
           setProject(projectRes.data.project);
           setFileTree(projectRes.data.project.fileTree || {});
           setPendingInvites(allProjectsRes.data.invites || []);
-
-          setMessages(projectRes.data.project.messages || []); 
-
-
-          initializeSocket(projectId);
+          setMessages(projectRes.data.project.messages || []);
 
           if (!webContainer) {
             getWebContainer().then((containerInstance) => {
-              if (isMounted) {
-                setWebContainer(containerInstance);
-              }
+              if (isMounted) setWebContainer(containerInstance);
             });
           }
 
           const socket = initializeSocket(projectId);
-
-          socket.on("typing", (data) => {
-            setRemoteTypingUser(data.email);
-          });
-
-          socket.on("stop-typing", () => {
-            setRemoteTypingUser("");
-          });
+          socket.on("typing", (data) => setRemoteTypingUser(data.email));
+          socket.on("stop-typing", () => setRemoteTypingUser(""));
 
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
-              if (data.isAi) {
-                setIsAiThinking(false);
-              }
+              if (data.isAi) setIsAiThinking(false);
 
               setMessages((prev) => {
-                if (data.sender?._id === user?._id) {
+                const incomingSenderId = data.sender?._id || data.senderId;
+                const isMyMessage = incomingSenderId === user?._id;
+
+                if (isMyMessage) {
                   let replaced = false;
                   const updated = prev.map((m) => {
                     if (
@@ -182,21 +273,16 @@ const Project = () => {
                 return prev;
               });
 
-              if (data.isAi && data.filetree) {
-                const newFiles = Object.keys(data.filetree);
+              if (
+                data.isAi &&
+                data.filetree &&
+                typeof data.filetree === "object"
+              ) {
                 setFileTree((prev) => {
                   const merged = { ...prev, ...data.filetree };
                   saveFileTree(merged);
                   return merged;
                 });
-                if (newFiles.length > 0) {
-                  setCurrentFile(newFiles[0]);
-                  setOpenFiles((prev) => {
-                    const all = [...prev];
-                    newFiles.forEach((f) => !all.includes(f) && all.push(f));
-                    return all;
-                  });
-                }
               }
             }
           });
@@ -223,25 +309,20 @@ const Project = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAiThinking]);
 
-  // Auto-scroll terminal
   useEffect(() => {
     if (activeTab === "terminal") {
       terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [terminalOutput, activeTab]);
 
-  // --- TYPING HANDLER ---
   const handleTyping = (e) => {
     setMessage(e.target.value);
-
     if (!isTyping) {
       setIsTyping(true);
       const socket = initializeSocket(projectId);
       socket.emit("typing");
     }
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
       const socket = initializeSocket(projectId);
@@ -249,7 +330,6 @@ const Project = () => {
     }, 2000);
   };
 
-  // --- SEARCH & INVITE LOGIC ---
   const handleSearchUser = async () => {
     if (!searchEmail.trim()) return;
     try {
@@ -283,7 +363,6 @@ const Project = () => {
         ? "/project/accept-invite"
         : "/project/reject-invite";
       await axios.put(endpoint, { projectId: inviteProjectId });
-
       setPendingInvites((prev) =>
         prev.filter((i) => i._id !== inviteProjectId)
       );
@@ -293,7 +372,6 @@ const Project = () => {
     }
   };
 
-  // --- FILE OPS ---
   const saveFileTree = (fileTreeToSave) => {
     if (!project?._id) return;
     axios
@@ -304,37 +382,11 @@ const Project = () => {
       .catch((err) => console.error(err));
   };
 
-  // Trigger the delete modal
-  const handleDeleteClick = (e, fileName) => {
-    e.stopPropagation();
-    setFileToDelete(fileName);
-    setIsDeleteModalOpen(true);
-  };
-
-  // Actually delete the file
-  const confirmDeleteFile = () => {
-    if (!fileToDelete) return;
-
-    const newFileTree = { ...fileTree };
-    delete newFileTree[fileToDelete];
-    setFileTree(newFileTree);
-
-    if (openFiles.includes(fileToDelete)) {
-      setOpenFiles((prev) => prev.filter((f) => f !== fileToDelete));
-      if (CurrentFile === fileToDelete) setCurrentFile(null);
-    }
-    saveFileTree(newFileTree);
-
-    // Close modal
-    setIsDeleteModalOpen(false);
-    setFileToDelete(null);
-  };
-
   const handleCloseFile = (e, fileToClose) => {
     e.stopPropagation();
     setOpenFiles((prev) => {
       const newOpenFiles = prev.filter((f) => f !== fileToClose);
-      if (CurrentFile === fileToClose) {
+      if (currentFile === fileToClose) {
         if (newOpenFiles.length > 0)
           setCurrentFile(newOpenFiles[newOpenFiles.length - 1]);
         else setCurrentFile(null);
@@ -346,9 +398,9 @@ const Project = () => {
   const handleFileContentChange = (newValue) => {
     const newFileTree = {
       ...fileTree,
-      [CurrentFile]: {
-        ...fileTree[CurrentFile],
-        file: { ...fileTree[CurrentFile]?.file, contents: newValue },
+      [currentFile]: {
+        ...fileTree[currentFile],
+        file: { ...fileTree[currentFile]?.file, contents: newValue },
       },
     };
     setFileTree(newFileTree);
@@ -356,11 +408,41 @@ const Project = () => {
     saveTimeout.current = setTimeout(() => saveFileTree(newFileTree), 1500);
   };
 
+  const handleFileSelect = (filePath) => {
+    setCurrentFile(filePath);
+    if (!openFiles.includes(filePath)) {
+      setOpenFiles((prev) => [...prev, filePath]);
+    }
+  };
+
+  const onRequestDelete = (path) => {
+    setFileToDelete(path);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = () => {
+    if (!fileToDelete) return;
+    const newFileTree = { ...fileTree };
+    const pathsToDelete = [];
+    Object.keys(newFileTree).forEach((key) => {
+      if (key === fileToDelete || key.startsWith(fileToDelete + "/")) {
+        pathsToDelete.push(key);
+      }
+    });
+    pathsToDelete.forEach((key) => delete newFileTree[key]);
+    setFileTree(newFileTree);
+    saveFileTree(newFileTree);
+    setOpenFiles((prev) => prev.filter((f) => !pathsToDelete.includes(f)));
+    if (pathsToDelete.includes(currentFile)) setCurrentFile(null);
+    setIsDeleteModalOpen(false);
+    setFileToDelete(null);
+  };
+
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
-
-    setIsAiThinking(true);
-
+    if (message.trim().toLowerCase().includes("@ai")) {
+      setIsAiThinking(true);
+    }
     const messageData = {
       projectId,
       message,
@@ -376,55 +458,167 @@ const Project = () => {
       },
     ]);
     setMessage("");
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setIsTyping(false);
     const socket = initializeSocket(projectId);
     socket.emit("stop-typing");
   };
 
-  // --- RUNNER LOGIC ---
   const handleRunClick = async () => {
     if (!webContainer) return;
+
     setTerminalOutput("");
-    setIsInstalling(true);
     setActiveTab("terminal");
+
     try {
-      await webContainer.mount(fileTree);
-      setTerminalOutput((p) => p + "Installing dependencies...\n");
-      const installProcess = await webContainer.spawn("npm", ["install"]);
-      installProcess.output.pipeTo(
-        new WritableStream({
-          write(chunk) {
-            setTerminalOutput((p) => p + chunk);
-          },
-        })
-      );
-      if ((await installProcess.exit) !== 0)
-        throw new Error("Installation failed");
+      const mountStructure = JSON.parse(JSON.stringify(fileTree));
+      // CHECK: Does package.json exist?
+      const hasPackageJson = !!mountStructure["package.json"];
 
-      setTerminalOutput((p) => p + "\nStarting server...\n");
-      setIsInstalling(false);
-      if (runProcess) runProcess.kill();
+      // -------------------------------------------
+      // SCENARIO 1: PROJECT MODE (package.json exists)
+      // -------------------------------------------
+      if (hasPackageJson) {
+        setIsInstalling(true);
 
-      let tempRunProcess = await webContainer.spawn("npm", ["start"]);
-      tempRunProcess.output.pipeTo(
-        new WritableStream({
-          write(chunk) {
-            setTerminalOutput((p) => p + chunk);
-          },
-        })
-      );
-      setRunProcess(tempRunProcess);
+        // 1. Auto-Fix missing "start" script
+        try {
+          const pkgJson = JSON.parse(
+            mountStructure["package.json"].file.contents
+          );
+          if (!pkgJson.scripts || !pkgJson.scripts.start) {
+            const entryFile = Object.keys(mountStructure).find((filename) =>
+              ["server.js", "app.js", "index.js", "main.js"].includes(filename)
+            );
+            if (entryFile) {
+              pkgJson.scripts = {
+                ...(pkgJson.scripts || {}),
+                start: `node ${entryFile}`,
+              };
+              mountStructure["package.json"].file.contents = JSON.stringify(
+                pkgJson,
+                null,
+                2
+              );
+              setTerminalOutput(
+                (p) =>
+                  p +
+                  `[System] Auto-fixed missing "start" script pointing to ${entryFile}...\n`
+              );
+            }
+          }
+        } catch (e) {
+          /* ignore parse error */
+        }
 
-      webContainer.on("server-ready", (port, url) => {
-        console.log("Server ready at:", url);
-        setIframeUrl(url);
-        setActiveTab("browser");
-      });
+        // 2. Mount Files
+        await webContainer.mount(mountStructure);
+
+        // 3. Install Dependencies
+        setTerminalOutput((p) => p + "Installing dependencies...\n");
+        const installProcess = await webContainer.spawn("npm", ["install"]);
+
+        installProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((p) => p + chunk);
+            },
+          })
+        );
+
+        if ((await installProcess.exit) !== 0)
+          throw new Error("Installation failed");
+
+        // 4. Start Server
+        setIsInstalling(false);
+        setTerminalOutput((p) => p + "\nStarting server...\n");
+
+        if (runProcess) runProcess.kill();
+
+        let tempRunProcess = await webContainer.spawn("npm", ["start"]);
+        tempRunProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((p) => p + chunk);
+            },
+          })
+        );
+
+        setRunProcess(tempRunProcess);
+
+        // Listen for server URL updates
+        webContainer.on("server-ready", (port, url) => {
+          setIframeUrl(url);
+          setActiveTab("browser");
+        });
+      }
+
+      // -------------------------------------------
+      // SCENARIO 2: SCRIPT MODE (No package.json)
+      // -------------------------------------------
+      else {
+        setIsInstalling(false);
+        await webContainer.mount(mountStructure);
+
+        // Find the first JavaScript file to run
+        const jsFile = Object.keys(mountStructure).find((filename) =>
+          filename.endsWith(".js")
+        );
+
+        if (!jsFile) {
+          throw new Error(
+            "No JavaScript file found to run. Please create a .js file or a package.json."
+          );
+        }
+
+        setTerminalOutput(
+          `[System] No package.json found. Running "${jsFile}" directly...\n`
+        );
+
+        if (runProcess) runProcess.kill();
+
+        // Run "node filename.js" directly (No npm install needed)
+        let tempRunProcess = await webContainer.spawn("node", [jsFile]);
+
+        tempRunProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((p) => p + chunk);
+            },
+          })
+        );
+
+        setRunProcess(tempRunProcess);
+      }
     } catch (err) {
       setTerminalOutput((p) => p + `\nError: ${err.message}\n`);
       setIsInstalling(false);
+    }
+  };
+
+  const downloadProject = async () => {
+    const zip = new JSZip();
+
+    // Iterate through the fileTree and add files to the zip
+    Object.keys(fileTree).forEach((path) => {
+      const fileContent = fileTree[path].file?.contents;
+      if (fileContent) {
+        // JSZip automatically creates folders based on the path (e.g., "src/App.jsx")
+        zip.file(path, fileContent);
+      }
+    });
+
+    try {
+      // Generate the zip file
+      const content = await zip.generateAsync({ type: "blob" });
+
+      // Trigger the download
+      const safeName =
+        project?.name?.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";
+      saveAs(content, `${safeName}.zip`);
+    } catch (error) {
+      console.error("Failed to zip project:", error);
+      alert("Failed to download project.");
     }
   };
 
@@ -437,21 +631,18 @@ const Project = () => {
   };
 
   const handleClear = () => {
-    if (activeTab === "browser") {
-      setIframeUrl(null);
-    } else {
-      setTerminalOutput("");
-    }
+    if (activeTab === "browser") setIframeUrl(null);
+    else setTerminalOutput("");
   };
 
   const AiMessage = ({ raw }) => {
     try {
-      const msgObj = JSON.parse(raw);
+      const msgObj = typeof raw === "string" ? JSON.parse(raw) : raw;
       return (
-        <div className="prose prose-invert prose-sm max-w-none space-y-2">
+        <div className="prose prose-invert prose-sm max-w-none space-y-2 break-words">
           <div dangerouslySetInnerHTML={{ __html: msgObj.text || "" }} />
           {msgObj.buildCommand && (
-            <div className="p-2 bg-[#0d1117] border border-gray-700 rounded-md text-xs font-mono text-yellow-400">
+            <div className="p-2 bg-[#0d1117] border border-gray-700 rounded-md text-xs font-mono text-yellow-400 overflow-x-auto">
               <strong>Build:</strong>{" "}
               <span className="text-green-400">
                 {msgObj.buildCommand.mainItem}
@@ -462,14 +653,17 @@ const Project = () => {
         </div>
       );
     } catch {
-      return <p className="text-sm whitespace-pre-wrap">{raw}</p>;
+      // Fallback for simple strings or error messages
+      return <p className="text-sm whitespace-pre-wrap break-words">{raw}</p>;
     }
   };
 
   if (loading)
     return (
       <div className="h-screen bg-[#0d1117] text-white flex items-center justify-center">
-        Loading...
+        <div className="flex flex-col items-center gap-4">
+          <span className="loader"></span> Loading Project...
+        </div>
       </div>
     );
   if (error)
@@ -484,17 +678,11 @@ const Project = () => {
       <style>{`
         .message-box::-webkit-scrollbar { width: 6px; }
         .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .typing-indicator span { animation: blink 1.4s infinite both; }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
       `}</style>
 
-      {/* --- MENU (Hidden when Collaborator Panel is Open) --- */}
       {!isSidePanelOpen && (
         <div className="fixed top-4 left-4 z-50">
           <StaggeredMenu
@@ -507,9 +695,8 @@ const Project = () => {
         </div>
       )}
 
-      {/* ---------- LEFT PANEL (CHAT) ---------- */}
+      {/* LEFT CHAT PANEL */}
       <section className="relative flex flex-col h-full min-w-80 w-full md:w-96 lg:w-[400px] bg-[#0b0f19] border-r border-gray-800 z-10">
-        {/* HEADER */}
         <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16">
           <div className="flex items-center gap-3">
             <button
@@ -525,7 +712,6 @@ const Project = () => {
               </h1>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <button
               onClick={() =>
@@ -547,90 +733,72 @@ const Project = () => {
           </div>
         </header>
 
-        {/* CHAT AREA */}
         <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
           <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex w-full animate-fade-in ${
-                  msg.sender?._id === user?._id
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
+            {messages.map((msg, i) => {
+              const isOwnMessage =
+                msg.sender?._id?.toString() === user?._id?.toString() ||
+                msg.senderId?.toString() === user?._id?.toString();
+              const senderEmail = msg.sender?.email || msg.sender;
+
+              return (
                 <div
-                  className={`max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative ${
-                    msg.sender?._id === user?._id
-                      ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
-                      : "bg-gray-800 border-gray-700 text-gray-100 rounded-bl-none"
+                  key={i}
+                  className={`flex w-full animate-fade-in ${
+                    isOwnMessage ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {msg.sender?._id !== user?._id && !msg.isAi && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
-                        {msg.sender.email?.[0].toUpperCase()}
+                  <div
+                    className={`max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative break-words overflow-hidden ${
+                      isOwnMessage
+                        ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
+                        : "bg-gray-800 border-gray-700 text-gray-100 rounded-bl-none"
+                    }`}
+                  >
+                    {!isOwnMessage && !msg.isAi && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
+                          {typeof senderEmail === "string"
+                            ? senderEmail[0]?.toUpperCase()
+                            : "?"}
+                        </div>
+                        <small className="opacity-70 text-xs font-medium text-gray-300">
+                          {typeof senderEmail === "string"
+                            ? senderEmail
+                            : "User"}
+                        </small>
                       </div>
-                      <small className="opacity-70 text-xs font-medium text-gray-300">
-                        {msg.sender.email}
-                      </small>
-                    </div>
-                  )}
-                  {msg.isAi ? (
-                    <div className="flex gap-2">
-                      <i className="ri-robot-2-line text-blue-400 text-lg mt-1"></i>
-                      <AiMessage raw={msg.message} />
-                    </div>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                  )}
-                  <small className="text-[10px] self-end mt-1 opacity-60">
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </small>
+                    )}
+                    {msg.isAi ? (
+                      <div className="flex gap-2">
+                        <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
+                        <div className="overflow-hidden w-full">
+                          <AiMessage raw={msg.message} />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {msg.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
-            {/* AI Thinking Bubble */}
             {isAiThinking && (
               <div className="flex justify-start animate-fade-in">
                 <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
                   <i className="ri-robot-2-line text-blue-400 animate-spin-slow"></i>
                   <span className="text-xs font-medium text-gray-300">
-                    AI is thinking...
+                    Processing...
                   </span>
-                  <div className="typing-indicator flex gap-1">
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  </div>
                 </div>
               </div>
             )}
-
-            {/* Typing Indicator Bubble (Human) */}
-            {remoteTypingUser && (
-              <div className="flex justify-start animate-fade-in">
-                <div className="bg-[#1f2937] px-3 py-2 rounded-full rounded-bl-none border border-gray-700 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">
-                    {remoteTypingUser.split("@")[0]} is typing
-                  </span>
-                  <div className="typing-indicator flex gap-1">
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div ref={messageEndRef} />
           </div>
 
-          {/* Input */}
           <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19] to-transparent z-20">
             <div className="flex items-center gap-2 bg-[#161b22] p-2 pr-2 rounded-full border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors">
               <input
@@ -673,76 +841,55 @@ const Project = () => {
             >
               <i className="ri-user-add-line"></i> Invite New Member
             </button>
-            <div className="flex flex-col gap-2">
-              {project?.users?.map((u) => (
-                <div
-                  key={u._id}
-                  className="p-3 flex gap-3 items-center rounded-lg hover:bg-[#1f2937] transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-xs font-bold">
-                    {u.email[0].toUpperCase()}
-                  </div>
-                  <h1 className="font-medium text-gray-300 text-sm truncate">
-                    {u.email}
-                  </h1>
+            {project?.users?.map((u) => (
+              <div
+                key={u._id}
+                className="p-3 flex gap-3 items-center rounded-lg hover:bg-[#1f2937] transition-colors"
+              >
+                <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-xs font-bold">
+                  {u.email[0].toUpperCase()}
                 </div>
-              ))}
-            </div>
+                <h1 className="font-medium text-gray-300 text-sm truncate">
+                  {u.email}
+                </h1>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* NOTIFICATIONS PANEL */}
+        {/* NOTIFICATIONS */}
         {isNotificationPanelOpen && (
           <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
-            <h3 className="text-sm font-bold text-gray-400 uppercase mb-3">
-              Pending Invites
-            </h3>
-            {pendingInvites.length === 0 ? (
-              <p className="text-gray-500 text-sm italic">
-                No pending invites.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {pendingInvites.map((invite) => (
-                  <div
-                    key={invite._id}
-                    className="flex justify-between items-center bg-[#0d1117] p-3 rounded-lg border border-gray-700"
+            {pendingInvites.map((invite) => (
+              <div
+                key={invite._id}
+                className="flex justify-between items-center bg-[#0d1117] p-3 mb-2 rounded-lg border border-gray-700"
+              >
+                <p className="text-sm font-bold text-white">{invite.name}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleInviteResponse(invite._id, true)}
+                    className="px-2 text-green-400"
                   >
-                    <div>
-                      <p className="text-sm font-bold text-white">
-                        {invite.name}
-                      </p>
-                      <p className="text-xs text-gray-500">Project Invite</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleInviteResponse(invite._id, true)}
-                        className="px-3 py-1 bg-green-600/20 text-green-400 rounded hover:bg-green-600/30 text-xs font-bold"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleInviteResponse(invite._id, false)}
-                        className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleInviteResponse(invite._id, false)}
+                    className="px-2 text-red-400"
+                  >
+                    Reject
+                  </button>
+                </div>
               </div>
+            ))}
+            {pendingInvites.length === 0 && (
+              <p className="text-gray-500 text-sm">No notifications</p>
             )}
-            <button
-              onClick={() => setIsNotificationPanelOpen(false)}
-              className="w-full mt-4 text-center text-gray-500 hover:text-white text-xs"
-            >
-              <i className="ri-arrow-up-s-line"></i> Close Notifications
-            </button>
           </div>
         )}
       </section>
 
-      {/* ---------- RIGHT PANEL ---------- */}
+      {/* RIGHT PANEL (Explorer + Code) */}
       <section className="right flex-grow h-full flex bg-[#030712] relative overflow-hidden">
         {/* EXPLORER */}
         <div className="explorer h-full max-w-64 min-w-52 bg-[#0d1117] flex flex-col border-r border-gray-800">
@@ -752,67 +899,60 @@ const Project = () => {
           >
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
               Explorer
-              {isAiThinking && (
-                <i className="ri-loader-4-line animate-spin text-blue-400"></i>
-              )}
             </span>
             <i
               className={`ri-arrow-down-s-line text-gray-500 transition-transform ${
                 isExplorerOpen ? "" : "-rotate-90"
               }`}
             ></i>
+            <button
+              onClick={downloadProject}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Download Project as ZIP"
+            >
+              <i className="ri-download-cloud-2-line text-lg"></i>
+            </button>
           </div>
+
           <div
-            className={`file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 ${
+            className={`file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-700 ${
               isExplorerOpen ? "opacity-100" : "opacity-0 max-h-0"
             }`}
           >
-            {Object.keys(fileTree).map((file, index) => (
-              <div
-                key={file}
-                style={{ animationDelay: `${index * 0.05}s` }}
-                className={`group w-full text-left px-4 py-1.5 flex items-center gap-2 transition-colors border-l-2 cursor-pointer animate-slide-in ${
-                  CurrentFile === file
-                    ? "bg-[#1f2937] border-blue-500 text-blue-400"
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-              >
-                <div
-                  className="flex items-center gap-2 flex-grow overflow-hidden"
-                  onClick={() => {
-                    setCurrentFile(file);
-                    setOpenFiles((p) => (p.includes(file) ? p : [...p, file]));
-                  }}
-                >
-                  <i className="ri-file-code-line text-lg"></i>
-                  <span className="text-sm font-medium truncate">{file}</span>
-                </div>
-                <button
-                  onClick={(e) => handleDeleteClick(e, file)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500"
-                >
-                  <i className="ri-delete-bin-line"></i>
-                </button>
+            {isAiThinking ? (
+              <FileTreeSkeleton />
+            ) : (
+              <div className="-ml-2">
+                {Object.keys(folderStructure).map((key) => (
+                  <FileTreeNode
+                    key={key}
+                    fileName={key}
+                    nodes={folderStructure[key]}
+                    onSelect={handleFileSelect}
+                    onDelete={onRequestDelete}
+                    path={key}
+                  />
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
 
-        {/* EDITOR (Width 60%) */}
-        <div className="code-editor flex flex-col h-full w-3/5 bg-[#0d1117]">
-          <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12">
+        {/* CODE EDITOR */}
+        <div className="code-editor flex flex-col h-full w-3/5 bg-[#0d1117] min-w-0">
+          <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12 flex-shrink-0">
             <div className="files flex overflow-x-auto no-scrollbar">
               {openFiles.map((file) => (
                 <div
                   key={file}
                   onClick={() => setCurrentFile(file)}
                   className={`group relative flex items-center min-w-fit px-4 h-12 text-sm border-r border-gray-800 cursor-pointer ${
-                    CurrentFile === file
+                    currentFile === file
                       ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500"
                       : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"
                   }`}
                 >
-                  <span className="mr-2">{file}</span>
+                  <span className="mr-2">{file.split("/").pop()}</span>
                   <button
                     onClick={(e) => handleCloseFile(e, file)}
                     className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white"
@@ -822,7 +962,7 @@ const Project = () => {
                 </div>
               ))}
             </div>
-            <div className="actions px-3">
+            <div className="actions px-3 flex-shrink-0">
               {!runProcess ? (
                 <button
                   onClick={handleRunClick}
@@ -846,31 +986,33 @@ const Project = () => {
               )}
             </div>
           </div>
-          <div className="bottom flex flex-grow overflow-hidden relative">
-            {CurrentFile && fileTree[CurrentFile]?.file ? (
-              <div key={CurrentFile} className="h-full w-full animate-fade-in">
+
+          <div className="bottom flex-grow overflow-hidden relative h-full w-full">
+            {currentFile && fileTree[currentFile]?.file ? (
+              <div key={currentFile} className="h-full w-full animate-fade-in">
                 <Editor
                   height="100%"
                   width="100%"
-                  path={CurrentFile}
-                  language={getLanguageFromFileName(CurrentFile)}
+                  path={currentFile}
+                  language={getLanguageFromFileName(currentFile)}
                   theme="vs-dark"
-                  value={fileTree[CurrentFile].file.contents}
+                  value={fileTree[currentFile].file.contents}
                   onChange={handleFileContentChange}
                   options={{ fontSize: 14, minimap: { enabled: false } }}
                 />
               </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-600">
-                Select a file
+              <div className="w-full h-full flex items-center justify-center text-gray-600 bg-[#0d1117]">
+                <div className="text-center">
+                  <i className="ri-code-s-slash-line text-4xl mb-2 opacity-50"></i>
+                  <p>Select a file to edit</p>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* PREVIEW (Width 40% - Fixed Layout Shift) */}
         <div className="flex flex-col h-full w-2/5 border-l border-gray-800 bg-[#0d1117] min-w-0">
-          {/* Tabs */}
           <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
             <div className="flex gap-2">
               <button
@@ -894,7 +1036,6 @@ const Project = () => {
                 Terminal
               </button>
             </div>
-            {/* Clear Button */}
             <button
               onClick={handleClear}
               className="p-2 text-gray-500 hover:text-red-400 transition-colors"
@@ -904,7 +1045,6 @@ const Project = () => {
             </button>
           </div>
 
-          {/* BROWSER CONTENT */}
           {activeTab === "browser" && (
             <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
               {iframeUrl ? (
@@ -925,7 +1065,6 @@ const Project = () => {
             </div>
           )}
 
-          {/* TERMINAL CONTENT */}
           {activeTab === "terminal" && (
             <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
               {cleanTerminalOutput(terminalOutput) || "Waiting for output..."}
@@ -935,7 +1074,7 @@ const Project = () => {
         </div>
       </section>
 
-      {/* ADD USER MODAL */}
+      {/* MODALS */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -991,7 +1130,6 @@ const Project = () => {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#161b22] border border-red-900/50 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
@@ -1001,14 +1139,16 @@ const Project = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white mb-1">
-                  Delete File?
+                  Delete Item?
                 </h3>
                 <p className="text-sm text-gray-400">
                   Are you sure you want to delete{" "}
                   <span className="text-white font-mono bg-gray-800 px-1 rounded">
                     {fileToDelete}
                   </span>
-                  ? This action cannot be undone.
+                  ?
+                  <br />
+                  This action cannot be undone.
                 </p>
               </div>
             </div>

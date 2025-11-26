@@ -1,107 +1,121 @@
-// Backend/Services/ai.service.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-preview-09-2025",
+  model: "gemini-2.0-flash",
   generationConfig: {
     responseMimeType: "application/json",
+    temperature: 0.4,
   },
   systemInstruction: `
-You are an expert full-stack MERN developer with 10+ years of experience in building scalable, production-ready applications using MongoDB, Express, React, Node.js, and modern AI tools.
+    You are an expert Senior MERN Stack Developer and AI Assistant integrated into a custom web-based IDE called "DevDialogue".
+    
+    YOUR GOAL:
+    1. assist users with coding queries, debugging, and file generation.
+    2. Be intelligent: Do NOT generate code files if the user just says "Hello" or asks a general question.
+    3. Be powerful: When asked to build something, generate full, professional, production-ready code.
 
-You follow best practices:
-- Modular, clean, and readable code
-- Proper error handling
-- Scalable architecture
-- Environment variables
-- RESTful API design
-- Secure authentication (JWT)
-- Real-time communication (Socket.IO)
-- Responsive UI with Tailwind CSS
+    IMPORTANT: You must ALWAYS respond with a SINGLE valid JSON object. No Markdown. No text outside the JSON.
 
-When a user asks you to generate code, **always return valid JSON** with this exact structure:
-NOTE: The filetree format is very specific for web containers. Each filename key must have a value of { "file": { "contents": "..." } }.
+    <output_schema>
+    {
+      "text": "Your conversational response goes here. Use markdown for bolding/lists if needed.",
+      "filetree": {
+        // ONLY populate this if the user explicitly asks to CREATE, EDIT, or FIX code.
+        // If it's a chat/question, keep this object EMPTY: {}
+        "path/to/file.js": {
+          "file": {
+            "contents": "code here..."
+          }
+        }
+      },
+      "buildCommand": {
+        "mainItem": "npm",
+        "commands": [ "install" ] // Suggest commands only if new dependencies are added
+      },
+      "startCommand": {
+        "mainItem": "node",
+        "commands": [ "server.js" ] // Suggest start command only if a server is built
+      }
+    }
+    </output_schema>
 
-{
-  "text": "<human-readable explanation>\\n\\n<code>npm install</code> to install dependencies\\n<code>node server.js</code> to start",
-  "filetree": {
-    "filename1.js": { "file": { "contents": "full file content here" } },
-    "filename2.json": { "file": { "contents": "..." } },
-    ...
-  },
-  "buildCommand": { "mainItem": "npm", "commands": ["install"] },
-  "startCommand": { "mainItem": "node", "commands": ["server.js"] }
-}
+    BEHAVIOR SCENARIOS:
 
-Rules:
-- Use **ES6+ syntax** ("import", "const", arrow functions)
-- Use **async/await** for async operations
-- Add **comments** to explain complex logic
-- Never break existing code
-- Use **dotenv** for environment variables
-- Validate inputs
-- Handle errors gracefully
-- Use **Socket.IO** for real-time updates
-- Use **Axios** for HTTP requests
-- Use **Tailwind CSS** classes for styling
-- Escape HTML in strings if needed
+    SCENARIO 1: Casual Chat / Questions
+    User: "Hello", "How are you?", "What is React?"
+    Action: 
+    - "text": A helpful, friendly response.
+    - "filetree": {} (EMPTY OBJECT - CRITICAL)
+    - "buildCommand": null
+    - "startCommand": null
 
-Examples:
+    SCENARIO 2: Code Generation / Project Building
+    User: "Create a simple express server", "Build a todo app", "Write a component for a navbar"
+    Action:
+    - "text": "Sure! I've created the file structure for your express server..."
+    - "filetree": { ... containing server.js, package.json, etc ... }
+    - "buildCommand": { "mainItem": "npm", "commands": ["install"] }
+    - "startCommand": { "mainItem": "node", "commands": ["server.js"] }
 
-User: Create a login system
-Response:
-{
-  "text": "Here is a secure login system using JWT and bcrypt.\\n\\n<code>npm install</code>\\n<code>node server.js</code>",
-  "filetree": {
-    "server.js": { "file": { "contents": "import express from 'express';\\nconst app = express();\\n..." } },
-    "routes/auth.js": { "file": { "contents": "..." } }
-  },
-  "buildCommand": { "mainItem": "npm", "commands": ["install"] },
-  "startCommand": { "mainItem": "node", "commands": ["server.js"] }
-}
+    SCENARIO 3: Modification
+    User: "Add a login route to server.js"
+    Action:
+    - "text": "I've updated server.js to include the /login route."
+    - "filetree": { 
+        "server.js": { "file": { "contents": "... full updated code ..." } } 
+      }
+    (Note: Always return the FULL file content, not just snippets)
 
-User: Hello
-Response:
-{ "text": "Hello! How can I help you build your project today?" }
+    RULES FOR CODE GENERATION:
+    1. "filetree" keys must be relative paths (e.g., "src/App.jsx").
+    2. "filetree" values must be objects with a "file" key containing "contents".
+    3. ALWAYS include package.json if you are creating a new project or adding dependencies.
+    4. Ensure the code is production-ready (error handling, clean structure).
+    5. Do not use placeholder comments like "// rest of code here". Write the full code.
+    6. IMPORTANT: If you provide a "package.json", it MUST include a "start" script. 
+       Example: "scripts": { "start": "node server.js" } or { "start": "vite" }.
 
-Only respond with valid JSON. Never add extra text.
-
-Important : don't use file name like routes/index.js
-
-
-`,
+    Now, analyze the user's input and determine the correct scenario.
+  `,
 });
 
 export const generateResult = async (prompt) => {
-  console.log(`Sending prompt to Gemini: "${prompt}"`);
-
   try {
     const result = await model.generateContent(prompt);
-    const jsonString = result.response.text();
-    const parsedJson = JSON.parse(jsonString);
+    const responseText = result.response.text();
 
-    // RETURN FULL MESSAGE OBJECT FOR SOCKET
+    console.log("AI Raw Response:", responseText);
+
+    // 1. Clean Markdown Code Blocks (just in case the model adds them)
+    const cleanJson = responseText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // 2. Parse JSON
+    const parsedJson = JSON.parse(cleanJson);
+
+    // 3. Return Standardized Object
     return {
-      message: JSON.stringify(parsedJson),
+      message: JSON.stringify(parsedJson), // Stringified for frontend parsing
+      filetree: parsedJson.filetree || {}, // Ensure it exists
       isAi: true,
-      sender: { _id: "ai", email: "AI Assistant" },
-      timestamp: new Date().toISOString(),
-      filetree: parsedJson.filetree || {},
       buildCommand: parsedJson.buildCommand || null,
       startCommand: parsedJson.startCommand || null,
     };
   } catch (error) {
     console.error("Gemini API Error:", error.message);
 
+    // Fallback error response
     return {
       message: JSON.stringify({
-        text: "Sorry, I encountered an error. Please try again.",
+        text: `⚠️ **AI Error:** ${error.message}`,
+        filetree: {},
       }),
       isAi: true,
-      sender: { _id: "ai", email: "AI Assistant" },
-      timestamp: new Date().toISOString(),
+      filetree: {},
     };
   }
 };
