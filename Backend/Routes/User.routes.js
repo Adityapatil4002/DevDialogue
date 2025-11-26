@@ -50,4 +50,10 @@ router.get("/all", authUser, userController.getAllUsersController);
 // --- Dashboard Route (Fixed) ---
 router.get("/dashboard", authUser, userController.getDashboardStats);
 
+router.get(
+  "/dashboard",
+  authMiddleware.authUser,
+  userController.getDashboardStats
+);
+
 export default router;
