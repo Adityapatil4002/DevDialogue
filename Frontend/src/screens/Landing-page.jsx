@@ -1612,119 +1612,193 @@ const DashboardFeatureSection = () => {
   );
 };
 // ==========================================
-// 🚀 FINAL CTA (Get Started)
+// 🚀 FINAL CTA (The "Portal" Card)
 // ==========================================
 const GetStartedSection = () => {
   return (
-    <section className="py-32 px-6 text-center relative overflow-hidden bg-[#020617]">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-cyan-900/10 pointer-events-none" />
-      <Reveal>
-        <div className="relative z-10 max-w-3xl mx-auto">
-          <h2 className="text-5xl font-extrabold mb-6 tracking-tight">
-            Ready to code at the speed of thought?
-          </h2>
-          <p className="text-xl text-slate-400 mb-10">
-            Join thousands of developers using DevDialogue to build faster.
-          </p>
-          <button
-            onClick={handleLoginNavigation}
-            className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg hover:bg-cyan-50 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.3)] transform hover:scale-105 duration-200"
-          >
-            Get Started Now
-          </button>
-        </div>
-      </Reveal>
+    <section className="py-32 relative bg-[#020617] overflow-hidden flex items-center justify-center">
+      
+      {/* Background Grid & Noise */}
+      <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url("${NOISE_BG}")` }}></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 w-full">
+        <Reveal>
+          <div className="relative rounded-[2.5rem] border border-white/10 bg-[#0f172a]/50 backdrop-blur-2xl overflow-hidden p-12 md:p-24 text-center group">
+            
+            {/* Animated Gradient Blobs behind the card content */}
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-500/30 rounded-full blur-[128px] group-hover:bg-purple-500/40 transition-colors duration-1000" />
+            <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-500/30 rounded-full blur-[128px] group-hover:bg-cyan-500/40 transition-colors duration-1000" />
+            
+            {/* Content */}
+            <div className="relative z-10 flex flex-col items-center">
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-cyan-500/20 rotate-3 group-hover:rotate-6 transition-transform duration-500"
+              >
+                <Rocket className="w-10 h-10 text-white fill-white" />
+              </motion.div>
+
+              <h2 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Ready to code at the <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 animate-gradient-x">
+                  speed of thought?
+                </span>
+              </h2>
+              
+              <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Join thousands of developers using DevDialogue to build, deploy, and scale faster than ever before.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <button
+                  onClick={handleLoginNavigation}
+                  className="relative group/btn px-8 py-4 bg-white text-black text-lg font-bold rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]"
+                >
+                  <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover/btn:animate-shimmer" />
+                  <span className="flex items-center gap-2 relative z-10">
+                    Get Started Now <ChevronRight className="w-5 h-5" />
+                  </span>
+                </button>
+                
+                {/* UPDATED SECONDARY BUTTON */}
+                <button 
+                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-8 py-4 rounded-xl text-slate-300 font-medium hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 flex items-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  Explore Features
+                </button>
+              </div>
+
+              {/* Decorative Floating Elements */}
+              <div className="absolute top-10 left-10 animate-float opacity-30 hidden md:block">
+                 <Code2 className="w-12 h-12 text-cyan-500 rotate-12" />
+              </div>
+              <div className="absolute bottom-10 right-10 animate-float-delayed opacity-30 hidden md:block">
+                 <Terminal className="w-12 h-12 text-purple-500 -rotate-12" />
+              </div>
+
+            </div>
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 };
 
 // ==========================================
-// 🦶 FOOTER
+// 🦶 FOOTER (Enhanced)
 // ==========================================
-const Footer = () => (
-  <footer className="border-t border-white/10 bg-[#020617] pt-20 pb-10 px-6 relative overflow-hidden">
-    <div className="relative z-10 max-w-7xl mx-auto">
-      <div className="grid grid-cols-2 md:grid-cols-4 w-full gap-8 text-left mb-12">
-        <div className="col-span-2 md:col-span-1">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded flex items-center justify-center">
-              <Terminal className="text-white w-4 h-4" />
+const Footer = () => {
+  return (
+    <footer className="relative bg-[#020617] pt-24 pb-12 overflow-hidden border-t border-white/5">
+      
+      {/* Background Glows */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+          
+          {/* BRAND & NEWSLETTER (Left Side) */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
+                <Terminal className="text-white w-4 h-4" />
+              </div>
+              <span className="font-bold text-xl text-white tracking-tight">
+                DevDialogue
+              </span>
             </div>
-            <span className="font-bold text-xl text-white">DevDialogue</span>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              The world's first chat-native IDE. Build, deploy, and scale your applications at the speed of conversation.
+            </p>
+            
+            {/* Newsletter Input */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Stay in the loop</span>
+              <div className="flex gap-2">
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-all w-full placeholder-slate-600"
+                />
+                <button className="bg-white text-black px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-cyan-50 transition-colors">
+                  Subscribe
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-slate-500">
-            The chat that codes with you.
-          </p>
+
+          {/* LINKS (Right Side) */}
+          <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8 lg:pl-12">
+            <div>
+              <h4 className="font-bold text-white mb-6">Product</h4>
+              <ul className="space-y-4 text-sm text-slate-400">
+                {["Features", "Pricing", "Changelog", "Docs", "Download"].map(item => (
+                  <li key={item}>
+                    <a href="#" className="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                      {item} 
+                      <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-6">Company</h4>
+              <ul className="space-y-4 text-sm text-slate-400">
+                {["About Us", "Careers", "Blog", "Contact", "Partners"].map(item => (
+                  <li key={item}>
+                    <a href="#" className="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-6">Legal</h4>
+              <ul className="space-y-4 text-sm text-slate-400">
+                {["Privacy Policy", "Terms of Service", "Cookie Policy", "Security"].map(item => (
+                  <li key={item}>
+                    <a href="#" className="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
-        <div>
-          <h4 className="font-bold text-white mb-4">Product</h4>
-          <ul className="space-y-2 text-sm text-slate-400">
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Features
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Integrations
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Pricing
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-bold text-white mb-4">Resources</h4>
-          <ul className="space-y-2 text-sm text-slate-400">
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Documentation
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                API Reference
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Community
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-bold text-white mb-4">Legal</h4>
-          <ul className="space-y-2 text-sm text-slate-400">
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Privacy
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-cyan-400">
-                Terms
-              </a>
-            </li>
-          </ul>
+
+        {/* BOTTOM BAR */}
+        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-xs text-slate-500">
+            &copy; {new Date().getFullYear()} DevDialogue Inc. All rights reserved.
+          </div>
+
+          {/* System Status */}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/5 border border-green-500/20">
+            <div className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </div>
+            <span className="text-[10px] font-medium text-green-400 uppercase tracking-wider">All systems normal</span>
+          </div>
+
+          <div className="flex gap-6 text-slate-400">
+            <Github className="w-5 h-5 hover:text-white cursor-pointer transition-colors hover:scale-110 transform duration-200" />
+            <Twitter className="w-5 h-5 hover:text-white cursor-pointer transition-colors hover:scale-110 transform duration-200" />
+            <Disc className="w-5 h-5 hover:text-white cursor-pointer transition-colors hover:scale-110 transform duration-200" />
+          </div>
         </div>
       </div>
-
-      <div className="border-t border-white/10 pt-8 w-full flex flex-col md:flex-row justify-between items-center text-xs text-slate-600">
-        <p>© 2024 DevDialogue Inc. All rights reserved.</p>
-        <div className="flex gap-4 mt-4 md:mt-0">
-          <Github className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <Twitter className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <Disc className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-        </div>
-      </div>
-    </div>
-  </footer>
-);
-
+    </footer>
+  );
+};
 // ==========================================
 // 🚀 MAIN LANDING PAGE
 // ==========================================
