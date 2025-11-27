@@ -28,7 +28,10 @@ import {
   X,
   Check,
   Globe,
+  Loader2,
   LogIn,
+  Rocket, 
+  ChevronRight, 
 } from "lucide-react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -37,6 +40,8 @@ import { twMerge } from "tailwind-merge";
 // Note: Keeping LiquidEther as per your original file.
 // If you don't have this, you can remove the component usage in HeroSection.
 import LiquidEther from "../components/LiquidEther";
+const NOISE_BG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E`;
+
 
 // --- Utility ---
 function cn(...inputs) {
@@ -1238,156 +1243,230 @@ const FileTreeSection = () => {
 };
 
 // ==========================================
-// 🚀 FEATURE 5: LIVE EXECUTION (Node.js/Express Animation)
+// 🚀 FEATURE 5: LIVE EXECUTION (Updated: Futuristic Runtime)
 // ==========================================
 const ExecutionSection = () => {
-  // State for the log entries
+  const [activeTab, setActiveTab] = useState("code"); // 'code' or 'terminal'
   const [logs, setLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
+  const [status, setStatus] = useState("idle"); // idle, running, success
 
-  // The sequence of logs to display
-  const logSequence = [
-    { text: "> npm run dev", color: "text-white", delay: 500 },
-    { text: "> nodemon server.js", color: "text-slate-500", delay: 1200 },
-    { text: "[info] Starting Express server...", color: "text-blue-400", delay: 2000 },
-    { text: "[db] Connecting to MongoDB...", color: "text-yellow-400", delay: 3000 },
-    { text: "[success] Connected to Database", color: "text-green-400", delay: 4000 },
-    { text: "🚀 Server ready at http://localhost:3000", color: "text-cyan-400", delay: 5000 },
-    { text: "GET /api/status 200 12ms", color: "text-slate-400", delay: 6500 },
-    { text: "POST /api/auth/login 201 145ms", color: "text-green-300", delay: 7500 },
-    { text: "GET /api/user/profile 200 45ms", color: "text-blue-300", delay: 8500 },
-  ];
-
+  // Animation Loop
   useEffect(() => {
     let timeouts = [];
-    
-    const runSimulation = () => {
-      setLogs([]); // Clear logs
-      setIsRunning(true);
 
-      // Schedule each log entry
-      logSequence.forEach((log) => {
-        const timeout = setTimeout(() => {
-          setLogs((prev) => [...prev, log]);
-        }, log.delay);
-        timeouts.push(timeout);
+    const runSequence = () => {
+      // 1. Reset State
+      setActiveTab("code");
+      setStatus("idle");
+      setLogs([]);
+
+      // 2. Simulate "Clicking Run" -> Switch to Terminal
+      timeouts.push(setTimeout(() => {
+        setStatus("running");
+        setActiveTab("terminal");
+      }, 2000));
+
+      // 3. Stream Logs
+      const logMessages = [
+        { text: "> npm install", color: "text-slate-400", delay: 2500 },
+        { text: "added 58 packages in 400ms", color: "text-green-400", delay: 3200 },
+        { text: "> node server.js", color: "text-white", delay: 3800 },
+        { text: "[info] Connecting to database...", color: "text-blue-400", delay: 4500 },
+        { text: "[success] MongoDB Connected", color: "text-green-400", delay: 5200 },
+        { text: "🚀 Server running on port 3000", color: "text-cyan-300", delay: 6000 },
+      ];
+
+      logMessages.forEach(({ text, color, delay }) => {
+        timeouts.push(setTimeout(() => {
+          setLogs(prev => [...prev, { text, color }]);
+        }, delay));
       });
 
-      // Reset loop
-      const resetTimeout = setTimeout(() => {
-        setIsRunning(false);
-        // Small pause before restarting
-        const restartTimeout = setTimeout(runSimulation, 2000);
-        timeouts.push(restartTimeout);
-      }, 11000); // Total cycle time
-      timeouts.push(resetTimeout);
+      // 4. Show Success State
+      timeouts.push(setTimeout(() => {
+        setStatus("success");
+      }, 7000));
+
+      // 5. Restart Loop
+      timeouts.push(setTimeout(runSequence, 11000));
     };
 
-    runSimulation();
-
+    runSequence();
     return () => timeouts.forEach(clearTimeout);
   }, []);
 
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden">
-      {/* Background Pulse */}
+      
+      {/* Background Glow */}
       <motion.div
-        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 6, repeat: Infinity }}
-        className="absolute top-0 right-0 w-[600px] h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none"
+        animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.1, 1] }}
+        transition={{ duration: 5, repeat: Infinity }}
+        className="absolute top-1/2 right-0 -translate-y-1/2 w-[600px] h-[600px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none"
       />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
         
-        {/* LEFT TEXT */}
-        <Reveal className="space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
-            <Play className="w-3 h-3" /> Interactive Runtime
+        {/* LEFT: Text Content */}
+        <Reveal className="space-y-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-400 text-xs font-bold uppercase tracking-wider">
+            <PlayCircle className="w-3 h-3" /> Instant Sandbox
           </div>
+          
           <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
             Write. Run. Fix. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
               Inside the Chat.
             </span>
           </h2>
+          
           <p className="text-slate-400 text-lg leading-relaxed">
             Why switch to VS Code to test a logic snippet? DevDialogue comes
-            with a built-in sandbox. The AI generates code, and you can{" "}
-            <strong className="text-white">Execute</strong> it instantly. Works
-            for Node.js, Python, and more.
+            with a built-in <strong>WebContainer</strong> engine. The AI generates code, and you can
+            execute it instantly—works for Node.js, React, and Python.
           </p>
+
+          <div className="flex gap-4">
+            <div className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/50 px-4 py-2 rounded-lg border border-white/5">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span>Node.js Runtime</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/50 px-4 py-2 rounded-lg border border-white/5">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                <span>Zero Latency</span>
+            </div>
+          </div>
         </Reveal>
 
-        {/* RIGHT VISUALIZATION */}
-        <Reveal
-          delay={0.2}
-          className="rounded-xl border border-white/10 bg-[#1e1e2e] shadow-2xl overflow-hidden font-mono text-sm"
-        >
-          {/* Toolbar */}
-          <div className="flex items-center justify-between p-3 border-b border-white/5 bg-[#181825]">
-            <div className="flex gap-4">
-              <span className="text-xs text-slate-400 px-2 py-1 bg-white/5 rounded flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-yellow-400"/> server.js
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <motion.button
-                animate={isRunning ? { boxShadow: "0 0 10px rgba(74, 222, 128, 0.2)" } : {}}
+        {/* RIGHT: High-End Visualization */}
+        <Reveal delay={0.2} className="relative">
+          
+          {/* Main IDE Window */}
+          <div className="relative rounded-2xl border border-white/10 bg-[#0f172a]/90 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[400px] flex flex-col group">
+            
+            {/* Gradient Border Overlay */}
+            <div className="absolute inset-0 rounded-2xl border border-green-500/20 pointer-events-none" />
+
+            {/* Header / Tabs */}
+            <div className="h-12 border-b border-white/5 bg-[#0B1120] flex items-center justify-between px-4">
+              <div className="flex items-center gap-2">
+                {/* Traffic Lights */}
+                <div className="flex gap-1.5 mr-4">
+                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                </div>
+
+                {/* Tabs */}
+                <div className="flex bg-black/20 rounded-lg p-1">
+                    <button 
+                        className={cn("px-3 py-1 text-[10px] font-bold rounded transition-all", activeTab === 'code' ? "bg-slate-700 text-white shadow-sm" : "text-slate-500")}
+                    >
+                        server.js
+                    </button>
+                    <button 
+                        className={cn("px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1", activeTab === 'terminal' ? "bg-slate-700 text-white shadow-sm" : "text-slate-500")}
+                    >
+                        <Terminal className="w-3 h-3" /> Terminal
+                    </button>
+                </div>
+              </div>
+
+              {/* Run Button */}
+              <motion.button 
+                animate={status === 'running' ? { scale: 0.95, opacity: 0.8 } : { scale: 1, opacity: 1 }}
                 className={cn(
-                    "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-colors border",
-                    isRunning
-                        ? "bg-green-500/10 text-green-400 border-green-500/30 cursor-default"
-                        : "bg-slate-700 text-slate-400 border-transparent"
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all border",
+                    status === 'running' 
+                        ? "bg-green-500/10 text-green-400 border-green-500/30" 
+                        : "bg-green-600 hover:bg-green-500 text-white border-transparent shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                 )}
               >
-                <Play className="w-3 h-3 fill-current" /> {isRunning ? "Running" : "Ready"}
+                {status === 'running' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
+                {status === 'running' ? "Running..." : "Run Code"}
               </motion.button>
             </div>
-          </div>
 
-          <div className="grid grid-rows-2 h-[350px]">
-            {/* Code Editor Area */}
-            <div className="p-4 text-slate-300 border-b border-white/5 bg-[#1e1e2e] overflow-hidden leading-relaxed">
-              <div className="opacity-50 text-xs mb-2">// Express Server Setup</div>
-              <span className="text-purple-400">const</span> <span className="text-blue-400">express</span> = <span className="text-yellow-300">require</span>(<span className="text-green-400">'express'</span>);<br />
-              <span className="text-purple-400">const</span> app = <span className="text-blue-400">express</span>();<br />
-              <br />
-              app.<span className="text-yellow-300">get</span>(<span className="text-green-400">'/api/status'</span>, (req, res) ={">"} {"{"}<br />
-              &nbsp;&nbsp;res.<span className="text-blue-400">json</span>({"{"} <span className="text-orange-400">status</span>: <span className="text-green-400">'OK'</span> {"}"});<br />
-              {"}"});<br />
-              <br />
-              app.<span className="text-yellow-300">listen</span>(<span className="text-orange-400">3000</span>, () ={">"} {"{"}<br />
-              &nbsp;&nbsp;console.<span className="text-blue-400">log</span>(<span className="text-green-400">'Server running...'</span>);<br />
-              {"}"});
-            </div>
-
-            {/* Terminal Output Area */}
-            <div className="bg-[#11111b] p-4 text-xs font-mono overflow-hidden relative">
-              <div className="flex items-center gap-2 text-slate-500 mb-3 border-b border-white/5 pb-2">
-                <Terminal className="w-3 h-3" />
-                <span>Console Output</span>
-                {isRunning && <span className="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"/>}
-              </div>
-              
-              <div className="space-y-1.5 h-full overflow-y-auto pb-4">
-                {logs.map((log, i) => (
-                   <motion.div 
-                     key={i}
-                     initial={{ opacity: 0, x: 10 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     className={log.color}
-                   >
-                     {log.text}
-                   </motion.div>
-                ))}
+            {/* Content Area */}
+            <div className="flex-1 relative font-mono text-sm">
                 
-                {/* Blinking Cursor */}
-                <motion.div
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="w-2 h-4 bg-slate-500 mt-1 inline-block"
-                />
-              </div>
+                {/* CODE VIEW */}
+                <motion.div 
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: activeTab === 'code' ? 1 : 0, pointerEvents: activeTab === 'code' ? 'auto' : 'none' }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 p-6 bg-[#0f172a] text-slate-300 overflow-hidden"
+                >
+                    <div className="opacity-50 text-xs mb-2">// Initialize Express Server</div>
+                    <div>
+                        <span className="text-purple-400">import</span> express <span className="text-purple-400">from</span> <span className="text-green-400">'express'</span>;
+                    </div>
+                    <div>
+                        <span className="text-purple-400">const</span> app = <span className="text-blue-400">express</span>();
+                    </div>
+                    <br />
+                    <div>
+                        app.<span className="text-yellow-300">get</span>(<span className="text-green-400">'/'</span>, (req, res) ={">"} {"{"}
+                    </div>
+                    <div className="pl-4">
+                        res.<span className="text-blue-400">json</span>({"{"} <span className="text-cyan-300">status</span>: <span className="text-green-400">'Active'</span> {"}"});
+                    </div>
+                    <div>{"}"});</div>
+                    <br />
+                    <div>
+                        app.<span className="text-yellow-300">listen</span>(<span className="text-orange-400">3000</span>, () ={">"} {"{"}
+                    </div>
+                    <div className="pl-4">
+                        console.<span className="text-blue-400">log</span>(<span className="text-green-400">'Server Ready 🚀'</span>);
+                    </div>
+                    <div>{"}"});</div>
+                </motion.div>
+
+                {/* TERMINAL VIEW */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: activeTab === 'terminal' ? 1 : 0, pointerEvents: activeTab === 'terminal' ? 'auto' : 'none' }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 bg-[#0B1120] p-4 font-mono text-xs overflow-hidden"
+                >
+                    <div className="space-y-2">
+                        {logs.map((log, i) => (
+                            <motion.div 
+                                key={i}
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className={log.color}
+                            >
+                                {log.text}
+                            </motion.div>
+                        ))}
+                        {status === 'running' && (
+                            <div className="w-2 h-4 bg-slate-500 animate-pulse" />
+                        )}
+                    </div>
+
+                    {/* Server Status HUD (Only shows on success) */}
+                    <AnimatePresence>
+                        {status === 'success' && (
+                            <motion.div 
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 20, opacity: 0 }}
+                                className="absolute bottom-4 right-4 bg-[#1e293b] border border-green-500/30 p-3 rounded-lg shadow-2xl flex items-center gap-3 z-10"
+                            >
+                                <div className="relative">
+                                    <div className="w-3 h-3 bg-green-500 rounded-full" />
+                                    <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75" />
+                                </div>
+                                <div>
+                                    <div className="text-white font-bold text-xs">Localhost:3000</div>
+                                    <div className="text-green-400 text-[10px]">Live & Listening</div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+
             </div>
           </div>
         </Reveal>
@@ -1398,171 +1477,140 @@ const ExecutionSection = () => {
 
 
 // ==========================================
-// 💎 CYBER PRICING SECTION
+// 📊 FEATURE 6: DASHBOARD ANALYTICS (Replaces Pricing)
 // ==========================================
-const CyberPricingCard = ({ tier, price, features, recommended, annual }) => {
+const DashboardFeatureSection = () => {
   return (
-    <motion.div
-      initial={{ y: 20, opacity: 0 }}
-      whileInView={{ y: 0, opacity: 1 }}
-      viewport={{ once: true }}
-      className={cn(
-        "relative p-1 rounded-2xl group transition-all duration-300",
-        recommended
-          ? "scale-105 z-10"
-          : "scale-100 opacity-90 hover:opacity-100"
-      )}
-    >
-      {/* Animated Gradient Border */}
-      <div
-        className={cn(
-          "absolute inset-0 rounded-2xl bg-gradient-to-r opacity-20 group-hover:opacity-100 transition-opacity duration-500 blur-xl",
-          recommended
-            ? "from-cyan-500 via-purple-500 to-pink-500 animate-spin-slow"
-            : "from-slate-700 to-slate-500"
-        )}
-      />
+    <section className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden">
+      <div className="absolute inset-0 opacity-20 mix-blend-overlay" style={{ backgroundImage: `url("${NOISE_BG}")` }}></div>
+      
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        
+        {/* LEFT: Visualization (The Mock Dashboard) */}
+        <Reveal delay={0.2} className="order-2 lg:order-1 relative">
+          <div className="relative rounded-2xl border border-white/10 bg-[#0f172a]/90 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[450px] flex flex-col p-6 group">
+            
+            {/* Glow Effect behind dashboard */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-      <div
-        className={cn(
-          "relative h-full bg-[#0B1120] rounded-xl p-8 border backdrop-blur-xl flex flex-col",
-          recommended
-            ? "border-cyan-500/50 shadow-[0_0_50px_-12px_rgba(34,211,238,0.2)]"
-            : "border-white/10"
-        )}
-      >
-        {recommended && (
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white text-[10px] font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg">
-            Recommended
-          </div>
-        )}
-
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">
-            {tier}
-          </h3>
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-extrabold text-white">
-              ${annual ? price * 10 : price}
-            </span>
-            <span className="text-slate-500 font-medium">
-              /{annual ? "yr" : "mo"}
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-4 mb-8 flex-1">
-          {features.map((feat, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 text-sm text-slate-300"
-            >
-              <Check
-                className={cn(
-                  "w-4 h-4 shrink-0 mt-0.5",
-                  recommended ? "text-cyan-400" : "text-slate-500"
-                )}
-              />
-              {feat}
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <LayoutTemplate className="w-4 h-4 text-white" />
+                 </div>
+                 <div>
+                    <div className="text-sm font-bold text-white">Overview</div>
+                    <div className="text-[10px] text-slate-400">Last 30 Days</div>
+                 </div>
+              </div>
+              <div className="flex -space-x-2">
+                 {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-slate-700 border border-[#0f172a]" />)}
+              </div>
             </div>
-          ))}
-        </div>
 
-        <button
-          className={cn(
-            "w-full py-4 rounded-lg font-bold text-sm tracking-wide transition-all relative overflow-hidden group/btn",
-            recommended
-              ? "bg-white text-black hover:bg-cyan-50"
-              : "bg-white/5 text-white hover:bg-white/10"
-          )}
-        >
-          <span className="relative z-10">Select {tier}</span>
-          {recommended && (
-            <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
-          )}
-        </button>
-      </div>
-    </motion.div>
-  );
-};
+            {/* Top Row: Stat Cards */}
+            <div className="grid grid-cols-3 gap-4 mb-6 relative z-10">
+               {[
+                 { label: "Projects", val: "12", color: "text-blue-400", bg: "bg-blue-400/10" },
+                 { label: "Collabs", val: "5", color: "text-purple-400", bg: "bg-purple-400/10" },
+                 { label: "Files", val: "148", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+               ].map((stat, i) => (
+                 <div key={i} className="bg-[#1e293b] border border-white/5 p-3 rounded-xl">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">{stat.label}</div>
+                    <div className={`text-xl font-bold mt-1 ${stat.color}`}>{stat.val}</div>
+                    <motion.div 
+                      initial={{ width: 0 }} 
+                      whileInView={{ width: "100%" }} 
+                      transition={{ duration: 1, delay: 0.5 + (i*0.2) }} 
+                      className={`h-1 rounded-full mt-2 ${stat.bg}`} 
+                    >
+                      <div className={`h-full rounded-full ${stat.color.replace('text', 'bg')} opacity-50`} style={{ width: '70%' }} />
+                    </motion.div>
+                 </div>
+               ))}
+            </div>
 
-const CyberPricingSection = () => {
-  const [annual, setAnnual] = useState(false);
+            {/* Middle: Activity Graph */}
+            <div className="bg-[#1e293b] border border-white/5 rounded-xl p-4 flex-1 relative overflow-hidden z-10">
+               <div className="flex justify-between items-center mb-4">
+                  <div className="text-xs font-bold text-slate-300">Activity Level</div>
+                  <div className="text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">+24%</div>
+               </div>
+               
+               {/* SVG Wave Chart */}
+               <div className="absolute bottom-0 left-0 right-0 h-32 w-full">
+                 <svg className="w-full h-full" viewBox="0 0 200 100" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <motion.path 
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      whileInView={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 2, ease: "easeInOut" }}
+                      d="M0,80 C20,70 40,90 60,60 S100,20 140,50 S180,30 200,10 V100 H0 Z" 
+                      fill="url(#chartGradient)" 
+                    />
+                    <motion.path 
+                      initial={{ pathLength: 0 }}
+                      whileInView={{ pathLength: 1 }}
+                      transition={{ duration: 2, ease: "easeInOut" }}
+                      d="M0,80 C20,70 40,90 60,60 S100,20 140,50 S180,30 200,10" 
+                      fill="none" 
+                      stroke="#818cf8" 
+                      strokeWidth="2" 
+                    />
+                 </svg>
+               </div>
+            </div>
 
-  return (
-    <section
-      id="pricing"
-      className="py-32 px-6 bg-[#020617] border-t border-white/5 relative overflow-hidden"
-    >
-      {/* Noise Texture */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+          </div>
+        </Reveal>
 
-      <Reveal className="text-center mb-16 relative z-10">
-        <h2 className="text-4xl lg:text-5xl font-bold mb-6">
-          Choose your computing power.
-        </h2>
-        <div className="flex items-center justify-center gap-4 text-sm font-medium">
-          <span className={!annual ? "text-white" : "text-slate-500"}>
-            Monthly
-          </span>
-          <button
-            onClick={() => setAnnual(!annual)}
-            className="w-12 h-6 rounded-full bg-slate-800 border border-white/10 relative p-1 transition-colors hover:border-cyan-500/50"
-          >
-            <motion.div
-              animate={{ x: annual ? 24 : 0 }}
-              className="w-4 h-4 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-            />
-          </button>
-          <span className={annual ? "text-white" : "text-slate-500"}>
-            Yearly{" "}
-            <span className="text-cyan-400 text-xs ml-1">(Save 20%)</span>
-          </span>
-        </div>
-      </Reveal>
+        {/* RIGHT: Text Content */}
+        <Reveal className="order-1 lg:order-2 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/5 text-blue-300 text-xs font-bold uppercase tracking-wider">
+            <Users className="w-3 h-3" /> Team Insights
+          </div>
+          <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
+            The Pulse of your <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+              Engineering Team.
+            </span>
+          </h2>
+          <p className="text-slate-400 text-lg leading-relaxed">
+             Stop guessing who is working on what. DevDialogue provides a beautiful, 
+             real-time dashboard that tracks project velocity, AI usage, and 
+             collaborator activity without micro-managing.
+          </p>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-        <CyberPricingCard
-          tier="Starter"
-          price={0}
-          features={[
-            "Unlimited Chat History",
-            "50 AI Generations/mo",
-            "Basic Execution Sandbox",
-            "Community Support",
-          ]}
-          annual={annual}
-        />
-        <CyberPricingCard
-          tier="Pro"
-          price={29}
-          recommended={true}
-          features={[
-            "Unlimited Generations",
-            "Advanced File Tree",
-            "Private Projects",
-            "Priority Support",
-            "GPT-4 Access",
-          ]}
-          annual={annual}
-        />
-        <CyberPricingCard
-          tier="Team"
-          price={99}
-          features={[
-            "Everything in Pro",
-            "Team Context Sharing",
-            "SSO & Audit Logs",
-            "Dedicated Server",
-            "Custom Models",
-          ]}
-          annual={annual}
-        />
+          <div className="space-y-4 pt-4">
+             {[
+               { title: "Activity Heatmaps", desc: "Visualize coding intensity over time." },
+               { title: "Language Distribution", desc: "See which stacks your AI is generating." },
+               { title: "Collaborator Tracking", desc: "Know exactly who contributed to which file." }
+             ].map((item, i) => (
+               <div key={i} className="flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 border border-white/5">
+                     <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-blue-400' : i === 1 ? 'bg-purple-400' : 'bg-emerald-400'}`} />
+                  </div>
+                  <div>
+                     <h4 className="text-white font-bold text-sm">{item.title}</h4>
+                     <p className="text-slate-500 text-sm">{item.desc}</p>
+                  </div>
+               </div>
+             ))}
+          </div>
+        </Reveal>
+
       </div>
     </section>
   );
 };
-
 // ==========================================
 // 🚀 FINAL CTA (Get Started)
 // ==========================================
@@ -1689,7 +1737,7 @@ const LandingPage = () => {
       <NeuralChatSection />
       <FileTreeSection />
       <ExecutionSection />
-      <CyberPricingSection />
+      <DashboardFeatureSection />
       <GetStartedSection />
       <Footer />
     </div>

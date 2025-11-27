@@ -13,7 +13,7 @@ export const UserProvider = ({ children }) => {
     const checkUserLoggedIn = async () => {
       try {
         // We call the /profile endpoint we just created
-        const res = await axios.get("/users/profile");
+        const res = await axios.get("/user/profile");
 
         // If successful, set the user data (including new fields like bio/settings)
         setUser(res.data.user);
