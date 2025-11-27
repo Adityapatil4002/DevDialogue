@@ -188,21 +188,39 @@ export const updateFileTree = async ({ projectId, fileTree }) => {
   return project;
 };
 
-export const addMessage = async ({ projectId, sender, senderId, message, isAi }) => {
-    const project = await projectModel.findByIdAndUpdate(
-        projectId,
-        {
-            $push: {
-                messages: {
-                    sender,
-                    senderId,
-                    message,
-                    isAi,
-                    timestamp: new Date()
-                }
-            }
+export const addMessage = async ({
+  projectId,
+  sender,
+  senderId,
+  message,
+  isAi,
+  replyTo,
+}) => {
+  const project = await projectModel.findByIdAndUpdate(
+    projectId,
+    {
+      $push: {
+        messages: {
+          sender,
+          senderId,
+          message,
+          isAi,
+          timestamp: new Date(),
+          replyTo, // [NEW] Save the reply context
         },
-        { new: true }
-    );
-    return project;
+      },
+    },
+    { new: true }
+  );
+  // Return the last added message (which is the one we just pushed)
+  return project.messages[project.messages.length - 1];
+};
+
+export const deleteMessage = async ({ projectId, messageId }) => {
+  const project = await projectModel.findById(projectId);
+  project.messages = project.messages.filter(
+    (msg) => msg._id.toString() !== messageId
+  );
+  await project.save();
+  return project;
 };
