@@ -29,26 +29,15 @@ const projectSchema = new mongoose.Schema(
     // [NEW] Store Chat History
     messages: [
       {
-        sender: {
-          type: String, // We store email or "AI" for simplicity in display
-          required: true,
-        },
-        senderId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: false, // Optional because AI has no ID
-        },
-        message: {
-          type: String,
-          required: true,
-        },
-        isAi: {
-          type: Boolean,
-          default: false,
-        },
-        timestamp: {
-          type: Date,
-          default: Date.now,
+        sender: { type: String, required: true },
+        senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        message: { type: String, required: true },
+        isAi: { type: Boolean, default: false },
+        timestamp: { type: Date, default: Date.now },
+        // [NEW] Reply Data
+        replyTo: {
+          originalMessage: { type: String },
+          originalSender: { type: String },
         },
       },
     ],
