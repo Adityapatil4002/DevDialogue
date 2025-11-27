@@ -79,15 +79,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("project-message", async (data) => {
-    const message = data.message;
+    const { message, replyTo } = data; // Destructure replyTo
 
-    // --- [NEW] INTELLIGENT PARSING ---
-    // Check if the message contains the hidden context block we added in frontend
+    // Check context block for DB saving
     const contextDelimiter = "***\nCONTEXT FOR AI";
     const hasContext = message.includes(contextDelimiter);
-
-    // 1. Prepare Message for HUMANS (DB & Broadcast)
-    // If context exists, we strip it out so the chat log stays clean.
     let messageForDb = message;
     if (hasContext) {
       messageForDb = message.split(contextDelimiter)[0].trim();
@@ -97,37 +93,32 @@ io.on("connection", (socket) => {
     const projectId = socket.projectIdString;
 
     try {
-      // 2. SAVE CLEAN USER MESSAGE TO DB
-      await projectService.addMessage({
+      // 1. Save User Message
+      const savedMsg = await projectService.addMessage({
         projectId,
         sender: socket.user.email,
         senderId: socket.user._id,
-        message: messageForDb, // Saving only the clean text
+        message: messageForDb,
         isAi: false,
+        replyTo, // Pass replyTo
       });
 
-      // 3. BROADCAST CLEAN USER MESSAGE
-      // This ensures other users don't see the massive code block in the chat bubble
+      // 2. Broadcast (Include _id for deletion)
       io.to(socket.roomId).emit("project-message", {
+        _id: savedMsg._id, // Critical for deletion
         message: messageForDb,
         sender: { _id: socket.user._id, email: socket.user.email },
         timestamp: new Date(),
         isAi: false,
+        replyTo,
       });
 
-      // 4. HANDLE AI
+      // 3. AI Logic
       if (aiIsPresentInMessage) {
-        // --- PREPARE PROMPT FOR AI ---
-        // We want to remove "@ai" but KEEP the context/code if it exists.
-        // We use the ORIGINAL 'message' variable which still has the code.
         const prompt = message.replace("@ai", "").trim();
-
-        console.log("🤖 AI Prompt received. Has context:", hasContext);
-
         const result = await generateResult(prompt);
 
-        // 5. SAVE AI RESPONSE TO DB
-        await projectService.addMessage({
+        const savedAiMsg = await projectService.addMessage({
           projectId,
           sender: "AI",
           senderId: null,
@@ -135,8 +126,8 @@ io.on("connection", (socket) => {
           isAi: true,
         });
 
-        // 6. BROADCAST AI MESSAGE
         io.to(socket.roomId).emit("project-message", {
+          _id: savedAiMsg._id,
           ...result,
           isAi: true,
           sender: { _id: "ai", email: "AI" },
@@ -148,6 +139,17 @@ io.on("connection", (socket) => {
     }
   });
 
+  // [NEW] Delete Message Listener
+  socket.on("delete-message", async (data) => {
+    const { messageId } = data;
+    const projectId = socket.projectIdString;
+    try {
+      await projectService.deleteMessage({ projectId, messageId });
+      io.to(socket.roomId).emit("message-deleted", { messageId });
+    } catch (err) {
+      console.error("Delete Error:", err);
+    }
+  });
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.user.email}`);
   });
