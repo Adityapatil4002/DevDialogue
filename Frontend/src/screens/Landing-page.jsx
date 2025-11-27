@@ -646,42 +646,39 @@ const HeroSection = () => {
 
 
 // ==========================================
-// 💬 SECTION 2: LIVE GROUP CHAT (Continuous Animation)
+// 💬 SECTION 2: LIVE GROUP CHAT (Updated: App-Like Bubbles)
 // ==========================================
 const StandardChatSection = () => {
   // --- Animation Logic ---
   
-  // 1. A pool of realistic developer messages to cycle through
   const messagePool = [
-    { user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "Did you push the hotfix to staging?" },
-    { user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Yeah, building right now. 🚀" },
-    { user: "Elena", avatar: "E", color: "bg-pink-500", text: "The API latency is looking much better." },
-    { user: "David", avatar: "D", color: "bg-cyan-500", text: "Can someone review PR #420?" },
-    { user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "On it! Giving it a look." },
-    { user: "System", avatar: "🤖", color: "bg-slate-600", text: "Deployment successful: v2.4.0-beta" },
-    { user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Great work everyone! taking a break." },
-    { user: "Elena", avatar: "E", color: "bg-pink-500", text: "Don't forget to update the documentation." },
+    { id: 1, user: "Elena", avatar: "E", color: "bg-pink-500", text: "The API latency is looking much better.", isMe: false },
+    { id: 2, user: "You", avatar: "ME", color: "bg-blue-600", text: "Nice! I optimized the DB queries.", isMe: true },
+    { id: 3, user: "David", avatar: "D", color: "bg-cyan-500", text: "Can someone review PR #420?", isMe: false },
+    { id: 4, user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "On it! Giving it a look now.", isMe: false },
+    { id: 5, user: "You", avatar: "ME", color: "bg-blue-600", text: "Thanks Sarah. Let me know if it breaks.", isMe: true },
+    { id: 6, user: "System", avatar: "🤖", color: "bg-slate-600", text: "Deployment successful: v2.4.0-beta", isMe: false, isSystem: true },
+    { id: 7, user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Great work everyone! 🚀", isMe: false },
   ];
 
-  // 2. Initial state with a few messages
-  const [messages, setMessages] = useState(messagePool.slice(0, 3));
+  // Initialize with enough messages to fill the bottom
+  const [messages, setMessages] = useState(messagePool.slice(0, 4));
   
-  // 3. The Heartbeat: Add a message every 2 seconds
   useEffect(() => {
-    let poolIndex = 3;
+    let poolIndex = 4;
     const interval = setInterval(() => {
       poolIndex = (poolIndex + 1) % messagePool.length;
-      const newMessage = { ...messagePool[poolIndex], id: Date.now() }; // Unique ID is crucial for animation
+      const newMessage = { ...messagePool[poolIndex], id: Date.now() }; 
 
       setMessages((prevMessages) => {
-        // Keep strictly 4 messages to ensure the container doesn't overflow
         const newHistory = [...prevMessages, newMessage];
-        if (newHistory.length > 4) {
-          return newHistory.slice(1); // Remove the oldest (top) message
+        // Keep last 5 messages to ensure no empty space gaps, but don't overflow
+        if (newHistory.length > 5) {
+          return newHistory.slice(1);
         }
         return newHistory;
       });
-    }, 2000);
+    }, 2500); // New message every 2.5s
 
     return () => clearInterval(interval);
   }, []);
@@ -739,32 +736,25 @@ const StandardChatSection = () => {
           <div className="relative rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl overflow-hidden flex h-[500px] w-full max-w-lg mx-auto lg:mx-0">
             
             {/* --- SIDEBAR: GROUPS & CHANNELS (Left Side) --- */}
-            <div className="w-[30%] bg-[#0B1120] border-r border-white/5 flex flex-col">
-              {/* Sidebar Header */}
+            <div className="w-[30%] bg-[#0B1120] border-r border-white/5 flex flex-col hidden sm:flex">
               <div className="h-14 border-b border-white/5 flex items-center px-4">
                 <div className="font-bold text-slate-200 text-xs tracking-wide uppercase opacity-70">Workspaces</div>
               </div>
               
               <div className="flex-1 p-3 space-y-6">
-                
                 {/* 1. Groups Section */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 cursor-pointer">
                     <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
                       D
                     </div>
-                    <div className="hidden sm:block">
+                    <div className="hidden md:block">
                       <div className="text-xs font-bold text-indigo-200">DevTeam</div>
                     </div>
                   </div>
-                  
                   <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer opacity-50 hover:opacity-100 transition-opacity">
-                    <div className="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-                      M
-                    </div>
-                    <div className="hidden sm:block">
-                      <div className="text-xs font-bold text-slate-300">Marketing</div>
-                    </div>
+                    <div className="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">M</div>
+                    <div className="hidden md:block"><div className="text-xs font-bold text-slate-300">Marketing</div></div>
                   </div>
                 </div>
 
@@ -772,14 +762,8 @@ const StandardChatSection = () => {
                 <div>
                    <span className="text-[10px] text-slate-500 font-bold uppercase mb-2 block px-1">Channels</span>
                    <ul className="space-y-1">
-                      {["general", "engineering", "design", "random"].map(channel => (
-                        <div 
-                          key={channel} 
-                          className={cn(
-                            "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs",
-                            channel === "engineering" ? "bg-white/10 text-white font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                          )}
-                        >
+                      {["general", "engineering", "design"].map(channel => (
+                        <div key={channel} className={cn("flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs", channel === "engineering" ? "bg-white/10 text-white font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-white/5")}>
                           <span className="opacity-50">#</span> {channel}
                         </div>
                       ))}
@@ -791,7 +775,7 @@ const StandardChatSection = () => {
             {/* --- MAIN CHAT AREA (Right Side) --- */}
             <div className="flex-1 flex flex-col bg-[#0f172a] relative">
               {/* Chat Header */}
-              <div className="h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0f172a]/80 backdrop-blur-md z-10">
+              <div className="h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0f172a]/95 backdrop-blur-md z-10 absolute top-0 left-0 right-0">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">#</span>
                   <span className="font-bold text-slate-200 text-sm">engineering</span>
@@ -803,39 +787,42 @@ const StandardChatSection = () => {
                 </div>
               </div>
 
-              {/* Message Feed Container */}
-              <div className="flex-1 p-4 overflow-hidden flex flex-col justify-end">
+              {/* Message Feed Container - UPDATED FOR BUBBLE STYLE */}
+              <div className="flex-1 p-4 overflow-hidden flex flex-col justify-end pt-16"> 
+                {/* 'justify-end' pushes content to the bottom, removing the empty top space */}
                 
-                {/* Top Fade Gradient for smooth exit */}
-                <div className="absolute top-14 left-0 right-0 h-16 bg-gradient-to-b from-[#0f172a] to-transparent z-10 pointer-events-none" />
-
                 <div className="space-y-4 relative z-0">
                   <AnimatePresence initial={false} mode="popLayout">
                     {messages.map((msg) => (
                       <motion.div
-                        layout // Enables smooth sliding up
+                        layout
                         key={msg.id}
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                         transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="flex gap-3 group"
+                        className={cn(
+                            "flex w-full",
+                            msg.isMe ? "justify-end" : "justify-start" // Align based on sender
+                        )}
                       >
-                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-lg mt-0.5", msg.color)}>
-                          {msg.avatar}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-sm font-bold text-slate-200 group-hover:text-cyan-400 transition-colors">
-                              {msg.user}
-                            </span>
-                            <span className="text-[10px] text-slate-600">
-                              {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-400 leading-relaxed break-words">
+                        <div className={cn(
+                            "max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative break-words text-sm",
+                            msg.isSystem ? "bg-slate-800/50 border-slate-700 text-slate-400 text-xs text-center w-full max-w-full" : 
+                            msg.isMe 
+                                ? "bg-blue-600 border-blue-500 text-white rounded-br-none" 
+                                : "bg-slate-800 border-slate-700 text-slate-100 rounded-bl-none"
+                        )}>
+                            {!msg.isMe && !msg.isSystem && (
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white", msg.color)}>
+                                        {msg.avatar}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-medium">{msg.user}</span>
+                                </div>
+                            )}
+                            
                             {msg.text}
-                          </p>
                         </div>
                       </motion.div>
                     ))}
@@ -843,23 +830,11 @@ const StandardChatSection = () => {
                 </div>
 
                 {/* Persistent "Someone is typing" indicator */}
-                <div className="h-6 mt-3 flex items-center gap-2 pl-11">
+                <div className="h-6 mt-2 flex items-center gap-2 pl-2">
                   <div className="flex gap-1">
-                    <motion.div 
-                      animate={{ y: [0, -3, 0] }} 
-                      transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} 
-                      className="w-1 h-1 bg-slate-500 rounded-full" 
-                    />
-                    <motion.div 
-                      animate={{ y: [0, -3, 0] }} 
-                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} 
-                      className="w-1 h-1 bg-slate-500 rounded-full" 
-                    />
-                    <motion.div 
-                      animate={{ y: [0, -3, 0] }} 
-                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} 
-                      className="w-1 h-1 bg-slate-500 rounded-full" 
-                    />
+                    {[0, 0.2, 0.4].map((delay, i) => (
+                        <motion.div key={i} animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay }} className="w-1 h-1 bg-slate-500 rounded-full" />
+                    ))}
                   </div>
                   <span className="text-[10px] text-slate-600 font-medium">Someone is typing...</span>
                 </div>

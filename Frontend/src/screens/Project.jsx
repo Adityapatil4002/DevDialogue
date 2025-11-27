@@ -194,11 +194,12 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
+  // --- UPDATED MENU ITEMS ---
   const menuItems = [
     { label: "Home", link: "/home" },
     { label: "Profile", link: "/profile" },
     { label: "Settings", link: "/profile" },
-    { label: "Dashboard", link: "#" },
+    { label: "Dashboard", link: "/dashboard" }, // Fixed link
   ];
 
   const socialItems = [

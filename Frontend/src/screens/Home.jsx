@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useMemo } from "react";
 import { UserContext } from "../Context/user.context";
 import axios from "../Config/axios";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,7 @@ import {
   useSpring,
 } from "framer-motion";
 
-// --- LOADER COMPONENT ---
+// --- LOADER ---
 const Loader = () => {
   return (
     <motion.div
@@ -32,7 +32,6 @@ const Loader = () => {
           animate={{ rotate: -360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-        <div className="mt-8 flex flex-col items-center gap-2"></div>
       </div>
     </motion.div>
   );
@@ -43,10 +42,7 @@ const containerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
   },
 };
 
@@ -55,45 +51,43 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };
 
-// --- GLOW CARD COMPONENT ---
-const GlowCard = ({ children, className = "", onClick }) => {
-  return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ y: -4, scale: 1.015 }}
-      transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
-      onClick={onClick}
-      className={`relative rounded-[2rem] border border-[#1a1f2e] bg-[#0f131a] p-6 overflow-hidden cursor-pointer group z-20
-                  hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
-                  transition-all duration-700 ease-out
-                  ${className}`}
-    >
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
-      <div className="relative h-full z-10 flex flex-col">{children}</div>
-    </motion.div>
-  );
-};
+// --- GLOW CARD ---
+const GlowCard = ({ children, className = "", onClick }) => (
+  <motion.div
+    variants={itemVariants}
+    whileHover={{ y: -4, scale: 1.015 }}
+    transition={{ type: "spring", stiffness: 100, damping: 15 }}
+    onClick={onClick}
+    className={`relative rounded-[2rem] border border-[#1a1f2e] bg-[#0f131a] p-6 overflow-hidden cursor-pointer group z-20
+                hover:border-cyan-500/50 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.5)] hover:bg-[#141820]
+                transition-all duration-700 ease-out ${className}`}
+  >
+    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
+    <div className="relative h-full z-10 flex flex-col">{children}</div>
+  </motion.div>
+);
 
 const Home = () => {
   const { user } = useContext(UserContext);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Delete/Leave Modal State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState(null);
-
-  const [projectName, setProjectName] = useState("");
-  const [project, setProject] = useState([]);
-  const [invites, setInvites] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- MOUSE FOLLOWER LOGIC ---
+  // Data States
+  const [project, setProject] = useState([]);
+  const [invites, setInvites] = useState([]);
+  const [activityData, setActivityData] = useState([]); // [NEW] Stores graph data
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Modal States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [projectName, setProjectName] = useState("");
+
+  // Mouse Follower
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const springConfig = { damping: 35, stiffness: 150 };
-  const smoothX = useSpring(mouseX, springConfig);
-  const smoothY = useSpring(mouseY, springConfig);
+  const smoothX = useSpring(mouseX, { damping: 35, stiffness: 150 });
+  const smoothY = useSpring(mouseY, { damping: 35, stiffness: 150 });
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -104,40 +98,96 @@ const Home = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
 
-  // --- API LOGIC ---
+  // --- FETCH DATA (Parallel Requests) ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [projectRes, dashboardRes] = await Promise.all([
+          axios.get("/project/all"),
+          axios.get("/user/dashboard"), // [NEW] Fetching real activity stats
+        ]);
+
+        setProject(projectRes.data.projects);
+        setInvites(projectRes.data.invites || []);
+        setActivityData(dashboardRes.data.activityChartData || []);
+
+        setTimeout(() => setIsLoading(false), 800);
+      } catch (err) {
+        console.error(err);
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // --- CALCULATE DYNAMIC ACTIVITY LEVEL ---
+  const activityLevel = useMemo(() => {
+    if (!activityData || activityData.length === 0) {
+      return {
+        label: "Quiet",
+        color: "#64748b",
+        badgeBg: "bg-gray-500/10",
+        badgeText: "text-gray-400",
+        percent: "0%",
+      };
+    }
+
+    // Sum activity from the last 7 days
+    const last7Days = activityData.slice(-7);
+    const totalActivity = last7Days.reduce((acc, curr) => acc + curr.count, 0);
+
+    // Define Thresholds
+    if (totalActivity === 0) {
+      return {
+        label: "Quiet",
+        color: "#64748b",
+        badgeBg: "bg-gray-500/10",
+        badgeText: "text-gray-400",
+        percent: "0%",
+      };
+    } else if (totalActivity < 5) {
+      return {
+        label: "Low",
+        color: "#06b6d4",
+        badgeBg: "bg-cyan-500/10",
+        badgeText: "text-cyan-400",
+        percent: "+12%",
+      };
+    } else if (totalActivity < 10) {
+      return {
+        label: "Medium",
+        color: "#f59e0b",
+        badgeBg: "bg-amber-500/10",
+        badgeText: "text-amber-400",
+        percent: "+45%",
+      };
+    } else {
+      return {
+        label: "High",
+        color: "#ef4444",
+        badgeBg: "bg-red-500/10",
+        badgeText: "text-red-400",
+        percent: "+88%",
+      };
+    }
+  }, [activityData]);
+
+  // --- HANDLERS ---
   function createProject(e) {
     e.preventDefault();
     axios
       .post("/project/create", { name: projectName })
       .then((res) => {
-        setProject((prevProjects) => [...prevProjects, res.data]);
+        setProject((prev) => [...prev, res.data]);
         setIsModalOpen(false);
         setProjectName("");
       })
       .catch((error) => console.log(error));
   }
 
-  // Fetch Projects AND Invites
-  useEffect(() => {
-    axios
-      .get("/project/all")
-      .then((res) => {
-        setProject(res.data.projects);
-        setInvites(res.data.invites || []);
-        setTimeout(() => setIsLoading(false), 1000);
-      })
-      .catch((err) => {
-        console.log(err);
-        setIsLoading(false);
-      });
-  }, []);
-
   const handleAccept = async (projectId) => {
     try {
       await axios.put("/project/accept-invite", { projectId });
-      const acceptedProject = invites.find((i) => i._id === projectId);
-      setInvites((prev) => prev.filter((i) => i._id !== projectId));
-      setProject((prev) => [...prev, acceptedProject]);
       window.location.reload();
     } catch (err) {
       console.error(err);
@@ -153,7 +203,6 @@ const Home = () => {
     }
   };
 
-  // --- DELETE / LEAVE LOGIC ---
   const confirmDeleteProject = (e, proj) => {
     e.stopPropagation();
     setProjectToDelete(proj);
@@ -162,25 +211,17 @@ const Home = () => {
 
   const executeDeleteOrLeave = async () => {
     if (!projectToDelete) return;
-
     const isOwner = projectToDelete.owner === user._id;
-
-    // Optimistic UI update
     setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
     setIsDeleteModalOpen(false);
-
     try {
-      if (isOwner) {
-        // Owner deletes
+      if (isOwner)
         await axios.delete(`/project/delete`, {
           data: { projectId: projectToDelete._id },
         });
-      } else {
-        // Collaborator leaves
+      else
         await axios.put(`/project/leave`, { projectId: projectToDelete._id });
-      }
     } catch (error) {
-      console.error("Failed to remove project", error);
       alert("Failed to remove project");
       window.location.reload();
     }
@@ -190,7 +231,7 @@ const Home = () => {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8 font-sans selection:bg-cyan-500/30 flex items-center justify-center overflow-hidden relative">
-      {/* --- GLOBAL CURSOR FOLLOWER --- */}
+      {/* Cursor Follower */}
       <motion.div
         style={{
           left: smoothX,
@@ -200,20 +241,17 @@ const Home = () => {
         }}
         className="fixed pointer-events-none w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[80px] z-0"
       />
-
-      {/* Static Background Ambiance */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
         <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-blue-900/05 rounded-full blur-[150px]" />
       </div>
 
-      {/* --- Main Grid --- */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
         className="relative z-10 w-full max-w-[80rem] h-[85vh] grid grid-cols-1 md:grid-cols-4 grid-rows-6 gap-4 md:gap-6"
       >
-        {/* 1. New Project */}
+        {/* 1. Create Project */}
         <GlowCard
           className="col-span-1 row-span-2 group"
           onClick={() => setIsModalOpen(true)}
@@ -231,35 +269,102 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 2. AI Credits */}
-        <GlowCard className="col-span-1 row-span-2 justify-between">
-          <div className="flex justify-between items-start">
-            <h2 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">
-              AI Credits
-            </h2>
-            <i className="ri-flashlight-fill text-cyan-400 text-lg shadow-[0_0_15px_rgba(6,182,212,0.6)]"></i>
+        {/* 2. DYNAMIC ACTIVITY WAVE (Option 2 Updated) */}
+        <GlowCard className="col-span-1 row-span-2 relative overflow-hidden group">
+          <div className="relative z-10 flex justify-between items-start">
+            <div>
+              <h2 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">
+                Activity Level
+              </h2>
+              <p className="text-xs text-neutral-500 mt-1">
+                Real-time intensity
+              </p>
+            </div>
+            <div
+              className="p-2 rounded-full shadow-[0_0_15px_currentColor] text-white"
+              style={{
+                backgroundColor: `${activityLevel.color}20`,
+                color: activityLevel.color,
+              }}
+            >
+              <i className="ri-pulse-line text-lg animate-pulse"></i>
+            </div>
           </div>
-          <div className="space-y-4 mt-auto">
-            <div className="flex items-end gap-2">
-              <span className="text-5xl font-mono font-bold text-white tracking-tighter">
-                2,450
+
+          {/* Dynamic Wave Animation */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 w-full pointer-events-none z-0">
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 100 50"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={activityLevel.color}
+                    stopOpacity="0.5"
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={activityLevel.color}
+                    stopOpacity="0"
+                  />
+                </linearGradient>
+              </defs>
+              <motion.path
+                d="M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z"
+                fill="url(#waveGradient)"
+                animate={{
+                  d: [
+                    "M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z",
+                    "M0,25 C30,40 70,10 100,25 L100,50 L0,50 Z",
+                    "M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z",
+                  ],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              <motion.path
+                d="M0,25 C30,10 70,40 100,25"
+                fill="none"
+                stroke={activityLevel.color}
+                strokeWidth="0.5"
+                animate={{
+                  d: [
+                    "M0,25 C30,10 70,40 100,25",
+                    "M0,25 C30,40 70,10 100,25",
+                    "M0,25 C30,10 70,40 100,25",
+                  ],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            </svg>
+          </div>
+
+          {/* Status Text (Bottom Left, Above Wave) */}
+          <div className="absolute bottom-4 left-6 z-20">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-white tracking-tight">
+                {activityLevel.label}
+              </span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border border-current ${activityLevel.badgeBg} ${activityLevel.badgeText}`}
+              >
+                {activityLevel.percent}
               </span>
             </div>
-            <div className="w-full bg-[#1a1f2e] h-2 rounded-full overflow-hidden relative">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: "45%" }}
-                transition={{ duration: 1.5, ease: "circOut" }}
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-blue-600"
-              ></motion.div>
-            </div>
-            <span className="text-xs text-neutral-500">
-              45% used of 5,000 total quota.
-            </span>
           </div>
         </GlowCard>
 
-        {/* 3. INBOX (Updated: RADAR ANIMATION) */}
+        {/* 3. Inbox */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden">
           <div className="flex justify-between items-center mb-6 z-10 relative">
             <div>
@@ -270,21 +375,20 @@ const Home = () => {
               {invites.length} New
             </span>
           </div>
-
           <div className="relative flex-1 overflow-hidden -mx-6 px-6 h-full">
             <div className="space-y-2 overflow-y-auto h-full custom-scrollbar pb-4">
               {invites.length > 0 ? (
-                invites.map((invite, i) => (
+                invites.map((invite) => (
                   <div
                     key={invite._id}
-                    className="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#141820] border border-[#1f2533] hover:bg-[#1a1f2e] hover:border-cyan-500/30 transition-all duration-200 group/item"
+                    className="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#141820] border border-[#1f2533] hover:bg-[#1a1f2e] hover:border-cyan-500/30 transition-all duration-200"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg text-white">
                         <i className="ri-mail-unread-line"></i>
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-neutral-200 group-hover/item:text-white">
+                        <div className="text-sm font-medium text-neutral-200">
                           {invite.name}
                         </div>
                         <div className="text-[11px] text-neutral-500">
@@ -292,7 +396,6 @@ const Home = () => {
                         </div>
                       </div>
                     </div>
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleAccept(invite._id)}
@@ -310,10 +413,8 @@ const Home = () => {
                   </div>
                 ))
               ) : (
-                // [NEW] "Radar Scan" Animation for Empty Inbox
                 <div className="flex flex-col items-center justify-center h-full text-neutral-600 mt-2 relative">
                   <div className="relative w-24 h-24 flex items-center justify-center mb-4">
-                    {/* Concentric pulsing circles */}
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
@@ -328,7 +429,6 @@ const Home = () => {
                         }}
                       />
                     ))}
-                    {/* Center Icon */}
                     <div className="relative z-10 w-12 h-12 bg-[#1f2533] rounded-full flex items-center justify-center border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                       <i className="ri-radar-line text-xl text-cyan-400"></i>
                     </div>
@@ -342,7 +442,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 4. Projects List (Updated: LEVITATING HOLOGRAM ANIMATION) */}
+        {/* 4. Projects List */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
           <div className="flex justify-between items-end mb-6 relative z-10 shrink-0">
             <div>
@@ -355,7 +455,6 @@ const Home = () => {
               {project.length} Active
             </div>
           </div>
-
           <div className="relative flex-1 overflow-hidden -mx-2 px-2 h-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-y-auto pr-2 custom-scrollbar max-h-full pb-4">
               {project.map((proj) => (
@@ -381,24 +480,19 @@ const Home = () => {
                         </p>
                       </div>
                     </div>
-
                     <button
                       onClick={(e) => confirmDeleteProject(e, proj)}
                       className="w-8 h-8 rounded-full border border-transparent hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover/project:opacity-100 transition-all duration-200 bg-[#1f2533] text-gray-500 hover:text-red-500 hover:bg-red-500/10 z-20"
-                      title={
-                        proj.owner === user?._id
-                          ? "Delete Project"
-                          : "Leave Project"
-                      }
                     >
-                      {proj.owner === user?._id ? (
-                        <i className="ri-delete-bin-line text-sm"></i>
-                      ) : (
-                        <i className="ri-logout-box-r-line text-sm"></i>
-                      )}
+                      <i
+                        className={
+                          proj.owner === user?._id
+                            ? "ri-delete-bin-line text-sm"
+                            : "ri-logout-box-r-line text-sm"
+                        }
+                      ></i>
                     </button>
                   </div>
-
                   <div className="relative z-10 mt-auto pt-3 flex items-center gap-2 text-[10px] text-neutral-500 font-medium border-t border-white/5">
                     <span className="flex items-center gap-1">
                       <i className="ri-user-line"></i> {proj.users.length}{" "}
@@ -407,9 +501,7 @@ const Home = () => {
                   </div>
                 </div>
               ))}
-
               {project.length === 0 && (
-                // [NEW] Levitating Hologram Animation for Empty Projects
                 <div className="col-span-full flex flex-col items-center justify-center h-40 text-neutral-600 mt-2">
                   <motion.div
                     animate={{ y: [0, -8, 0] }}
@@ -421,22 +513,9 @@ const Home = () => {
                     className="relative mb-4"
                   >
                     <i className="ri-folder-add-line text-5xl text-blue-500/40 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]"></i>
-                    {/* Floating Shadow underneath */}
-                    <motion.div
-                      animate={{ scale: [1, 0.8, 1], opacity: [0.5, 0.2, 0.5] }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500/30 rounded-full blur-sm"
-                    />
                   </motion.div>
                   <p className="text-sm font-medium text-gray-500">
                     No active projects
-                  </p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Initialize a new workspace
                   </p>
                 </div>
               )}
@@ -444,7 +523,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 5. DASHBOARD CARD (Arrow Icon) */}
+        {/* 5. Dashboard */}
         <GlowCard className="col-span-1 row-span-2 justify-between relative overflow-hidden">
           <div className="flex justify-between items-start z-10 relative">
             <div>
@@ -463,7 +542,6 @@ const Home = () => {
               <i className="ri-arrow-right-up-line text-lg"></i>
             </button>
           </div>
-
           <div className="z-10 relative mt-auto space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-[#141820] border border-[#1f2533]">
               <span className="text-xs text-gray-400">Total Projects</span>
@@ -478,27 +556,33 @@ const Home = () => {
               </span>
             </div>
           </div>
-
           <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
         </GlowCard>
 
-        {/* 6. User Profile */}
+        {/* 6. Profile */}
         <GlowCard
           className="col-span-1 row-span-2 justify-between text-center"
           onClick={() => navigate("/profile")}
         >
           <div className="flex flex-col items-center mt-4">
             <div className="relative mb-4 group/avatar">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[3px] shadow-[0_0_20px_rgba(6,182,212,0.3)] group-hover/avatar:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-shadow duration-500">
-                <div className="w-full h-full rounded-full bg-[#0f131a] flex items-center justify-center overflow-hidden">
-                  <i className="ri-user-3-fill text-4xl text-neutral-200"></i>
-                </div>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[3px] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-shadow duration-500">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="Avatar"
+                    className="w-full h-full rounded-full border-2 border-[#0b0f19] object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-[#0f131a] flex items-center justify-center text-4xl text-neutral-200">
+                    {user?.email?.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
               <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#0f131a] rounded-full flex items-center justify-center">
                 <div className="w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0f131a]"></div>
               </div>
             </div>
-
             <h3 className="text-xl font-bold text-white truncate w-full">
               {user?.email?.split("@")[0] || "Developer"}
             </h3>
@@ -506,15 +590,13 @@ const Home = () => {
               Pro Workspace
             </p>
           </div>
-
           <button className="w-full py-3 rounded-xl bg-[#1a1f2e] hover:bg-[#2a3040] text-white text-sm font-medium transition-colors border border-[#2a3040] hover:border-cyan-500/30 flex items-center justify-center gap-2">
-            <i className="ri-settings-3-line"></i>
-            View Settings
+            <i className="ri-settings-3-line"></i> View Settings
           </button>
         </GlowCard>
       </motion.div>
 
-      {/* --- CREATE PROJECT MODAL --- */}
+      {/* --- MODALS --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div
@@ -535,32 +617,23 @@ const Home = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold text-white">New Project</h2>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-10 h-10 rounded-full bg-[#1a1f2e] flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
-                >
-                  <i className="ri-close-line text-xl"></i>
-                </button>
-              </div>
+              <h2 className="text-2xl font-bold text-white mb-8">
+                New Project
+              </h2>
               <form onSubmit={createProject}>
                 <div className="mb-8">
                   <label className="block text-sm font-bold text-neutral-300 mb-3">
                     Project Name
                   </label>
-                  <div className="relative">
-                    <i className="ri-hashtag absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"></i>
-                    <input
-                      type="text"
-                      value={projectName}
-                      onChange={(e) => setProjectName(e.target.value)}
-                      className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 pl-10 pr-4 focus:outline-none focus:border-cyan-500 transition-all placeholder-neutral-600"
-                      placeholder="e.g. Quantum Dashboard"
-                      required
-                      autoFocus
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 px-4 focus:outline-none focus:border-cyan-500 transition-all placeholder-neutral-600"
+                    placeholder="e.g. Quantum Dashboard"
+                    required
+                    autoFocus
+                  />
                 </div>
                 <div className="flex justify-end gap-3">
                   <button
@@ -572,20 +645,15 @@ const Home = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm"
                   >
-                    <span>Create Project</span>
-                    <i className="ri-arrow-right-line"></i>
+                    Create Project
                   </button>
                 </div>
               </form>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
-
-      {/* --- DELETE/LEAVE CONFIRMATION MODAL --- */}
-      <AnimatePresence>
         {isDeleteModalOpen && (
           <div
             className="fixed inset-0 z-[60] flex justify-center items-center p-4"
@@ -619,35 +687,16 @@ const Home = () => {
                     ? "Delete Project?"
                     : "Leave Project?"}
                 </h2>
-                <p className="text-sm text-gray-400 mb-6">
-                  {projectToDelete?.owner === user?._id ? (
-                    <>
-                      Are you sure you want to delete{" "}
-                      <span className="text-white font-bold">
-                        "{projectToDelete?.name}"
-                      </span>
-                      ? <br /> This action cannot be undone.
-                    </>
-                  ) : (
-                    <>
-                      Are you sure you want to leave{" "}
-                      <span className="text-white font-bold">
-                        "{projectToDelete?.name}"
-                      </span>
-                      ?
-                    </>
-                  )}
-                </p>
-                <div className="flex gap-3 w-full">
+                <div className="flex gap-3 w-full mt-6">
                   <button
                     onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 py-3 rounded-xl bg-[#1a1f2e] hover:bg-[#2a3040] text-white text-sm font-bold transition-colors"
+                    className="flex-1 py-3 rounded-xl bg-[#1a1f2e] text-white text-sm font-bold"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={executeDeleteOrLeave}
-                    className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors shadow-lg shadow-red-900/20"
+                    className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-900/20"
                   >
                     {projectToDelete?.owner === user?._id ? "Delete" : "Leave"}
                   </button>
