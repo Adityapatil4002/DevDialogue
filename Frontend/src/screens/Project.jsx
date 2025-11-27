@@ -14,6 +14,7 @@ import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
+import { MoreVertical, Trash2, Reply } from "lucide-react"; // [NEW] Imports
 
 // --- UTILITY FUNCTIONS ---
 
@@ -169,10 +170,25 @@ const Project = () => {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [activeTab, setActiveTab] = useState("browser");
   const [replyingTo, setReplyingTo] = useState(null);
+
+  // [NEW] Menu State
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
+
   const messageEndRef = useRef(null);
   const terminalEndRef = useRef(null);
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  // [NEW] Click outside listener for menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeMenuMsgId && !event.target.closest(".message-menu-container")) {
+        setActiveMenuMsgId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeMenuMsgId]);
 
   const buildStructure = (files) => {
     if (!files || Object.keys(files).length === 0) return {};
@@ -194,12 +210,11 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
-  // --- UPDATED MENU ITEMS ---
   const menuItems = [
     { label: "Home", link: "/home" },
     { label: "Profile", link: "/profile" },
     { label: "Settings", link: "/profile" },
-    { label: "Dashboard", link: "/dashboard" }, // Fixed link
+    { label: "Dashboard", link: "/dashboard" },
   ];
 
   const socialItems = [
@@ -447,36 +462,33 @@ const Project = () => {
     setFileToDelete(null);
   };
 
-const send = () => {
-  if (!message.trim() || !user?._id || !projectId) return;
+  const send = () => {
+    if (!message.trim() || !user?._id || !projectId) return;
 
-  let messageToSend = message;
-  if (message.trim().toLowerCase().includes("@ai")) {
-    setIsAiThinking(true);
-    if (currentFile && fileTree[currentFile]?.file) {
-      const fileContent = fileTree[currentFile].file.contents;
-      messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
+    let messageToSend = message;
+    if (message.trim().toLowerCase().includes("@ai")) {
+      setIsAiThinking(true);
+      if (currentFile && fileTree[currentFile]?.file) {
+        const fileContent = fileTree[currentFile].file.contents;
+        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
+      }
     }
-  }
 
-  const messageData = {
-    projectId,
-    message: messageToSend,
-    sender: { _id: user._id, email: user.email },
-    replyTo: replyingTo, // [NEW] Send reply context
+    const messageData = {
+      projectId,
+      message: messageToSend,
+      sender: { _id: user._id, email: user.email },
+      replyTo: replyingTo, // Send reply context
+    };
+
+    sendMessage("project-message", messageData);
+
+    setMessage("");
+    setReplyingTo(null); // Reset reply state
+    setIsTyping(false);
+    const socket = initializeSocket(projectId);
+    socket.emit("stop-typing");
   };
-
-  sendMessage("project-message", messageData);
-
-  // We don't optimistic update here because we need the real DB _id for deletion to work immediately.
-  // The socket broadcast will handle the UI update in < 100ms.
-
-  setMessage("");
-  setReplyingTo(null); // [NEW] Reset reply state
-  setIsTyping(false);
-  const socket = initializeSocket(projectId);
-  socket.emit("stop-typing");
-};
 
   const handleRunClick = async () => {
     if (!webContainer) return;
@@ -488,11 +500,8 @@ const send = () => {
       const mountStructure = JSON.parse(JSON.stringify(fileTree));
       const hasPackageJson = !!mountStructure["package.json"];
 
-      // SCENARIO 1: PROJECT MODE (package.json exists)
       if (hasPackageJson) {
         setIsInstalling(true);
-
-        // 1. Auto-Fix missing "start" script
         try {
           const pkgJson = JSON.parse(
             mountStructure["package.json"].file.contents
@@ -522,10 +531,8 @@ const send = () => {
           /* ignore parse error */
         }
 
-        // 2. Mount Files
         await webContainer.mount(mountStructure);
 
-        // 3. Install Dependencies
         setTerminalOutput((p) => p + "Installing dependencies...\n");
         const installProcess = await webContainer.spawn("npm", ["install"]);
 
@@ -540,7 +547,6 @@ const send = () => {
         if ((await installProcess.exit) !== 0)
           throw new Error("Installation failed");
 
-        // 4. Start Server
         setIsInstalling(false);
         setTerminalOutput((p) => p + "\nStarting server...\n");
 
@@ -561,10 +567,7 @@ const send = () => {
           setIframeUrl(url);
           setActiveTab("browser");
         });
-      }
-
-      // SCENARIO 2: SCRIPT MODE (No package.json)
-      else {
+      } else {
         setIsInstalling(false);
         await webContainer.mount(mountStructure);
 
@@ -688,12 +691,10 @@ const send = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      {/* Main Resizable Layout */}
       <PanelGroup direction="horizontal">
         {/* --- LEFT PANEL: CHAT --- */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
-            {/* Header */}
             <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <button
@@ -738,47 +739,142 @@ const send = () => {
                     msg.sender?._id?.toString() === user?._id?.toString() ||
                     msg.senderId?.toString() === user?._id?.toString();
                   const senderEmail = msg.sender?.email || msg.sender;
+                  const isMenuOpen = activeMenuMsgId === (msg._id || i);
 
                   return (
                     <div
-                      key={i}
-                      className={`flex w-full animate-fade-in ${
+                      key={msg._id || i}
+                      className={`flex w-full animate-fade-in group relative ${
                         isOwnMessage ? "justify-end" : "justify-start"
                       }`}
                     >
                       <div
-                        className={`max-w-[85%] flex flex-col p-3 rounded-2xl shadow-lg border relative break-words overflow-hidden ${
-                          isOwnMessage
-                            ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
-                            : "bg-gray-800 border-gray-700 text-gray-100 rounded-bl-none"
+                        className={`max-w-[85%] flex flex-col relative ${
+                          isOwnMessage ? "items-end" : "items-start"
                         }`}
                       >
-                        {!isOwnMessage && !msg.isAi && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
-                              {typeof senderEmail === "string"
-                                ? senderEmail[0]?.toUpperCase()
-                                : "?"}
-                            </div>
-                            <small className="opacity-70 text-xs font-medium text-gray-300">
-                              {typeof senderEmail === "string"
-                                ? senderEmail
-                                : "User"}
-                            </small>
+                        {msg.replyTo && (
+                          <div
+                            className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${
+                              isOwnMessage
+                                ? "bg-blue-900/30 border-blue-400 text-blue-100"
+                                : "bg-gray-800 border-gray-500 text-gray-400"
+                            }`}
+                          >
+                            <span className="font-bold block mb-0.5 text-[10px]">
+                              {msg.replyTo.originalSender}
+                            </span>
+                            <span className="line-clamp-1">
+                              {msg.replyTo.originalMessage}
+                            </span>
                           </div>
                         )}
-                        {msg.isAi ? (
-                          <div className="flex gap-2">
-                            <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
-                            <div className="overflow-hidden w-full">
-                              <AiMessage raw={msg.message} />
+
+                        <div
+                          className={`relative px-4 py-2 rounded-2xl shadow-md text-sm break-words overflow-hidden ${
+                            isOwnMessage
+                              ? "bg-blue-600 text-white rounded-br-none"
+                              : "bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700"
+                          }`}
+                        >
+                          {!isOwnMessage && !msg.isAi && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
+                                {typeof senderEmail === "string"
+                                  ? senderEmail[0]?.toUpperCase()
+                                  : "?"}
+                              </div>
+                              <small className="opacity-70 text-xs font-medium text-gray-300">
+                                {typeof senderEmail === "string"
+                                  ? senderEmail
+                                  : "User"}
+                              </small>
                             </div>
+                          )}
+
+                          {msg.isAi ? (
+                            <div className="flex gap-2">
+                              <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
+                              <div className="overflow-hidden w-full">
+                                <AiMessage raw={msg.message} />
+                              </div>
+                            </div>
+                          ) : (
+                            <p>{msg.message}</p>
+                          )}
+
+                          <div
+                            className={`text-[10px] mt-1 text-right ${
+                              isOwnMessage ? "text-blue-200" : "text-gray-500"
+                            }`}
+                          >
+                            {new Date(msg.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </div>
-                        ) : (
-                          <p className="text-sm whitespace-pre-wrap break-words">
-                            {msg.message}
-                          </p>
-                        )}
+                        </div>
+
+                        {/* THREE DOTS MENU TRIGGER */}
+                        <div
+                          className={`absolute top-2 ${
+                            isOwnMessage ? "-left-8" : "-right-8"
+                          } message-menu-container`}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuMsgId(
+                                isMenuOpen ? null : msg._id || i
+                              );
+                            }}
+                            className={`p-1 rounded-full text-gray-500 hover:text-white hover:bg-gray-800 transition-all 
+                              ${
+                                isMenuOpen
+                                  ? "opacity-100 bg-gray-800 text-white"
+                                  : "opacity-0 group-hover:opacity-100"
+                              }`}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+
+                          {/* DROPDOWN MENU */}
+                          {isMenuOpen && (
+                            <div
+                              className={`absolute top-6 ${
+                                isOwnMessage
+                                  ? "right-0 origin-top-right"
+                                  : "left-0 origin-top-left"
+                              } 
+                              bg-[#1f2937] border border-gray-700 rounded-lg shadow-xl z-50 w-32 overflow-hidden animate-fade-in`}
+                            >
+                              <button
+                                onClick={() => {
+                                  setReplyingTo({
+                                    originalMessage: msg.message,
+                                    originalSender: senderEmail,
+                                  });
+                                  setActiveMenuMsgId(null);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white flex items-center gap-2"
+                              >
+                                <Reply size={12} /> Reply
+                              </button>
+
+                              {isOwnMessage && (
+                                <button
+                                  onClick={() => {
+                                    handleDeleteMessage(msg._id);
+                                    setActiveMenuMsgId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-gray-700"
+                                >
+                                  <Trash2 size={12} /> Delete
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -798,7 +894,32 @@ const send = () => {
               </div>
 
               <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19] to-transparent z-20">
-                <div className="flex items-center gap-2 bg-[#161b22] p-2 pr-2 rounded-full border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors">
+                {replyingTo && (
+                  <div className="bg-[#161b22] border border-gray-700 rounded-t-xl p-3 flex justify-between items-center mb-[-1px] mx-2 animate-fade-in">
+                    <div className="text-xs text-gray-300 border-l-2 border-blue-500 pl-2">
+                      <span className="font-bold text-blue-400 block mb-0.5">
+                        Replying to {replyingTo.originalSender}
+                      </span>
+                      <div className="truncate max-w-[200px] opacity-70">
+                        {replyingTo.originalMessage}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setReplyingTo(null)}
+                      className="text-gray-500 hover:text-white"
+                    >
+                      <i className="ri-close-line"></i>
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  className={`flex items-center gap-2 bg-[#161b22] p-2 pr-2 border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors ${
+                    replyingTo
+                      ? "rounded-b-xl rounded-t-none border-t-0 mx-2"
+                      : "rounded-full"
+                  }`}
+                >
                   <input
                     value={message}
                     onChange={handleTyping}
@@ -817,7 +938,6 @@ const send = () => {
               </div>
             </div>
 
-            {/* Collaborators Slide Panel */}
             <div
               className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
                 isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -855,7 +975,6 @@ const send = () => {
               </div>
             </div>
 
-            {/* Notifications Panel */}
             {isNotificationPanelOpen && (
               <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
                 {pendingInvites.map((invite) => (
@@ -892,10 +1011,8 @@ const send = () => {
 
         <ResizeHandle />
 
-        {/* --- RIGHT PANEL: WORKSPACE (Explorer | Editor | Terminal) --- */}
         <Panel>
           <PanelGroup direction="horizontal">
-            {/* EXPLORER */}
             {isExplorerOpen && (
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
@@ -950,7 +1067,6 @@ const send = () => {
               </>
             )}
 
-            {/* EDITOR */}
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
               <div className="flex flex-col h-full w-full bg-[#0d1117]">
                 <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12 flex-shrink-0">
@@ -1031,7 +1147,6 @@ const send = () => {
 
             <ResizeHandle />
 
-            {/* TERMINAL / BROWSER */}
             <Panel defaultSize={40} minSize={20}>
               <div className="flex flex-col h-full w-full border-l border-gray-800 bg-[#0d1117]">
                 <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
@@ -1099,7 +1214,6 @@ const send = () => {
         </Panel>
       </PanelGroup>
 
-      {/* EXTERNAL COMPONENTS (Modals, Menu) */}
       {!isSidePanelOpen && (
         <div className="fixed top-4 left-4 z-50">
           <StaggeredMenu
