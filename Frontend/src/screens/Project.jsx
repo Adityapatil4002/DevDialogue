@@ -168,7 +168,7 @@ const Project = () => {
   const [isInstalling, setIsInstalling] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState("");
   const [activeTab, setActiveTab] = useState("browser");
-
+  const [replyingTo, setReplyingTo] = useState(null);
   const messageEndRef = useRef(null);
   const terminalEndRef = useRef(null);
   const saveTimeout = useRef(null);
@@ -242,6 +242,9 @@ const Project = () => {
           const socket = initializeSocket(projectId);
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
+          socket.on("message-deleted", ({ messageId }) => {
+            setMessages((prev) => prev.filter((m) => m._id !== messageId));
+          });
 
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
@@ -397,6 +400,10 @@ const Project = () => {
     });
   };
 
+  const handleDeleteMessage = (msgId) => {
+    sendMessage("delete-message", { messageId: msgId });
+  };
+
   const handleFileContentChange = (newValue) => {
     const newFileTree = {
       ...fileTree,
@@ -440,54 +447,36 @@ const Project = () => {
     setFileToDelete(null);
   };
 
-  const send = () => {
-    if (!message.trim() || !user?._id || !projectId) return;
+const send = () => {
+  if (!message.trim() || !user?._id || !projectId) return;
 
-    let messageToSend = message;
-
-    // --- SMART CONTEXT INJECTION ---
-    // If the user is talking to AI (@ai) and has a file open,
-    // we attach the file content automatically.
-    if (message.trim().toLowerCase().includes("@ai")) {
-      setIsAiThinking(true);
-
-      if (currentFile && fileTree[currentFile]?.file) {
-        const fileContent = fileTree[currentFile].file.contents;
-
-        // We append the code with a clear delimiter so the AI knows this is context
-        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
-      }
+  let messageToSend = message;
+  if (message.trim().toLowerCase().includes("@ai")) {
+    setIsAiThinking(true);
+    if (currentFile && fileTree[currentFile]?.file) {
+      const fileContent = fileTree[currentFile].file.contents;
+      messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
     }
-    // -------------------------------
+  }
 
-    const messageData = {
-      projectId,
-      message: messageToSend, // We send the version WITH code to the server
-      sender: { _id: user._id, email: user.email },
-    };
-
-    sendMessage("project-message", messageData);
-
-    // OPTIMISTIC UI UPDATE
-    // We display the "clean" message to the user immediately,
-    // but the server will process the "messageToSend" (with code).
-    setMessages((prev) => [
-      ...prev,
-      {
-        ...messageData,
-        message: message, // Keep the UI clean (don't show the massive code block)
-        isOptimistic: true,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-
-    setMessage("");
-
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    setIsTyping(false);
-    const socket = initializeSocket(projectId);
-    socket.emit("stop-typing");
+  const messageData = {
+    projectId,
+    message: messageToSend,
+    sender: { _id: user._id, email: user.email },
+    replyTo: replyingTo, // [NEW] Send reply context
   };
+
+  sendMessage("project-message", messageData);
+
+  // We don't optimistic update here because we need the real DB _id for deletion to work immediately.
+  // The socket broadcast will handle the UI update in < 100ms.
+
+  setMessage("");
+  setReplyingTo(null); // [NEW] Reset reply state
+  setIsTyping(false);
+  const socket = initializeSocket(projectId);
+  socket.emit("stop-typing");
+};
 
   const handleRunClick = async () => {
     if (!webContainer) return;
