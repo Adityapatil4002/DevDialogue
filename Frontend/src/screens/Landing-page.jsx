@@ -864,49 +864,47 @@ const StandardChatSection = () => {
 };
 
 // ==========================================
-// 🧠 FEATURE 3: THE @ai INVOCATION (Continuous Animation)
+// 🧠 FEATURE 3: THE @ai INVOCATION (Updated: With Chat History)
 // ==========================================
 const NeuralChatSection = () => {
   // --- Animation Sequence State ---
   const [step, setStep] = useState(0); 
-  const [typedCode, setTypedCode] = useState("");
+  const [aiText, setAiText] = useState("");
   
-  // The code snippet to be typed out
-  const fullCode = `const Button = ({ children, variant }) => {
-  return (
-    <button className={\`btn-\${variant}\`}>
-      {children}
-    </button>
-  );
-};`;
+  // The realistic answer the AI will "stream" back
+  const fullResponse = "The `authMiddleware` verifies the JWT token from the request headers. If valid, it decodes the payload and attaches the user ID to `req.user` for the controllers to use.";
+
+  // --- Static History (Fills the empty space) ---
+  const staticHistory = [
+    { id: 1, user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "I keep getting a 401 error on the /profile route.", isMe: false },
+    { id: 2, user: "Mike", avatar: "M", color: "bg-emerald-500", text: "Did you check if the token is being passed in the headers?", isMe: false },
+    { id: 3, user: "Sarah", avatar: "S", color: "bg-indigo-500", text: "Yeah, it's in the Authorization header. Not sure why it's failing.", isMe: false },
+  ];
 
   // --- Master Timeline Loop ---
   useEffect(() => {
     let timeout;
     
     const runSequence = () => {
-      // Step 0: Initial Pause (Empty/Reset)
+      // Step 0: Reset (Blank slate)
       setStep(0);
-      setTypedCode("");
+      setAiText("");
       
-      // Step 1: John sends a message
+      // Step 1: User types/sends message
       timeout = setTimeout(() => setStep(1), 1000);
       
-      // Step 2: User invokes @ai
+      // Step 2: AI "Thinking" state
       timeout = setTimeout(() => setStep(2), 2500);
       
-      // Step 3: AI appears & starts typing
-      timeout = setTimeout(() => setStep(3), 3500);
+      // Step 3: AI Starts typing (Streaming response)
+      timeout = setTimeout(() => setStep(3), 4000);
       
-      // Step 4: End of typing (Wait time before reset)
-      // Note: Typing duration is handled in the effect below, 
-      // this timeout controls how long we view the result.
-      timeout = setTimeout(runSequence, 9000); 
+      // Step 4: Finish & Hold (Read time)
+      timeout = setTimeout(runSequence, 12000); 
     };
 
     runSequence();
     
-    // Cleanup on unmount
     return () => clearTimeout(timeout);
   }, []);
 
@@ -915,13 +913,13 @@ const NeuralChatSection = () => {
     if (step === 3) {
       let charIndex = 0;
       const typeInterval = setInterval(() => {
-        if (charIndex <= fullCode.length) {
-          setTypedCode(fullCode.slice(0, charIndex));
+        if (charIndex <= fullResponse.length) {
+          setAiText(fullResponse.slice(0, charIndex));
           charIndex++;
         } else {
           clearInterval(typeInterval);
         }
-      }, 30); // Typing speed (ms per char)
+      }, 30); 
       return () => clearInterval(typeInterval);
     }
   }, [step]);
@@ -934,7 +932,7 @@ const NeuralChatSection = () => {
         <Reveal>
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-300 text-xs font-bold uppercase tracking-wider">
-              <Zap className="w-3 h-3" /> Collaboration First
+              <Zap className="w-3 h-3" /> Context Aware Intelligence
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
               Your team's new <br />
@@ -945,14 +943,13 @@ const NeuralChatSection = () => {
             <p className="text-slate-400 text-lg leading-relaxed">
               Don't switch tabs to ChatGPT. Just type{" "}
               <strong className="text-cyan-400">@ai</strong> inside your group
-              chat. The AI understands your project context, answers
-              architectural questions, and generates solutions where you are
-              discussing them.
+              chat. The AI reads your current file context, answers
+              architectural questions, and explains complex logic instantly.
             </p>
             <ul className="space-y-4 pt-4">
               {[
-                "Context-aware answers based on chat history",
-                "Multi-user collaboration with AI support",
+                "Context-aware answers based on open files",
+                "Explains code logic and functionality",
                 "Instant knowledge retrieval for docs & APIs",
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-slate-300">
@@ -967,12 +964,11 @@ const NeuralChatSection = () => {
         {/* RIGHT SIDE: Animated Visualization */}
         <Reveal
           delay={0.2}
-          className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden min-h-[480px] flex flex-col"
+          className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden min-h-[500px] flex flex-col"
         >
           {/* Header */}
-          <div className="h-12 border-b border-white/5 bg-white/5 flex items-center justify-between px-4">
+          <div className="h-12 border-b border-white/5 bg-white/5 flex items-center justify-between px-4 bg-[#0B1120]/90 backdrop-blur-sm z-10">
             <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
               <span className="text-sm font-bold text-slate-300">
                 # dev-team
               </span>
@@ -980,9 +976,9 @@ const NeuralChatSection = () => {
             <div className="flex -space-x-2">
               <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-[#0B1120] flex items-center justify-center text-xs font-bold text-white">JD</div>
               <motion.div
-                animate={{ borderColor: ["#0B1120", "#22d3ee", "#0B1120"] }}
+                animate={{ borderColor: ["#0B1120", "#a78bfa", "#0B1120"] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="w-8 h-8 rounded-full bg-cyan-500 border-2 flex items-center justify-center text-[10px] font-bold"
+                className="w-8 h-8 rounded-full bg-violet-600 border-2 flex items-center justify-center text-[10px] font-bold"
               >
                 AI
               </motion.div>
@@ -990,94 +986,84 @@ const NeuralChatSection = () => {
           </div>
 
           {/* Chat Content Area */}
-          <div className="p-6 space-y-6 flex-1 relative">
+          <div className="p-6 space-y-6 flex-1 relative flex flex-col justify-end">
             
-            {/* 1. Normal Team Message */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: step >= 1 ? 1 : 0, y: step >= 1 ? 0 : 10 }}
-              className="flex gap-4"
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white font-bold text-xs">
-                JD
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-slate-500">
-                  John Doe • 10:23 AM
-                </div>
-                <div className="bg-slate-800 p-3 rounded-lg rounded-tl-none text-slate-300 text-sm">
-                  We need a reusable Button component for the new dashboard.
-                </div>
-              </div>
-            </motion.div>
+            {/* --- STATIC HISTORY (Fills the space) --- */}
+            {staticHistory.map((msg) => (
+               <div key={msg.id} className="flex gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-lg ${msg.color}`}>
+                    {msg.avatar}
+                  </div>
+                  <div className="max-w-[85%] space-y-1">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{msg.user}</div>
+                    <div className="bg-[#1e293b] border border-white/5 p-3 rounded-2xl rounded-tl-none text-slate-300 text-sm shadow-md">
+                      {msg.text}
+                    </div>
+                  </div>
+               </div>
+            ))}
 
-            {/* 2. User @ai Invocation */}
+            {/* --- ACTIVE ANIMATION --- */}
+            
+            {/* 1. User Question */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: step >= 2 ? 1 : 0, y: step >= 2 ? 0 : 10 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: step >= 1 ? 1 : 0, y: step >= 1 ? 0 : 20 }}
               className="flex gap-4 flex-row-reverse"
             >
-              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center shrink-0 text-white font-bold text-xs">
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-lg">
                 ME
               </div>
-              <div className="space-y-1 text-right">
-                <div className="text-xs text-slate-500">You • 10:24 AM</div>
-                <div className="bg-violet-900/50 border border-violet-500/30 p-3 rounded-lg rounded-tr-none text-white text-sm text-left inline-block">
-                  <span className="text-cyan-400 font-bold">@ai</span> create a React Button component with variants.
+              <div className="max-w-[80%] space-y-1 text-right">
+                <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">You</div>
+                <div className="bg-blue-600 p-3 rounded-2xl rounded-tr-none text-white text-sm text-left shadow-lg">
+                  <span className="text-cyan-300 font-bold bg-black/20 px-1 rounded">@ai</span> how does the auth middleware work?
                 </div>
               </div>
             </motion.div>
 
-            {/* 3. AI Response (Typewriter) */}
+            {/* 2. AI Response */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: step >= 3 ? 1 : 0, y: step >= 3 ? 0 : 10 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: step >= 2 ? 1 : 0, y: step >= 2 ? 0 : 20 }}
               className="flex gap-4"
             >
-              <div className="w-10 h-10 rounded-full bg-cyan-900 border border-cyan-500 flex items-center justify-center shrink-0">
-                <Zap className="w-5 h-5 text-cyan-400" />
+              <div className="w-10 h-10 rounded-full bg-violet-600 border border-violet-400 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
+                <Zap className="w-5 h-5 text-white" />
               </div>
-              <div className="space-y-2 w-full max-w-[85%]">
-                <div className="text-xs text-cyan-500 font-bold flex items-center gap-2">
-                  DevDialogue AI • 10:24 AM
-                  {step === 3 && typedCode.length < fullCode.length && (
-                     <span className="text-[10px] text-slate-500 animate-pulse">thinking...</span>
+              <div className="max-w-[85%] space-y-1">
+                <div className="text-[10px] text-violet-400 uppercase font-bold tracking-wider flex items-center gap-2">
+                  DevDialogue AI
+                  {step === 2 && (
+                    <span className="flex gap-0.5">
+                      <motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }} className="w-1 h-1 bg-violet-400 rounded-full"/>
+                      <motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1 h-1 bg-violet-400 rounded-full"/>
+                      <motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1 h-1 bg-violet-400 rounded-full"/>
+                    </span>
                   )}
                 </div>
                 
-                {/* AI Card */}
-                <div className="bg-[#0f172a] border border-cyan-500/20 p-4 rounded-lg rounded-tl-none text-slate-300 text-sm w-full shadow-lg relative overflow-hidden group">
-                  {/* Subtle Scanline Effect */}
-                  <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  
-                  <div className="bg-black/50 p-3 rounded border border-white/5 font-mono text-xs text-slate-400 overflow-hidden relative min-h-[120px]">
-                    <pre className="whitespace-pre-wrap font-mono">
-                        {/* Render highlighted code roughly (simplified for animation) */}
-                        <span className="text-violet-400">{typedCode.includes('const') ? 'const' : ''}</span>
-                        {typedCode.replace('const', '')}
-                        
-                        {/* Blinking Cursor */}
-                        {step === 3 && (
-                            <motion.span
-                            animate={{ opacity: [1, 0, 1] }}
-                            transition={{ duration: 0.8, repeat: Infinity }}
-                            className="inline-block w-1.5 h-3 bg-cyan-400 ml-1 align-middle"
-                            />
-                        )}
-                    </pre>
-                  </div>
-
-                  <div className="mt-3 flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 text-xs rounded border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors flex items-center gap-1"
-                    >
-                      <PlayCircle className="w-3 h-3" /> Insert Code
-                    </motion.button>
-                  </div>
+                {/* The Bubble */}
+                <div className="bg-[#1e293b] border border-white/5 p-4 rounded-2xl rounded-tl-none text-slate-300 text-sm shadow-xl leading-relaxed">
+                   {step === 2 ? (
+                     <span className="text-slate-500 italic text-xs">Analyzing codebase...</span>
+                   ) : (
+                     <>
+                       {aiText}
+                       {/* Blinking Cursor */}
+                       {step === 3 && aiText.length < fullResponse.length && (
+                         <motion.span
+                           animate={{ opacity: [1, 0] }}
+                           transition={{ duration: 0.5, repeat: Infinity }}
+                           className="inline-block w-1.5 h-3 bg-violet-400 ml-1 align-middle"
+                         />
+                       )}
+                     </>
+                   )}
                 </div>
               </div>
             </motion.div>
+
           </div>
         </Reveal>
       </div>
