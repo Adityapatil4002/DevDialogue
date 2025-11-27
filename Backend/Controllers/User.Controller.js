@@ -174,3 +174,53 @@ export const getDashboardStats = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch dashboard stats" });
   }
 };
+
+
+export const uploadAvatarController = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const userId = req.user._id;
+    // Construct the full URL to the uploaded file
+    // Note: In production, you might upload to Cloudinary/S3 instead.
+    const avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true }
+    ).select("-password");
+
+    res.status(200).json({
+      message: "Avatar updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ... existing imports
+
+// [NEW] Delete Avatar
+export const deleteAvatarController = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      { avatar: null }, // Set avatar to null
+      { new: true }
+    ).select("-password");
+
+    res.status(200).json({
+      message: "Avatar removed successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
