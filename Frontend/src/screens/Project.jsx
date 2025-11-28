@@ -15,7 +15,7 @@ import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
 import { MoreVertical, Trash2, Reply } from "lucide-react";
-import Loader from "../components/Loader"; // <--- IMPORTED LOADER
+import Loader from "../components/Loader";
 
 // --- UTILITY FUNCTIONS & CONSTANTS ---
 
@@ -62,9 +62,19 @@ const socialItems = [
 
 // --- COMPONENTS ---
 
-const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
+// Modified to accept newFilePaths for highlighting
+const FileTreeNode = ({
+  fileName,
+  nodes,
+  onSelect,
+  onDelete,
+  path,
+  newFilePaths,
+}) => {
   const isDir = !!nodes;
   const [isOpen, setIsOpen] = useState(false);
+  const isNew = newFilePaths?.has(path); // Check if file is new
+
   const handleToggle = (e) => {
     e.stopPropagation();
     if (isDir) setIsOpen(!isOpen);
@@ -77,7 +87,7 @@ const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
         onClick={handleToggle}
         className={`group flex items-center justify-between cursor-pointer py-1 px-2 rounded-md transition-colors text-sm ${
           !isDir
-            ? "hover:bg-gray-800 text-gray-300"
+            ? "hover:bg-gray-800"
             : "hover:text-white text-gray-400 font-semibold"
         }`}
       >
@@ -92,9 +102,21 @@ const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
             }
           ></i>
           <span
-            className={`truncate ${!isDir ? "text-gray-300" : "text-gray-200"}`}
+            className={`truncate ${
+              !isDir
+                ? isNew
+                  ? "text-green-400 font-medium"
+                  : "text-gray-300"
+                : "text-gray-200"
+            }`}
           >
             {fileName}
+            {/* Visual Indicator for New Files */}
+            {!isDir && isNew && (
+              <span className="text-[9px] ml-2 bg-green-500/20 text-green-400 px-1 rounded">
+                NEW
+              </span>
+            )}
           </span>
         </div>
         <button
@@ -118,6 +140,7 @@ const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
               onSelect={onSelect}
               onDelete={onDelete}
               path={`${path}/${child}`}
+              newFilePaths={newFilePaths} // Pass down prop
             />
           ))}
         </div>
@@ -160,6 +183,9 @@ const Project = () => {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isInstalling, setIsInstalling] = useState(false);
 
+  // New State for "New Files" tracking
+  const [newFilePaths, setNewFilePaths] = useState(new Set());
+
   // UI States
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
@@ -174,8 +200,7 @@ const Project = () => {
   const [pendingInvites, setPendingInvites] = useState([]);
   const [project, setProject] = useState(null);
 
-  // --- MODIFIED LOADING STATE FOR NEW LOADER ---
-  const [isBooting, setIsBooting] = useState(true); // Default true for boot animation
+  const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState(null);
 
   // Chat & Code States
@@ -235,7 +260,7 @@ const Project = () => {
         setIsBooting(false);
         return;
       }
-      setIsBooting(true); // Start boot sequence
+      setIsBooting(true);
       setError(null);
 
       try {
@@ -296,6 +321,7 @@ const Project = () => {
                 return prev;
               });
 
+              // --- HANDLE AI GENERATED FILES (ADD TO NEW FILES SET) ---
               if (
                 data.isAi &&
                 data.filetree &&
@@ -306,6 +332,12 @@ const Project = () => {
                   saveFileTree(merged);
                   return merged;
                 });
+                // Track these files as new
+                setNewFilePaths((prev) => {
+                  const newSet = new Set(prev);
+                  Object.keys(data.filetree).forEach((key) => newSet.add(key));
+                  return newSet;
+                });
               }
             }
           });
@@ -315,7 +347,6 @@ const Project = () => {
         if (isMounted) setError("Failed to load project.");
       } finally {
         if (isMounted) {
-          // Add a small delay for aesthetic purposes if loading was too fast
           setTimeout(() => {
             setIsBooting(false);
           }, 800);
@@ -486,12 +517,12 @@ const Project = () => {
       projectId,
       message: messageToSend,
       sender: { _id: user._id, email: user.email },
-      replyTo: replyingTo, // Send reply context
+      replyTo: replyingTo,
     };
 
     sendMessage("project-message", messageData);
     setMessage("");
-    setReplyingTo(null); // Reset reply state
+    setReplyingTo(null);
     setIsTyping(false);
     const socket = initializeSocket(projectId);
     socket.emit("stop-typing");
@@ -501,6 +532,12 @@ const Project = () => {
     if (!webContainer) return;
     setTerminalOutput("");
     setActiveTab("terminal");
+
+    // --- EXPLICIT INSTALLATION OUTPUT ---
+    setTerminalOutput(
+      "[System] Starting process...\n[System] Installing dependencies (this may take a moment)...\n"
+    );
+
     try {
       const mountStructure = JSON.parse(JSON.stringify(fileTree));
       const hasPackageJson = !!mountStructure["package.json"];
@@ -537,7 +574,8 @@ const Project = () => {
         }
 
         await webContainer.mount(mountStructure);
-        setTerminalOutput((p) => p + "Installing dependencies...\n");
+
+        // Use Spawn for install
         const installProcess = await webContainer.spawn("npm", ["install"]);
         installProcess.output.pipeTo(
           new WritableStream({
@@ -550,7 +588,9 @@ const Project = () => {
           throw new Error("Installation failed");
 
         setIsInstalling(false);
-        setTerminalOutput((p) => p + "\nStarting server...\n");
+        setTerminalOutput(
+          (p) => p + "\n[System] Installation Complete. Starting server...\n"
+        );
         if (runProcess) runProcess.kill();
 
         let tempRunProcess = await webContainer.spawn("npm", ["start"]);
@@ -649,7 +689,6 @@ const Project = () => {
     }
   };
 
-  // --- SHOW LOADER IF BOOTING ---
   if (isBooting) {
     return <Loader />;
   }
@@ -675,7 +714,8 @@ const Project = () => {
         {/* LEFT PANEL */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
-            <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16 flex-shrink-0">
+            {/* Header: Standardized h-14 */}
+            <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-14 min-h-[3.5rem] flex-shrink-0">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate("/home")}
@@ -715,13 +755,11 @@ const Project = () => {
             <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
               <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
                 {messages.map((msg, i) => {
-                  // --- FIXED SENDER IDENTIFICATION LOGIC ---
                   const getSenderId = (m) => {
-                    // Check if sender is an object (populated) or a string (ID)
                     if (m.sender && typeof m.sender === "object")
                       return m.sender._id;
                     if (m.senderId) return m.senderId;
-                    return m.sender; // It's just the ID string
+                    return m.sender;
                   };
 
                   const currentSenderId = getSenderId(msg);
@@ -732,7 +770,6 @@ const Project = () => {
                     typeof msg.sender === "object" ? msg.sender.email : "User";
                   const isMenuOpen = activeMenuMsgId === (msg._id || i);
 
-                  // --- MESSAGE GROUPING LOGIC ---
                   const previousMsg = messages[i - 1];
                   const prevSenderId = previousMsg
                     ? getSenderId(previousMsg)
@@ -754,7 +791,6 @@ const Project = () => {
                           isOwnMessage ? "items-end" : "items-start"
                         }`}
                       >
-                        {/* HEADER (Only if NOT same sender) */}
                         {!isSameSender && !isOwnMessage && !msg.isAi && (
                           <div className="flex items-center gap-2 mb-1 ml-1">
                             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold text-white">
@@ -770,7 +806,6 @@ const Project = () => {
                           </div>
                         )}
 
-                        {/* REPLY BUBBLE */}
                         {msg.replyTo && (
                           <div
                             className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${
@@ -788,13 +823,12 @@ const Project = () => {
                           </div>
                         )}
 
-                        {/* MAIN BUBBLE */}
                         <div
                           className={`relative px-4 py-2 shadow-md text-sm break-words overflow-hidden 
                             ${
                               isOwnMessage
-                                ? "bg-blue-600 text-white rounded-2xl rounded-tr-none" // User Bubble
-                                : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700" // Other Bubble
+                                ? "bg-blue-600 text-white rounded-2xl rounded-tr-none"
+                                : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700"
                             }
                             ${
                               isSameSender
@@ -827,7 +861,6 @@ const Project = () => {
                           </div>
                         </div>
 
-                        {/* THREE DOTS MENU TRIGGER */}
                         <div
                           className={`absolute top-2 ${
                             isOwnMessage ? "-left-8" : "-right-8"
@@ -953,7 +986,8 @@ const Project = () => {
                 isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
               } top-0 z-30 border-r border-gray-800`}
             >
-              <header className="flex justify-between items-center p-4 border-b border-gray-800 h-16">
+              {/* Header: Standardized h-14 */}
+              <header className="flex justify-between items-center p-4 border-b border-gray-800 h-14 min-h-[3.5rem]">
                 <h2 className="font-bold text-gray-200">Collaborators</h2>
                 <button
                   onClick={() => setisSidePanelOpen(false)}
@@ -1026,9 +1060,10 @@ const Project = () => {
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
                   <div className="h-full w-full bg-[#0d1117] flex flex-col border-r border-gray-800">
+                    {/* Header: Standardized h-14 */}
                     <div
                       onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                      className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] p-2 pr-4 cursor-pointer hover:bg-[#161b22]"
+                      className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] px-4 cursor-pointer hover:bg-[#161b22] h-14 min-h-[3.5rem]"
                     >
                       <div className="flex flex-grow items-center gap-2">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -1064,6 +1099,7 @@ const Project = () => {
                               onSelect={handleFileSelect}
                               onDelete={onRequestDelete}
                               path={key}
+                              newFilePaths={newFilePaths}
                             />
                           ))}
                         </div>
@@ -1077,13 +1113,14 @@ const Project = () => {
 
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
               <div className="flex flex-col h-full w-full bg-[#0d1117]">
-                <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-12 flex-shrink-0">
-                  <div className="files flex overflow-x-auto no-scrollbar">
+                {/* Header: Standardized h-14 */}
+                <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-14 min-h-[3.5rem] flex-shrink-0">
+                  <div className="files flex overflow-x-auto no-scrollbar h-full items-end">
                     {openFiles.map((file) => (
                       <div
                         key={file}
                         onClick={() => setCurrentFile(file)}
-                        className={`group relative flex items-center min-w-fit px-4 h-12 text-sm border-r border-gray-800 cursor-pointer ${
+                        className={`group relative flex items-center min-w-fit px-4 h-full text-sm border-r border-gray-800 cursor-pointer ${
                           currentFile === file
                             ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500"
                             : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"
@@ -1156,7 +1193,8 @@ const Project = () => {
 
             <Panel defaultSize={40} minSize={20}>
               <div className="flex flex-col h-full w-full border-l border-gray-800 bg-[#0d1117]">
-                <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 p-2">
+                {/* Header: Standardized h-14 */}
+                <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 px-4 h-14 min-h-[3.5rem]">
                   <div className="flex gap-2">
                     <button
                       onClick={() => setActiveTab("browser")}
@@ -1230,6 +1268,7 @@ const Project = () => {
           />
         </div>
       )}
+      {/* ... Modals kept as is ... */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
