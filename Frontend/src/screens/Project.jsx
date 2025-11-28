@@ -14,9 +14,9 @@ import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
-import { MoreVertical, Trash2, Reply } from "lucide-react"; // [NEW] Imports
+import { MoreVertical, Trash2, Reply } from "lucide-react";
 
-// --- UTILITY FUNCTIONS ---
+// --- UTILITY FUNCTIONS & CONSTANTS ---
 
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
@@ -46,12 +46,24 @@ const cleanTerminalOutput = (text) => {
   );
 };
 
+const menuItems = [
+  { label: "Home", link: "/home" },
+  { label: "Profile", link: "/profile" },
+  { label: "Settings", link: "/profile" },
+  { label: "Dashboard", link: "/dashboard" },
+];
+
+const socialItems = [
+  { label: "GitHub", link: "https://github.com" },
+  { label: "Twitter", link: "https://twitter.com" },
+  { label: "LinkedIn", link: "https://linkedin.com" },
+];
+
 // --- COMPONENTS ---
 
 const FileTreeNode = ({ fileName, nodes, onSelect, onDelete, path }) => {
   const isDir = !!nodes;
   const [isOpen, setIsOpen] = useState(false);
-
   const handleToggle = (e) => {
     e.stopPropagation();
     if (isDir) setIsOpen(!isOpen);
@@ -126,8 +138,7 @@ const FileTreeSkeleton = () => (
       </div>
     </div>
     <div className="text-xs text-blue-400 mt-2 animate-pulse flex items-center gap-2">
-      <i className="ri-loader-4-line animate-spin"></i>
-      Generating structure...
+      <i className="ri-loader-4-line animate-spin"></i> Generating structure...
     </div>
   </div>
 );
@@ -136,6 +147,17 @@ const Project = () => {
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+
+  // --- STATE DECLARATIONS ---
+  const [fileTree, setFileTree] = useState({});
+  const [currentFile, setCurrentFile] = useState(null);
+  const [openFiles, setOpenFiles] = useState([]);
+  const [webContainer, setWebContainer] = useState(null);
+  const [iframeUrl, setIframeUrl] = useState(null);
+  const [runProcess, setRunProcess] = useState(null);
+  const [activeTab, setActiveTab] = useState("terminal");
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const [isInstalling, setIsInstalling] = useState(false);
 
   // UI States
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
@@ -159,19 +181,9 @@ const Project = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [remoteTypingUser, setRemoteTypingUser] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
-
-  const [fileTree, setFileTree] = useState({});
-  const [currentFile, setCurrentFile] = useState(null);
-  const [openFiles, setOpenFiles] = useState([]);
-  const [webContainer, setWebContainer] = useState(null);
-  const [iframeUrl, setIframeUrl] = useState(null);
-  const [runProcess, setRunProcess] = useState(null);
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [terminalOutput, setTerminalOutput] = useState("");
-  const [activeTab, setActiveTab] = useState("browser");
   const [replyingTo, setReplyingTo] = useState(null);
 
-  // [NEW] Menu State
+  // Menu State
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
   const messageEndRef = useRef(null);
@@ -179,7 +191,7 @@ const Project = () => {
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // [NEW] Click outside listener for menu
+  // Click outside listener for menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeMenuMsgId && !event.target.closest(".message-menu-container")) {
@@ -209,19 +221,6 @@ const Project = () => {
   };
 
   const folderStructure = buildStructure(fileTree);
-
-  const menuItems = [
-    { label: "Home", link: "/home" },
-    { label: "Profile", link: "/profile" },
-    { label: "Settings", link: "/profile" },
-    { label: "Dashboard", link: "/dashboard" },
-  ];
-
-  const socialItems = [
-    { label: "GitHub", link: "https://github.com" },
-    { label: "Twitter", link: "https://twitter.com" },
-    { label: "LinkedIn", link: "https://linkedin.com" },
-  ];
 
   useEffect(() => {
     let isMounted = true;
@@ -257,6 +256,7 @@ const Project = () => {
           const socket = initializeSocket(projectId);
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
+
           socket.on("message-deleted", ({ messageId }) => {
             setMessages((prev) => prev.filter((m) => m._id !== messageId));
           });
@@ -350,6 +350,10 @@ const Project = () => {
     }, 2000);
   };
 
+  const handleDeleteMessage = (msgId) => {
+    sendMessage("delete-message", { messageId: msgId });
+  };
+
   const handleSearchUser = async () => {
     if (!searchEmail.trim()) return;
     try {
@@ -415,10 +419,6 @@ const Project = () => {
     });
   };
 
-  const handleDeleteMessage = (msgId) => {
-    sendMessage("delete-message", { messageId: msgId });
-  };
-
   const handleFileContentChange = (newValue) => {
     const newFileTree = {
       ...fileTree,
@@ -482,7 +482,6 @@ const Project = () => {
     };
 
     sendMessage("project-message", messageData);
-
     setMessage("");
     setReplyingTo(null); // Reset reply state
     setIsTyping(false);
@@ -492,10 +491,8 @@ const Project = () => {
 
   const handleRunClick = async () => {
     if (!webContainer) return;
-
     setTerminalOutput("");
     setActiveTab("terminal");
-
     try {
       const mountStructure = JSON.parse(JSON.stringify(fileTree));
       const hasPackageJson = !!mountStructure["package.json"];
@@ -528,14 +525,12 @@ const Project = () => {
             }
           }
         } catch (e) {
-          /* ignore parse error */
+          /* ignore */
         }
 
         await webContainer.mount(mountStructure);
-
         setTerminalOutput((p) => p + "Installing dependencies...\n");
         const installProcess = await webContainer.spawn("npm", ["install"]);
-
         installProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
@@ -543,13 +538,11 @@ const Project = () => {
             },
           })
         );
-
         if ((await installProcess.exit) !== 0)
           throw new Error("Installation failed");
 
         setIsInstalling(false);
         setTerminalOutput((p) => p + "\nStarting server...\n");
-
         if (runProcess) runProcess.kill();
 
         let tempRunProcess = await webContainer.spawn("npm", ["start"]);
@@ -560,9 +553,7 @@ const Project = () => {
             },
           })
         );
-
         setRunProcess(tempRunProcess);
-
         webContainer.on("server-ready", (port, url) => {
           setIframeUrl(url);
           setActiveTab("browser");
@@ -570,25 +561,18 @@ const Project = () => {
       } else {
         setIsInstalling(false);
         await webContainer.mount(mountStructure);
-
         const jsFile = Object.keys(mountStructure).find((filename) =>
           filename.endsWith(".js")
         );
-
-        if (!jsFile) {
+        if (!jsFile)
           throw new Error(
             "No JavaScript file found to run. Please create a .js file or a package.json."
           );
-        }
-
         setTerminalOutput(
           `[System] No package.json found. Running "${jsFile}" directly...\n`
         );
-
         if (runProcess) runProcess.kill();
-
         let tempRunProcess = await webContainer.spawn("node", [jsFile]);
-
         tempRunProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
@@ -596,7 +580,6 @@ const Project = () => {
             },
           })
         );
-
         setRunProcess(tempRunProcess);
       }
     } catch (err) {
@@ -613,7 +596,6 @@ const Project = () => {
         zip.file(path, fileContent);
       }
     });
-
     try {
       const content = await zip.generateAsync({ type: "blob" });
       const safeName =
@@ -632,7 +614,6 @@ const Project = () => {
       setTerminalOutput((p) => p + "\nProcess stopped by user.\n");
     }
   };
-
   const handleClear = () => {
     if (activeTab === "browser") setIframeUrl(null);
     else setTerminalOutput("");
@@ -683,16 +664,10 @@ const Project = () => {
 
   return (
     <main className="h-screen w-screen flex flex-col bg-[#030712] text-white overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
-      <style>{`
-        .message-box::-webkit-scrollbar { width: 6px; }
-        .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      <style>{` .message-box::-webkit-scrollbar { width: 6px; } .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; } .no-scrollbar::-webkit-scrollbar { display: none; } .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; } .animate-fade-in-up { animation: fadeInUp 0.2s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } } `}</style>
 
       <PanelGroup direction="horizontal">
-        {/* --- LEFT PANEL: CHAT --- */}
+        {/* LEFT PANEL */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
             <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-16 flex-shrink-0">
@@ -731,28 +706,66 @@ const Project = () => {
               </div>
             </header>
 
-            {/* Conversation Area */}
+            {/* CHAT AREA */}
             <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
               <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
                 {messages.map((msg, i) => {
+                  // --- FIXED SENDER IDENTIFICATION LOGIC ---
+                  const getSenderId = (m) => {
+                    // Check if sender is an object (populated) or a string (ID)
+                    if (m.sender && typeof m.sender === "object")
+                      return m.sender._id;
+                    if (m.senderId) return m.senderId;
+                    return m.sender; // It's just the ID string
+                  };
+
+                  const currentSenderId = getSenderId(msg);
                   const isOwnMessage =
-                    msg.sender?._id?.toString() === user?._id?.toString() ||
-                    msg.senderId?.toString() === user?._id?.toString();
-                  const senderEmail = msg.sender?.email || msg.sender;
+                    currentSenderId?.toString() === user?._id?.toString();
+
+                  const senderEmail =
+                    typeof msg.sender === "object" ? msg.sender.email : "User";
                   const isMenuOpen = activeMenuMsgId === (msg._id || i);
+
+                  // --- MESSAGE GROUPING LOGIC ---
+                  const previousMsg = messages[i - 1];
+                  const prevSenderId = previousMsg
+                    ? getSenderId(previousMsg)
+                    : null;
+                  const isSameSender =
+                    previousMsg &&
+                    currentSenderId === prevSenderId &&
+                    previousMsg.isAi === msg.isAi;
 
                   return (
                     <div
                       key={msg._id || i}
                       className={`flex w-full animate-fade-in group relative ${
                         isOwnMessage ? "justify-end" : "justify-start"
-                      }`}
+                      } ${isSameSender ? "mt-1" : "mt-4"}`}
                     >
                       <div
                         className={`max-w-[85%] flex flex-col relative ${
                           isOwnMessage ? "items-end" : "items-start"
                         }`}
                       >
+                        {/* HEADER (Only if NOT same sender) */}
+                        {!isSameSender && !isOwnMessage && !msg.isAi && (
+                          <div className="flex items-center gap-2 mb-1 ml-1">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold text-white">
+                              {typeof senderEmail === "string"
+                                ? senderEmail[0]?.toUpperCase()
+                                : "?"}
+                            </div>
+                            <span className="text-[10px] text-gray-400 opacity-80">
+                              {typeof senderEmail === "string"
+                                ? senderEmail
+                                : "User"}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* REPLY BUBBLE */}
                         {msg.replyTo && (
                           <div
                             className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${
@@ -770,28 +783,23 @@ const Project = () => {
                           </div>
                         )}
 
+                        {/* MAIN BUBBLE */}
                         <div
-                          className={`relative px-4 py-2 rounded-2xl shadow-md text-sm break-words overflow-hidden ${
-                            isOwnMessage
-                              ? "bg-blue-600 text-white rounded-br-none"
-                              : "bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700"
-                          }`}
+                          className={`relative px-4 py-2 shadow-md text-sm break-words overflow-hidden 
+                            ${
+                              isOwnMessage
+                                ? "bg-blue-600 text-white rounded-2xl rounded-tr-none" // User Bubble
+                                : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700" // Other Bubble
+                            }
+                            ${
+                              isSameSender
+                                ? isOwnMessage
+                                  ? "rounded-tr-2xl"
+                                  : "rounded-tl-2xl"
+                                : ""
+                            } 
+                        `}
                         >
-                          {!isOwnMessage && !msg.isAi && (
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold">
-                                {typeof senderEmail === "string"
-                                  ? senderEmail[0]?.toUpperCase()
-                                  : "?"}
-                              </div>
-                              <small className="opacity-70 text-xs font-medium text-gray-300">
-                                {typeof senderEmail === "string"
-                                  ? senderEmail
-                                  : "User"}
-                              </small>
-                            </div>
-                          )}
-
                           {msg.isAi ? (
                             <div className="flex gap-2">
                               <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
@@ -802,7 +810,6 @@ const Project = () => {
                           ) : (
                             <p>{msg.message}</p>
                           )}
-
                           <div
                             className={`text-[10px] mt-1 text-right ${
                               isOwnMessage ? "text-blue-200" : "text-gray-500"
@@ -819,67 +826,65 @@ const Project = () => {
                         <div
                           className={`absolute top-2 ${
                             isOwnMessage ? "-left-8" : "-right-8"
-                          } message-menu-container`}
+                          } z-50 message-menu-container`}
                         >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuMsgId(
-                                isMenuOpen ? null : msg._id || i
-                              );
-                            }}
-                            className={`p-1 rounded-full text-gray-500 hover:text-white hover:bg-gray-800 transition-all 
-                              ${
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuMsgId(
+                                  isMenuOpen ? null : msg._id || i
+                                );
+                              }}
+                              className={`p-1.5 rounded-full transition-all duration-200 ${
                                 isMenuOpen
-                                  ? "opacity-100 bg-gray-800 text-white"
-                                  : "opacity-0 group-hover:opacity-100"
+                                  ? "bg-gray-800 text-white opacity-100"
+                                  : "text-gray-500 hover:text-white hover:bg-gray-800 opacity-0 group-hover:opacity-100"
                               }`}
-                          >
-                            <MoreVertical size={16} />
-                          </button>
-
-                          {/* DROPDOWN MENU */}
-                          {isMenuOpen && (
-                            <div
-                              className={`absolute top-6 ${
-                                isOwnMessage
-                                  ? "right-0 origin-top-right"
-                                  : "left-0 origin-top-left"
-                              } 
-                              bg-[#1f2937] border border-gray-700 rounded-lg shadow-xl z-50 w-32 overflow-hidden animate-fade-in`}
                             >
-                              <button
-                                onClick={() => {
-                                  setReplyingTo({
-                                    originalMessage: msg.message,
-                                    originalSender: senderEmail,
-                                  });
-                                  setActiveMenuMsgId(null);
-                                }}
-                                className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white flex items-center gap-2"
+                              <MoreVertical size={16} />
+                            </button>
+                            {isMenuOpen && (
+                              <div
+                                className={`absolute bottom-full mb-2 ${
+                                  isOwnMessage
+                                    ? "left-0 origin-bottom-left"
+                                    : "right-0 origin-bottom-right"
+                                } w-28 bg-[#030712] border border-gray-700 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-fade-in-up z-[9999]`}
                               >
-                                <Reply size={12} /> Reply
-                              </button>
-
-                              {isOwnMessage && (
                                 <button
-                                  onClick={() => {
-                                    handleDeleteMessage(msg._id);
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplyingTo({
+                                      originalMessage: msg.message,
+                                      originalSender: senderEmail,
+                                    });
                                     setActiveMenuMsgId(null);
                                   }}
-                                  className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-gray-700"
+                                  className="w-full text-left px-3 py-2.5 text-xs text-gray-300 hover:bg-blue-600 hover:text-white flex items-center gap-2 transition-colors"
                                 >
-                                  <Trash2 size={12} /> Delete
+                                  <Reply size={13} /> Reply
                                 </button>
-                              )}
-                            </div>
-                          )}
+                                {isOwnMessage && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteMessage(msg._id);
+                                      setActiveMenuMsgId(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-gray-700 transition-colors"
+                                  >
+                                    <Trash2 size={13} /> Delete
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-
                 {isAiThinking && (
                   <div className="flex justify-start animate-fade-in">
                     <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
@@ -912,7 +917,6 @@ const Project = () => {
                     </button>
                   </div>
                 )}
-
                 <div
                   className={`flex items-center gap-2 bg-[#161b22] p-2 pr-2 border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors ${
                     replyingTo
@@ -938,6 +942,7 @@ const Project = () => {
               </div>
             </div>
 
+            {/* COLLABORATORS & NOTIFICATIONS */}
             <div
               className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
                 isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -974,7 +979,6 @@ const Project = () => {
                 ))}
               </div>
             </div>
-
             {isNotificationPanelOpen && (
               <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
                 {pendingInvites.map((invite) => (
@@ -1042,7 +1046,6 @@ const Project = () => {
                         <i className="ri-download-cloud-2-line text-lg"></i>
                       </button>
                     </div>
-
                     <div className="file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-700">
                       {isAiThinking ? (
                         <FileTreeSkeleton />
@@ -1115,7 +1118,6 @@ const Project = () => {
                     )}
                   </div>
                 </div>
-
                 <div className="bottom flex-grow overflow-hidden relative h-full w-full">
                   {currentFile && fileTree[currentFile]?.file ? (
                     <div
@@ -1180,7 +1182,6 @@ const Project = () => {
                     <i className="ri-delete-bin-line"></i>
                   </button>
                 </div>
-
                 {activeTab === "browser" && (
                   <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
                     {iframeUrl ? (
@@ -1200,7 +1201,6 @@ const Project = () => {
                     )}
                   </div>
                 )}
-
                 {activeTab === "terminal" && (
                   <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
                     {cleanTerminalOutput(terminalOutput) ||
@@ -1225,7 +1225,6 @@ const Project = () => {
           />
         </div>
       )}
-
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -1280,7 +1279,6 @@ const Project = () => {
           </div>
         </div>
       )}
-
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#161b22] border border-red-900/50 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
@@ -1297,8 +1295,7 @@ const Project = () => {
                   <span className="text-white font-mono bg-gray-800 px-1 rounded">
                     {fileToDelete}
                   </span>
-                  ?
-                  <br />
+                  ?<br />
                   This action cannot be undone.
                 </p>
               </div>

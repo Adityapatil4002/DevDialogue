@@ -19,6 +19,10 @@ const io = new Server(server, {
   },
 });
 
+// 
+
+//[Image of Socket.io Architecture]
+//- Visualizing the connection flow
 io.use(async (socket, next) => {
   try {
     const token =
@@ -64,12 +68,11 @@ io.use(async (socket, next) => {
 
 io.on("connection", (socket) => {
   socket.roomId = socket.projectIdString;
-  console.log(
-    `User connected: ${socket.user.email} to project ${socket.roomId}`
-  );
+  console.log(`✅ User connected: ${socket.user.email} to project ${socket.roomId}`);
 
   socket.join(socket.roomId);
 
+  // --- TYPING INDICATORS ---
   socket.on("typing", () => {
     socket.to(socket.roomId).emit("typing", { email: socket.user.email });
   });
@@ -78,34 +81,42 @@ io.on("connection", (socket) => {
     socket.to(socket.roomId).emit("stop-typing", { email: socket.user.email });
   });
 
+  // --- MESSAGE HANDLING (Chat + AI) ---
   socket.on("project-message", async (data) => {
-    const { message, replyTo } = data; // Destructure replyTo
-
-    // Check context block for DB saving
-    const contextDelimiter = "***\nCONTEXT FOR AI";
-    const hasContext = message.includes(contextDelimiter);
-    let messageForDb = message;
-    if (hasContext) {
-      messageForDb = message.split(contextDelimiter)[0].trim();
-    }
-
-    const aiIsPresentInMessage = messageForDb.includes("@ai");
-    const projectId = socket.projectIdString;
-
     try {
-      // 1. Save User Message
+      const { message, replyTo } = data; 
+
+      // Safety check
+      if (!message) return;
+
+      // 1. Intelligent Parsing: Separate Context from Message
+      // We appended context in frontend using this delimiter
+      const contextDelimiter = "***\nCONTEXT FOR AI";
+      const hasContext = message.includes(contextDelimiter);
+      
+      let messageForDb = message;
+      
+      // If context exists, strip it out for the DB and human readers
+      if (hasContext) {
+        messageForDb = message.split(contextDelimiter)[0].trim();
+      }
+
+      const aiIsPresentInMessage = messageForDb.includes("@ai");
+      const projectId = socket.projectIdString;
+
+      // 2. Save User Message (Clean Version)
       const savedMsg = await projectService.addMessage({
         projectId,
         sender: socket.user.email,
         senderId: socket.user._id,
-        message: messageForDb,
+        message: messageForDb, // Save only the chat text, not the massive file code
         isAi: false,
-        replyTo, // Pass replyTo
+        replyTo, // Save reply context
       });
 
-      // 2. Broadcast (Include _id for deletion)
+      // 3. Broadcast to Room (Clean Version)
       io.to(socket.roomId).emit("project-message", {
-        _id: savedMsg._id, // Critical for deletion
+        _id: savedMsg._id, // Important for deletion
         message: messageForDb,
         sender: { _id: socket.user._id, email: socket.user.email },
         timestamp: new Date(),
@@ -113,11 +124,17 @@ io.on("connection", (socket) => {
         replyTo,
       });
 
-      // 3. AI Logic
+      // 4. AI Logic (If invoked)
       if (aiIsPresentInMessage) {
+        
+        // Prepare prompt: Remove "@ai" but KEEP the context/code for the AI to read
         const prompt = message.replace("@ai", "").trim();
+        console.log("🤖 AI Invoked. Has Context:", hasContext);
+
+        // Call Gemini
         const result = await generateResult(prompt);
 
+        // Save AI Response
         const savedAiMsg = await projectService.addMessage({
           projectId,
           sender: "AI",
@@ -126,6 +143,7 @@ io.on("connection", (socket) => {
           isAi: true,
         });
 
+        // Broadcast AI Response
         io.to(socket.roomId).emit("project-message", {
           _id: savedAiMsg._id,
           ...result,
@@ -139,19 +157,24 @@ io.on("connection", (socket) => {
     }
   });
 
-  // [NEW] Delete Message Listener
+  // --- DELETE MESSAGE HANDLING ---
   socket.on("delete-message", async (data) => {
-    const { messageId } = data;
-    const projectId = socket.projectIdString;
     try {
+      const { messageId } = data;
+      const projectId = socket.projectIdString;
+      
       await projectService.deleteMessage({ projectId, messageId });
+      
+      // Notify all clients to remove this message ID
       io.to(socket.roomId).emit("message-deleted", { messageId });
+      console.log(`🗑️ Message deleted: ${messageId}`);
     } catch (err) {
       console.error("Delete Error:", err);
     }
   });
+
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.user.email}`);
+    console.log(`❌ User disconnected: ${socket.user.email}`);
   });
 });
 
