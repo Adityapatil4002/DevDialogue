@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useMemo } from "react";
-import { UserContext } from "../Context/user.context";
+import { UserContext } from "../Context/user.context.jsx";
 import axios from "../Config/axios";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,34 +8,7 @@ import {
   useMotionValue,
   useSpring,
 } from "framer-motion";
-
-// --- LOADER ---
-const Loader = () => {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0a0a]"
-    >
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse"></div>
-      </div>
-      <div className="relative flex items-center justify-center w-24 h-24">
-        <motion.span
-          className="absolute w-full h-full border-2 border-cyan-500/20 border-t-cyan-500 rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.span
-          className="absolute w-16 h-16 border-2 border-blue-500/20 border-b-blue-500 rounded-full"
-          animate={{ rotate: -360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
-    </motion.div>
-  );
-};
+import Loader from "../components/Loader"; // <--- IMPORTING YOUR NEW LOADER
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -100,24 +73,34 @@ const Home = () => {
 
   // --- FETCH DATA (Parallel Requests) ---
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
+      setIsLoading(true); // Ensure loader starts
       try {
         const [projectRes, dashboardRes] = await Promise.all([
           axios.get("/project/all"),
           axios.get("/user/dashboard"), // [NEW] Fetching real activity stats
         ]);
 
-        setProject(projectRes.data.projects);
-        setInvites(projectRes.data.invites || []);
-        setActivityData(dashboardRes.data.activityChartData || []);
-
-        setTimeout(() => setIsLoading(false), 800);
+        if (isMounted) {
+          setProject(projectRes.data.projects);
+          setInvites(projectRes.data.invites || []);
+          setActivityData(dashboardRes.data.activityChartData || []);
+        }
       } catch (err) {
         console.error(err);
-        setIsLoading(false);
+      } finally {
+        if (isMounted) {
+          // Keep loader for at least 800ms to let animation play
+          setTimeout(() => setIsLoading(false), 800);
+        }
       }
     };
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // --- CALCULATE DYNAMIC ACTIVITY LEVEL ---
@@ -227,6 +210,7 @@ const Home = () => {
     }
   };
 
+  // --- SHOW LOADER IF LOADING ---
   if (isLoading) return <Loader />;
 
   return (

@@ -15,6 +15,7 @@ import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
 import { MoreVertical, Trash2, Reply } from "lucide-react";
+import Loader from "../components/Loader"; // <--- IMPORTED LOADER
 
 // --- UTILITY FUNCTIONS & CONSTANTS ---
 
@@ -172,7 +173,9 @@ const Project = () => {
   const [searchedUser, setSearchedUser] = useState(null);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  // --- MODIFIED LOADING STATE FOR NEW LOADER ---
+  const [isBooting, setIsBooting] = useState(true); // Default true for boot animation
   const [error, setError] = useState(null);
 
   // Chat & Code States
@@ -229,10 +232,10 @@ const Project = () => {
     const fetchProjectAndData = async () => {
       if (!projectId) {
         setError("No Project ID found.");
-        setLoading(false);
+        setIsBooting(false);
         return;
       }
-      setLoading(true);
+      setIsBooting(true); // Start boot sequence
       setError(null);
 
       try {
@@ -311,7 +314,12 @@ const Project = () => {
         console.error(err);
         if (isMounted) setError("Failed to load project.");
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          // Add a small delay for aesthetic purposes if loading was too fast
+          setTimeout(() => {
+            setIsBooting(false);
+          }, 800);
+        }
       }
     };
 
@@ -641,14 +649,11 @@ const Project = () => {
     }
   };
 
-  if (loading)
-    return (
-      <div className="h-screen bg-[#0d1117] text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <span className="loader"></span> Loading Project...
-        </div>
-      </div>
-    );
+  // --- SHOW LOADER IF BOOTING ---
+  if (isBooting) {
+    return <Loader />;
+  }
+
   if (error)
     return (
       <div className="h-screen bg-[#0d1117] text-red-500 flex items-center justify-center">

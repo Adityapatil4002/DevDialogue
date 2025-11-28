@@ -35,19 +35,23 @@ const Loader = () => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#020617] text-white font-sans overflow-hidden"
     >
-      {/* --- BACKGROUND EFFECTS --- */}
-      {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      {/* --- NEW BACKGROUND (Minimal Dark Blue) --- */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Deep radial gradient for depth */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#020617]" />
 
-      {/* Ambient Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-violet-500/10 blur-[100px] rounded-full pointer-events-none" />
+        {/* Subtle Ambient Glow (Top Left) */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-900/10 rounded-full blur-[120px] opacity-50"></div>
+
+        {/* Subtle Ambient Glow (Bottom Right) */}
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-violet-900/10 rounded-full blur-[120px] opacity-50"></div>
+      </div>
 
       {/* --- CENTER PIECE: THE "CORE" --- */}
       <div className="relative flex items-center justify-center w-40 h-40 mb-12">
         {/* 1. Outer Tech Ring (Dashed) */}
         <motion.svg
-          className="absolute w-full h-full text-slate-700"
+          className="absolute w-full h-full text-slate-700/50"
           viewBox="0 0 100 100"
           animate={{ rotate: 360 }}
           transition={{ duration: 10, ease: "linear", repeat: Infinity }}
@@ -65,15 +69,15 @@ const Loader = () => {
 
         {/* 2. Middle Energy Ring (Cyan/Violet Gradient) */}
         <motion.div
-          className="absolute w-32 h-32 rounded-full border-2 border-transparent border-t-cyan-500 border-l-violet-500"
+          className="absolute w-32 h-32 rounded-full border-2 border-transparent border-t-cyan-500/80 border-l-violet-500/80"
           animate={{ rotate: -360 }}
           transition={{ duration: 3, ease: "linear", repeat: Infinity }}
-          style={{ filter: "drop-shadow(0 0 8px rgba(6,182,212,0.5))" }}
+          style={{ filter: "drop-shadow(0 0 10px rgba(6,182,212,0.3))" }}
         />
 
         {/* 3. Inner Pulsing Circle */}
         <motion.div
-          className="absolute w-24 h-24 rounded-full border border-slate-700/50 bg-slate-900/50 backdrop-blur-sm"
+          className="absolute w-24 h-24 rounded-full border border-slate-700/30 bg-slate-900/80 backdrop-blur-sm"
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
@@ -86,7 +90,7 @@ const Loader = () => {
         >
           <Code2
             size={48}
-            className="text-white drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]"
+            className="text-white/90 drop-shadow-[0_0_15px_rgba(139,92,246,0.3)]"
           />
         </motion.div>
       </div>
@@ -95,7 +99,7 @@ const Loader = () => {
       <div className="w-[320px] relative z-10">
         {/* Header */}
         <div className="flex justify-between items-end mb-2 px-1">
-          <h2 className="text-2xl font-bold tracking-tight text-white">
+          <h2 className="text-2xl font-bold tracking-tight text-white/90">
             DevDialogue
           </h2>
           <span className="text-xs font-mono text-cyan-500/80 animate-pulse">
@@ -104,13 +108,13 @@ const Loader = () => {
         </div>
 
         {/* Glassmorphic Status Bar */}
-        <div className="relative overflow-hidden bg-slate-900/50 border border-slate-700/50 rounded-lg backdrop-blur-md p-4 shadow-2xl">
-          {/* Scanline overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none bg-[length:100%_4px]" />
+        <div className="relative overflow-hidden bg-[#0f172a]/40 border border-slate-700/30 rounded-lg backdrop-blur-md p-4 shadow-xl">
+          {/* Scanline overlay (Subtle) */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 pointer-events-none bg-[length:100%_4px]" />
 
           <div className="flex flex-col space-y-3">
             {/* Progress Bar */}
-            <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-1 w-full bg-slate-800/50 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-cyan-500 to-violet-500"
                 initial={{ width: "0%" }}
@@ -143,9 +147,9 @@ const Loader = () => {
 
         {/* Decorative System ID */}
         <div className="mt-3 text-center">
-          <p className="text-[10px] text-slate-600 font-mono tracking-widest uppercase">
+          <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">
             System Ready //{" "}
-            <span className="text-violet-500/70">Waiting for Input</span>
+            <span className="text-violet-500/60">Waiting for Input</span>
           </p>
         </div>
       </div>
