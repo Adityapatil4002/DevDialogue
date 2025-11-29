@@ -77,7 +77,7 @@ const model = genAI.getGenerativeModel({
     6. IMPORTANT: If you provide a "package.json", it MUST include a "start" script. 
        Example: "scripts": { "start": "node server.js" } or { "start": "vite" }.
     7. If generating a standalone script (like a simple .js file), always include 2-3 console.log() statements at the bottom so the user sees output when running it.
-
+    8. The text color should be white in the IDE's dark mode.
     Now, analyze the user's input and determine the correct scenario.
   `,
 });
