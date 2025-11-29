@@ -528,113 +528,153 @@ const Project = () => {
     socket.emit("stop-typing");
   };
 
-  const handleRunClick = async () => {
-    if (!webContainer) return;
-    setTerminalOutput("");
-    setActiveTab("terminal");
+const handleRunClick = async () => {
+  if (!webContainer) return;
 
-    // --- EXPLICIT INSTALLATION OUTPUT ---
-    setTerminalOutput(
-      "[System] Starting process...\n[System] Installing dependencies (this may take a moment)...\n"
-    );
+  // 1. Reset UI
+  setTerminalOutput("");
+  setActiveTab("terminal");
 
-    try {
-      const mountStructure = JSON.parse(JSON.stringify(fileTree));
-      const hasPackageJson = !!mountStructure["package.json"];
+  try {
+    setTerminalOutput("[System] Syncing files...\n");
 
-      if (hasPackageJson) {
-        setIsInstalling(true);
-        try {
-          const pkgJson = JSON.parse(
-            mountStructure["package.json"].file.contents
-          );
-          if (!pkgJson.scripts || !pkgJson.scripts.start) {
-            const entryFile = Object.keys(mountStructure).find((filename) =>
-              ["server.js", "app.js", "index.js", "main.js"].includes(filename)
-            );
-            if (entryFile) {
-              pkgJson.scripts = {
-                ...(pkgJson.scripts || {}),
-                start: `node ${entryFile}`,
-              };
-              mountStructure["package.json"].file.contents = JSON.stringify(
-                pkgJson,
-                null,
-                2
-              );
-              setTerminalOutput(
-                (p) =>
-                  p +
-                  `[System] Auto-fixed missing "start" script pointing to ${entryFile}...\n`
-              );
-            }
+    // 2. PREPARE FILE SYSTEM TREE (Robust Mounting)
+    // Converts flat paths "src/App.jsx" -> { src: { directory: { App.jsx: { file: ... } } } }
+    const mountStructure = {};
+
+    Object.keys(fileTree).forEach((filePath) => {
+      const parts = filePath.split("/");
+      let current = mountStructure;
+
+      parts.forEach((part, index) => {
+        const isFile = index === parts.length - 1;
+
+        if (isFile) {
+          // It's a file
+          current[part] = {
+            file: { contents: fileTree[filePath].file.contents },
+          };
+        } else {
+          // It's a folder
+          if (!current[part]) {
+            current[part] = { directory: {} };
           }
-        } catch (e) {
-          /* ignore */
+          // Walk deeper
+          current = current[part].directory;
         }
+      });
+    });
 
-        await webContainer.mount(mountStructure);
+    // 3. MOUNT FILES
+    await webContainer.mount(mountStructure);
 
-        // Use Spawn for install
-        const installProcess = await webContainer.spawn("npm", ["install"]);
-        installProcess.output.pipeTo(
-          new WritableStream({
-            write(chunk) {
-              setTerminalOutput((p) => p + chunk);
-            },
-          })
-        );
-        if ((await installProcess.exit) !== 0)
-          throw new Error("Installation failed");
+    // 4. DETERMINE EXECUTION STRATEGY
+    const packageJsonPath = "package.json";
+    const hasPackageJson = !!fileTree[packageJsonPath];
 
-        setIsInstalling(false);
-        setTerminalOutput(
-          (p) => p + "\n[System] Installation Complete. Starting server...\n"
-        );
-        if (runProcess) runProcess.kill();
+    if (hasPackageJson) {
+      // --- STRATEGY A: NPM PROJECT ---
+      setTerminalOutput(
+        "[System] 'package.json' detected. Installing dependencies...\n"
+      );
+      setIsInstalling(true);
 
-        let tempRunProcess = await webContainer.spawn("npm", ["start"]);
-        tempRunProcess.output.pipeTo(
-          new WritableStream({
-            write(chunk) {
-              setTerminalOutput((p) => p + chunk);
-            },
-          })
-        );
-        setRunProcess(tempRunProcess);
-        webContainer.on("server-ready", (port, url) => {
-          setIframeUrl(url);
-          setActiveTab("browser");
-        });
-      } else {
-        setIsInstalling(false);
-        await webContainer.mount(mountStructure);
-        const jsFile = Object.keys(mountStructure).find((filename) =>
-          filename.endsWith(".js")
-        );
-        if (!jsFile)
-          throw new Error(
-            "No JavaScript file found to run. Please create a .js file or a package.json."
-          );
-        setTerminalOutput(
-          `[System] No package.json found. Running "${jsFile}" directly...\n`
-        );
-        if (runProcess) runProcess.kill();
-        let tempRunProcess = await webContainer.spawn("node", [jsFile]);
-        tempRunProcess.output.pipeTo(
-          new WritableStream({
-            write(chunk) {
-              setTerminalOutput((p) => p + chunk);
-            },
-          })
-        );
-        setRunProcess(tempRunProcess);
+      const installProcess = await webContainer.spawn("npm", ["install"]);
+
+      // Stream install output
+      installProcess.output.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            setTerminalOutput((prev) => prev + chunk);
+          },
+        })
+      );
+
+      if ((await installProcess.exit) !== 0) {
+        throw new Error("Dependency installation failed.");
       }
-    } catch (err) {
-      setTerminalOutput((p) => p + `\nError: ${err.message}\n`);
+
       setIsInstalling(false);
+      setTerminalOutput(
+        "\n[System] Installation successful. Starting server...\n"
+      );
+
+      // Kill any previous process
+      if (runProcess) {
+        runProcess.kill();
+      }
+
+      // Run 'npm start'
+      const startProcess = await webContainer.spawn("npm", ["start"]);
+
+      startProcess.output.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            setTerminalOutput((prev) => prev + chunk);
+          },
+        })
+      );
+
+      setRunProcess(startProcess);
+
+      // Listen for server-ready to open browser
+      webContainer.on("server-ready", (port, url) => {
+        setTerminalOutput(`\n[System] Server ready at ${url}\n`);
+        setIframeUrl(url);
+        setActiveTab("browser");
+      });
+    } else {
+      // --- STRATEGY B: STANDALONE SCRIPT (NO package.json) ---
+      setIsInstalling(false);
+      setTerminalOutput(
+        "[System] No 'package.json' found. Looking for entry point...\n"
+      );
+
+      // Heuristic: Find a likely entry file
+      const entryFiles = ["index.js", "main.js", "server.js", "app.js"];
+      let entryFile = entryFiles.find((file) => fileTree[file]);
+
+      // Fallback: If no standard entry file, try the currently open file if it's JS
+      if (!entryFile && currentFile && currentFile.endsWith(".js")) {
+        entryFile = currentFile;
+        setTerminalOutput(
+          `[System] No standard entry point found. Using active file: ${entryFile}\n`
+        );
+      }
+
+      if (!entryFile) {
+        throw new Error(
+          "No runnable JavaScript file found (e.g., index.js, server.js) and no package.json."
+        );
+      }
+
+      setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
+
+      if (runProcess) {
+        runProcess.kill();
+      }
+
+      const nodeProcess = await webContainer.spawn("node", [entryFile]);
+
+      nodeProcess.output.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            setTerminalOutput((prev) => prev + chunk);
+          },
+        })
+      );
+
+      setRunProcess(nodeProcess);
+
+      // Note: Simple Node scripts might not start a server, so we don't always switch to 'browser' tab here
+      // unless they emit a "server-ready" event or we manually detect a port.
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setTerminalOutput(`\n[Error] ${err.message}\n`);
+    setIsInstalling(false);
+  }
+};
 
   const downloadProject = async () => {
     const zip = new JSZip();
