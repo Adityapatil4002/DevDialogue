@@ -714,7 +714,7 @@ const Project = () => {
         {/* LEFT PANEL */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
-            {/* Header: Standardized h-14 */}
+            {/* Header: Kept pl-16 to allow space for the left-aligned menu */}
             <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-14 min-h-[3.5rem] flex-shrink-0">
               <div className="flex items-center gap-3">
                 <button
@@ -1258,7 +1258,8 @@ const Project = () => {
       </PanelGroup>
 
       {!isSidePanelOpen && (
-        <div className="fixed top-4 left-4 z-50">
+        // MODIFICATION: Kept on Left, but changed top-4 to top-2 for perfect centering
+        <div className="fixed top-2 left-4 z-50">
           <StaggeredMenu
             items={menuItems}
             socialItems={socialItems}
