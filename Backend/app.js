@@ -20,7 +20,17 @@ connect();
 
 const app = express();
 
-app.use(cors());
+// [UPDATED] CORS Configuration for Express
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173", // Localhost
+      "https://dev-dialogue.vercel.app", // Your Deployed Frontend
+    ],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
