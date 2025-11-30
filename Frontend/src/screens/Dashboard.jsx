@@ -274,7 +274,8 @@ const Dashboard = () => {
           className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4"
         >
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+            {/* Added 'pb-2' to fix 'g' overlapping/clipping issue */}
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent pb-2">
               DevDialogue Dashboard
             </h1>
             <p className="text-gray-400 mt-2 text-lg">
