@@ -335,7 +335,7 @@ const UserProfile = () => {
   // --- TAB CONFIG ---
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
-    { id: "preferences", label: "Editor", icon: Code },
+    // Removed Editor tab
     { id: "feedback", label: "Feedback", icon: MessageSquare }, // Replaced AI
     { id: "security", label: "Security", icon: Lock },
   ];
@@ -624,89 +624,6 @@ const UserProfile = () => {
                         icon={Linkedin}
                         placeholder="username"
                       />
-                    </div>
-                  </SectionCard>
-                </>
-              )}
-
-              {/* EDITOR TAB */}
-              {activeTab === "preferences" && (
-                <>
-                  <SectionCard
-                    title="Theme & Appearance"
-                    description="Customize your coding environment."
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {["dracula", "monokai", "github-dark"].map((theme) => (
-                        <div
-                          key={theme}
-                          onClick={() => handleSettingChange("theme", theme)}
-                          className={`cursor-pointer p-4 rounded-xl border transition-all duration-300 flex items-center gap-3 ${
-                            formData.settings.theme === theme
-                              ? "bg-blue-600/10 border-blue-500/50"
-                              : "bg-[#0d1117] border-gray-800 hover:border-gray-600"
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                              formData.settings.theme === theme
-                                ? "border-blue-500"
-                                : "border-gray-600"
-                            }`}
-                          >
-                            {formData.settings.theme === theme && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                          </div>
-                          <span className="capitalize text-sm font-medium text-white">
-                            {theme.replace("-", " ")}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-                  <SectionCard
-                    title="Editor Settings"
-                    description="Fine-tune the code editor behavior."
-                  >
-                    <div className="space-y-4">
-                      <Toggle
-                        label="Word Wrap"
-                        checked={formData.settings.wordWrap}
-                        onChange={(v) => handleSettingChange("wordWrap", v)}
-                      />
-                      <Toggle
-                        label="Show Line Numbers"
-                        checked={formData.settings.showLineNumbers}
-                        onChange={(v) =>
-                          handleSettingChange("showLineNumbers", v)
-                        }
-                      />
-                      <div className="p-4 bg-[#0d1117] rounded-xl border border-gray-800">
-                        <label className="text-sm text-gray-300 font-medium mb-2 block">
-                          Font Size
-                        </label>
-                        <input
-                          type="range"
-                          min="10"
-                          max="24"
-                          value={formData.settings.fontSize}
-                          onChange={(e) =>
-                            handleSettingChange(
-                              "fontSize",
-                              parseInt(e.target.value)
-                            )
-                          }
-                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 mt-2">
-                          <span>10px</span>
-                          <span className="text-blue-400 font-bold">
-                            {formData.settings.fontSize}px
-                          </span>
-                          <span>24px</span>
-                        </div>
-                      </div>
                     </div>
                   </SectionCard>
                 </>
