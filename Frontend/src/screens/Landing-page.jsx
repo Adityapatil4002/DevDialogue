@@ -36,9 +36,12 @@ import {
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 
+// --- IMPORT YOUR LOGO HERE ---
+import logo from "../assets/logo.png";
+
 // --- Import your components ---
-// Note: Keeping LiquidEther as per your original file.
 import LiquidEther from "../components/LiquidEther";
+
 const NOISE_BG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E`;
 
 // --- Utility ---
@@ -48,7 +51,6 @@ function cn(...inputs) {
 
 // --- Navigation Helper ---
 const handleLoginNavigation = () => {
-  // Navigate to login page
   window.location.href = "/login";
 };
 
@@ -66,7 +68,7 @@ const Reveal = ({ children, delay = 0, className }) => (
 );
 
 // ==========================================
-// 🧭 NEW NAVBAR COMPONENT (With Smooth Scroll)
+// 🧭 NEW NAVBAR COMPONENT (Updated Logo Size & Pos)
 // ==========================================
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -85,12 +87,10 @@ const Navbar = () => {
     { name: "Insights", href: "#insights" },
   ];
 
-  // --- Smooth Scroll Handler ---
   const handleSmoothScroll = (e, href) => {
     e.preventDefault();
     const target = document.querySelector(href);
     if (target) {
-      // Calculate position with offset for fixed navbar (approx 85px)
       const offsetTop = target.offsetTop - 85;
       window.scrollTo({
         top: offsetTop,
@@ -105,20 +105,38 @@ const Navbar = () => {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
         scrolled
-          ? "bg-[#020617]/80 backdrop-blur-md border-white/10 py-4"
-          : "bg-transparent border-transparent py-6"
+          ? "bg-[#020617]/80 backdrop-blur-md border-white/10 py-3"
+          : "bg-transparent border-transparent py-5"
       )}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo Section */}
         <div
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center cursor-pointer group"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
-            <Terminal className="text-white w-4 h-4" />
-          </div>
-          <span className="font-bold text-xl text-white tracking-tight">
+          {/* 1. Container Size: w-16 h-16 (64px) makes the logo big enough */}
+          <motion.div
+            initial={{ rotate: -15, scale: 0.8, opacity: 0 }}
+            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "backOut" }}
+            whileHover={{ scale: 1.15, rotate: 10 }}
+            className="w-16 h-16 flex items-center justify-center relative"
+          >
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            <img
+              src={logo}
+              alt="DevDialogue Logo"
+              // Optional: scale-110 makes it pop a tiny bit more out of its box
+              className="w-full h-full object-contain scale-110 drop-shadow-[0_0_12px_rgba(34,211,238,0.6)] relative z-10"
+            />
+          </motion.div>
+
+          {/* 2. Negative Margin (-ml-3): Pulls the text LEFT, into the logo's space */}
+          {/* Adjust to -ml-4 or -ml-2 if you need it closer/further */}
+          <span className="-ml-3 font-bold text-sm text-white tracking-wide group-hover:text-cyan-400 transition-colors duration-300 relative z-20">
             DevDialogue
           </span>
         </div>
@@ -665,11 +683,9 @@ const HeroSection = () => {
 };
 
 // ==========================================
-// 💬 SECTION 2: LIVE GROUP CHAT (Updated: App-Like Bubbles)
+// 💬 SECTION 2: LIVE GROUP CHAT
 // ==========================================
 const StandardChatSection = () => {
-  // --- Animation Logic ---
-
   const messagePool = [
     {
       id: 1,
@@ -730,7 +746,6 @@ const StandardChatSection = () => {
     },
   ];
 
-  // Initialize with enough messages to fill the bottom
   const [messages, setMessages] = useState(messagePool.slice(0, 4));
 
   useEffect(() => {
@@ -741,20 +756,18 @@ const StandardChatSection = () => {
 
       setMessages((prevMessages) => {
         const newHistory = [...prevMessages, newMessage];
-        // Keep last 5 messages to ensure no empty space gaps, but don't overflow
         if (newHistory.length > 5) {
           return newHistory.slice(1);
         }
         return newHistory;
       });
-    }, 2500); // New message every 2.5s
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
     <section id="chat" className="py-32 bg-[#020617] relative overflow-hidden">
-      {/* Background Glow */}
       <motion.div
         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
@@ -762,7 +775,6 @@ const StandardChatSection = () => {
       />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* LEFT COLUMN: Text Content */}
         <Reveal>
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-xs font-bold uppercase tracking-wider">
@@ -801,11 +813,8 @@ const StandardChatSection = () => {
           </div>
         </Reveal>
 
-        {/* RIGHT COLUMN: The Split Visualization */}
         <Reveal delay={0.2} className="relative">
-          {/* Main App Window Container */}
           <div className="relative rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl overflow-hidden flex h-[500px] w-full max-w-lg mx-auto lg:mx-0">
-            {/* --- SIDEBAR: GROUPS & CHANNELS (Left Side) --- */}
             <div className="w-[30%] bg-[#0B1120] border-r border-white/5 flex flex-col hidden sm:flex">
               <div className="h-14 border-b border-white/5 flex items-center px-4">
                 <div className="font-bold text-slate-200 text-xs tracking-wide uppercase opacity-70">
@@ -814,7 +823,6 @@ const StandardChatSection = () => {
               </div>
 
               <div className="flex-1 p-3 space-y-6">
-                {/* 1. Groups Section */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 cursor-pointer">
                     <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
@@ -838,7 +846,6 @@ const StandardChatSection = () => {
                   </div>
                 </div>
 
-                {/* 2. Channels Section */}
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase mb-2 block px-1">
                     Channels
@@ -862,9 +869,7 @@ const StandardChatSection = () => {
               </div>
             </div>
 
-            {/* --- MAIN CHAT AREA (Right Side) --- */}
             <div className="flex-1 flex flex-col bg-[#0f172a] relative">
-              {/* Chat Header */}
               <div className="h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0f172a]/95 backdrop-blur-md z-10 absolute top-0 left-0 right-0">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">#</span>
@@ -882,10 +887,7 @@ const StandardChatSection = () => {
                 </div>
               </div>
 
-              {/* Message Feed Container - UPDATED FOR BUBBLE STYLE */}
               <div className="flex-1 p-4 overflow-hidden flex flex-col justify-end pt-16">
-                {/* 'justify-end' pushes content to the bottom, removing the empty top space */}
-
                 <div className="space-y-4 relative z-0">
                   <AnimatePresence initial={false} mode="popLayout">
                     {messages.map((msg) => (
@@ -902,7 +904,7 @@ const StandardChatSection = () => {
                         transition={{ duration: 0.4, ease: "easeOut" }}
                         className={cn(
                           "flex w-full",
-                          msg.isMe ? "justify-end" : "justify-start" // Align based on sender
+                          msg.isMe ? "justify-end" : "justify-start"
                         )}
                       >
                         <div
@@ -938,7 +940,6 @@ const StandardChatSection = () => {
                   </AnimatePresence>
                 </div>
 
-                {/* Persistent "Someone is typing" indicator */}
                 <div className="h-6 mt-2 flex items-center gap-2 pl-2">
                   <div className="flex gap-1">
                     {[0, 0.2, 0.4].map((delay, i) => (
@@ -956,7 +957,6 @@ const StandardChatSection = () => {
                 </div>
               </div>
 
-              {/* Input Area (Visual Only) */}
               <div className="p-4 pt-0">
                 <div className="h-10 bg-slate-800/50 rounded-lg border border-white/5 flex items-center px-3 gap-2">
                   <div className="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center">
@@ -970,7 +970,6 @@ const StandardChatSection = () => {
             </div>
           </div>
 
-          {/* Decorative Elements */}
           <div className="absolute -z-10 top-20 -right-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[80px]" />
           <div className="absolute -z-10 bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-[80px]" />
         </Reveal>
@@ -980,18 +979,15 @@ const StandardChatSection = () => {
 };
 
 // ==========================================
-// 🧠 FEATURE 3: THE @ai INVOCATION (Updated: With Chat History)
+// 🧠 FEATURE 3: THE @ai INVOCATION
 // ==========================================
 const NeuralChatSection = () => {
-  // --- Animation Sequence State ---
   const [step, setStep] = useState(0);
   const [aiText, setAiText] = useState("");
 
-  // The realistic answer the AI will "stream" back
   const fullResponse =
     "The `authMiddleware` verifies the JWT token from the request headers. If valid, it decodes the payload and attaches the user ID to `req.user` for the controllers to use.";
 
-  // --- Static History (Fills the empty space) ---
   const staticHistory = [
     {
       id: 1,
@@ -1019,34 +1015,21 @@ const NeuralChatSection = () => {
     },
   ];
 
-  // --- Master Timeline Loop ---
   useEffect(() => {
     let timeout;
-
     const runSequence = () => {
-      // Step 0: Reset (Blank slate)
       setStep(0);
       setAiText("");
-
-      // Step 1: User types/sends message
       timeout = setTimeout(() => setStep(1), 1000);
-
-      // Step 2: AI "Thinking" state
       timeout = setTimeout(() => setStep(2), 2500);
-
-      // Step 3: AI Starts typing (Streaming response)
       timeout = setTimeout(() => setStep(3), 4000);
-
-      // Step 4: Finish & Hold (Read time)
       timeout = setTimeout(runSequence, 12000);
     };
 
     runSequence();
-
     return () => clearTimeout(timeout);
   }, []);
 
-  // --- Typewriter Effect Logic ---
   useEffect(() => {
     if (step === 3) {
       let charIndex = 0;
@@ -1065,7 +1048,6 @@ const NeuralChatSection = () => {
   return (
     <section id="features" className="py-32 relative bg-[#020617]">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* LEFT SIDE: Description */}
         <Reveal>
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-300 text-xs font-bold uppercase tracking-wider">
@@ -1098,12 +1080,10 @@ const NeuralChatSection = () => {
           </div>
         </Reveal>
 
-        {/* RIGHT SIDE: Animated Visualization */}
         <Reveal
           delay={0.2}
           className="relative rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden min-h-[500px] flex flex-col"
         >
-          {/* Header */}
           <div className="h-12 border-b border-white/5 bg-white/5 flex items-center justify-between px-4 bg-[#0B1120]/90 backdrop-blur-sm z-10">
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold text-slate-300">
@@ -1124,9 +1104,7 @@ const NeuralChatSection = () => {
             </div>
           </div>
 
-          {/* Chat Content Area */}
           <div className="p-6 space-y-6 flex-1 relative flex flex-col justify-end">
-            {/* --- STATIC HISTORY (Fills the space) --- */}
             {staticHistory.map((msg) => (
               <div key={msg.id} className="flex gap-4">
                 <div
@@ -1145,9 +1123,6 @@ const NeuralChatSection = () => {
               </div>
             ))}
 
-            {/* --- ACTIVE ANIMATION --- */}
-
-            {/* 1. User Question */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: step >= 1 ? 1 : 0, y: step >= 1 ? 0 : 20 }}
@@ -1169,7 +1144,6 @@ const NeuralChatSection = () => {
               </div>
             </motion.div>
 
-            {/* 2. AI Response */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: step >= 2 ? 1 : 0, y: step >= 2 ? 0 : 20 }}
@@ -1210,7 +1184,6 @@ const NeuralChatSection = () => {
                   )}
                 </div>
 
-                {/* The Bubble */}
                 <div className="bg-[#1e293b] border border-white/5 p-4 rounded-2xl rounded-tl-none text-slate-300 text-sm shadow-xl leading-relaxed">
                   {step === 2 ? (
                     <span className="text-slate-500 italic text-xs">
@@ -1219,7 +1192,6 @@ const NeuralChatSection = () => {
                   ) : (
                     <>
                       {aiText}
-                      {/* Blinking Cursor */}
                       {step === 3 && aiText.length < fullResponse.length && (
                         <motion.span
                           animate={{ opacity: [1, 0] }}
@@ -1240,10 +1212,9 @@ const NeuralChatSection = () => {
 };
 
 // ==========================================
-// 📂 FEATURE 4: GENERATIVE FILE TREE (Continuous Animation)
+// 📂 FEATURE 4: GENERATIVE FILE TREE
 // ==========================================
 const FileTreeSection = () => {
-  // Define the file structure to generate (Reduced count for smoother flow)
   const treeItems = [
     { id: 1, name: "src", type: "folder", depth: 0, color: "text-blue-400" },
     {
@@ -1288,18 +1259,16 @@ const FileTreeSection = () => {
 
   const [visibleCount, setVisibleCount] = useState(0);
 
-  // Animation Loop: Increment visible items one by one
   useEffect(() => {
     const interval = setInterval(() => {
       setVisibleCount((prev) => {
-        // If all files are shown, wait a bit then reset
         if (prev >= treeItems.length) {
-          setTimeout(() => setVisibleCount(0), 3000); // 3s pause before reset
+          setTimeout(() => setVisibleCount(0), 3000);
           return prev;
         }
         return prev + 1;
       });
-    }, 250); // Faster speed (250ms) for smoother flow
+    }, 250);
 
     return () => clearInterval(interval);
   }, [treeItems.length]);
@@ -1307,7 +1276,6 @@ const FileTreeSection = () => {
   return (
     <section className="py-32 relative bg-[#020617] border-t border-white/5">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* RIGHT SIDE: Text Info */}
         <Reveal delay={0.2} className="order-1 lg:order-2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-300 text-xs font-bold uppercase tracking-wider">
             <LayoutTemplate className="w-3 h-3" /> Full Scaffolding
@@ -1330,12 +1298,10 @@ const FileTreeSection = () => {
           </div>
         </Reveal>
 
-        {/* LEFT SIDE: Animation */}
         <Reveal
           className="order-2 lg:order-1 relative rounded-xl border border-white/10 bg-[#0B1120] p-6 lg:p-8 shadow-2xl min-h-[450px] flex flex-col"
           style={{ perspective: "1000px" }}
         >
-          {/* Header */}
           <div className="flex items-center gap-2 text-slate-400 mb-6 border-b border-white/5 pb-4">
             <FolderTree className="w-4 h-4 text-violet-400" />
             <span className="text-sm font-mono">/project-root (Generated)</span>
@@ -1347,19 +1313,17 @@ const FileTreeSection = () => {
             )}
           </div>
 
-          {/* Tree Visualization */}
           <div className="relative z-10 space-y-1 font-mono text-sm flex-1 overflow-hidden">
             <AnimatePresence mode="popLayout">
               {treeItems.slice(0, visibleCount).map((item, i) => (
                 <motion.div
                   key={item.id}
-                  layout // Smooth layout adjustment
+                  layout
                   initial={{ opacity: 0, x: -15, scale: 0.98 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ duration: 0.4, ease: "circOut" }}
                   className="relative group"
                 >
-                  {/* Connector Lines */}
                   {item.depth > 0 && (
                     <div
                       className="absolute left-0 top-0 bottom-0 border-l border-white/10"
@@ -1371,7 +1335,6 @@ const FileTreeSection = () => {
                     className="flex items-center gap-2 hover:bg-white/5 p-1.5 rounded cursor-pointer transition-colors"
                     style={{ paddingLeft: `${item.depth * 20}px` }}
                   >
-                    {/* Icon */}
                     {item.type === "folder" ? (
                       <div className="w-4 h-4 text-blue-400/80 fill-current">
                         <svg
@@ -1386,10 +1349,8 @@ const FileTreeSection = () => {
                       <FileCode className="w-4 h-4 text-slate-500" />
                     )}
 
-                    {/* Name */}
                     <span className={item.color}>{item.name}</span>
 
-                    {/* "Just Created" Flash Effect */}
                     <motion.div
                       initial={{ opacity: 1, scale: 1.2 }}
                       animate={{ opacity: 0, scale: 1 }}
@@ -1403,7 +1364,6 @@ const FileTreeSection = () => {
               ))}
             </AnimatePresence>
 
-            {/* Empty State / Reset State Placeholder */}
             {visibleCount === 0 && (
               <div className="h-full flex items-center justify-center text-slate-600 italic">
                 <div className="flex items-center gap-2">
@@ -1414,7 +1374,6 @@ const FileTreeSection = () => {
             )}
           </div>
 
-          {/* Status Footer */}
           <div className="mt-6 pt-4 border-t border-white/5 text-xs font-mono text-slate-500 flex items-center gap-2 h-8">
             <span className="text-green-500 font-bold">{">"}</span>
             {visibleCount < treeItems.length ? (
@@ -1442,24 +1401,20 @@ const FileTreeSection = () => {
 };
 
 // ==========================================
-// 🚀 FEATURE 5: LIVE EXECUTION (Updated: Futuristic Runtime)
+// 🚀 FEATURE 5: LIVE EXECUTION
 // ==========================================
 const ExecutionSection = () => {
-  const [activeTab, setActiveTab] = useState("code"); // 'code' or 'terminal'
+  const [activeTab, setActiveTab] = useState("code");
   const [logs, setLogs] = useState([]);
-  const [status, setStatus] = useState("idle"); // idle, running, success
+  const [status, setStatus] = useState("idle");
 
-  // Animation Loop
   useEffect(() => {
     let timeouts = [];
-
     const runSequence = () => {
-      // 1. Reset State
       setActiveTab("code");
       setStatus("idle");
       setLogs([]);
 
-      // 2. Simulate "Clicking Run" -> Switch to Terminal
       timeouts.push(
         setTimeout(() => {
           setStatus("running");
@@ -1467,7 +1422,6 @@ const ExecutionSection = () => {
         }, 2000)
       );
 
-      // 3. Stream Logs
       const logMessages = [
         { text: "> npm install", color: "text-slate-400", delay: 2500 },
         {
@@ -1501,14 +1455,12 @@ const ExecutionSection = () => {
         );
       });
 
-      // 4. Show Success State
       timeouts.push(
         setTimeout(() => {
           setStatus("success");
         }, 7000)
       );
 
-      // 5. Restart Loop
       timeouts.push(setTimeout(runSequence, 11000));
     };
 
@@ -1521,7 +1473,6 @@ const ExecutionSection = () => {
       id="runtime"
       className="py-32 relative bg-[#020617] border-t border-white/5 overflow-hidden"
     >
-      {/* Background Glow */}
       <motion.div
         animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.1, 1] }}
         transition={{ duration: 5, repeat: Infinity }}
@@ -1529,7 +1480,6 @@ const ExecutionSection = () => {
       />
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* LEFT: Text Content */}
         <Reveal className="space-y-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-400 text-xs font-bold uppercase tracking-wider">
             <PlayCircle className="w-3 h-3" /> Instant Sandbox
@@ -1561,24 +1511,18 @@ const ExecutionSection = () => {
           </div>
         </Reveal>
 
-        {/* RIGHT: High-End Visualization */}
         <Reveal delay={0.2} className="relative">
-          {/* Main IDE Window */}
           <div className="relative rounded-2xl border border-white/10 bg-[#0f172a]/90 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[400px] flex flex-col group">
-            {/* Gradient Border Overlay */}
             <div className="absolute inset-0 rounded-2xl border border-green-500/20 pointer-events-none" />
 
-            {/* Header / Tabs */}
             <div className="h-12 border-b border-white/5 bg-[#0B1120] flex items-center justify-between px-4">
               <div className="flex items-center gap-2">
-                {/* Traffic Lights */}
                 <div className="flex gap-1.5 mr-4">
                   <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
                   <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
                 </div>
 
-                {/* Tabs */}
                 <div className="flex bg-black/20 rounded-lg p-1">
                   <button
                     className={cn(
@@ -1603,7 +1547,6 @@ const ExecutionSection = () => {
                 </div>
               </div>
 
-              {/* Run Button */}
               <motion.button
                 animate={
                   status === "running"
@@ -1626,9 +1569,7 @@ const ExecutionSection = () => {
               </motion.button>
             </div>
 
-            {/* Content Area */}
             <div className="flex-1 relative font-mono text-sm">
-              {/* CODE VIEW */}
               <motion.div
                 initial={{ opacity: 1 }}
                 animate={{
@@ -1674,7 +1615,6 @@ const ExecutionSection = () => {
                 <div>{"}"});</div>
               </motion.div>
 
-              {/* TERMINAL VIEW */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{
@@ -1700,7 +1640,6 @@ const ExecutionSection = () => {
                   )}
                 </div>
 
-                {/* Server Status HUD (Only shows on success) */}
                 <AnimatePresence>
                   {status === "success" && (
                     <motion.div
@@ -1734,7 +1673,7 @@ const ExecutionSection = () => {
 };
 
 // ==========================================
-// 📊 FEATURE 6: DASHBOARD ANALYTICS (Replaces Pricing)
+// 📊 FEATURE 6: DASHBOARD ANALYTICS
 // ==========================================
 const DashboardFeatureSection = () => {
   return (
@@ -1748,14 +1687,11 @@ const DashboardFeatureSection = () => {
       ></div>
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        {/* LEFT: Visualization (The Mock Dashboard) */}
         <Reveal delay={0.2} className="order-2 lg:order-1 relative">
           <div className="relative rounded-2xl border border-white/10 bg-[#0f172a]/90 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[450px] flex flex-col p-6 group">
-            {/* Glow Effect behind dashboard */}
             <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full pointer-events-none" />
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-6 relative z-10">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -1776,7 +1712,6 @@ const DashboardFeatureSection = () => {
               </div>
             </div>
 
-            {/* Top Row: Stat Cards */}
             <div className="grid grid-cols-3 gap-4 mb-6 relative z-10">
               {[
                 {
@@ -1826,7 +1761,6 @@ const DashboardFeatureSection = () => {
               ))}
             </div>
 
-            {/* Middle: Activity Graph */}
             <div className="bg-[#1e293b] border border-white/5 rounded-xl p-4 flex-1 relative overflow-hidden z-10">
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xs font-bold text-slate-300">
@@ -1837,7 +1771,6 @@ const DashboardFeatureSection = () => {
                 </div>
               </div>
 
-              {/* SVG Wave Chart */}
               <div className="absolute bottom-0 left-0 right-0 h-32 w-full">
                 <svg
                   className="w-full h-full"
@@ -1878,7 +1811,6 @@ const DashboardFeatureSection = () => {
           </div>
         </Reveal>
 
-        {/* RIGHT: Text Content */}
         <Reveal className="order-1 lg:order-2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/5 text-blue-300 text-xs font-bold uppercase tracking-wider">
             <Users className="w-3 h-3" /> Team Insights
@@ -1935,12 +1867,11 @@ const DashboardFeatureSection = () => {
   );
 };
 // ==========================================
-// 🚀 FINAL CTA (The "Portal" Card)
+// 🚀 FINAL CTA
 // ==========================================
 const GetStartedSection = () => {
   return (
     <section className="py-32 relative bg-[#020617] overflow-hidden flex items-center justify-center">
-      {/* Background Grid & Noise */}
       <div
         className="absolute inset-0 opacity-30"
         style={{ backgroundImage: `url("${NOISE_BG}")` }}
@@ -1950,11 +1881,9 @@ const GetStartedSection = () => {
       <div className="relative z-10 max-w-5xl mx-auto px-6 w-full">
         <Reveal>
           <div className="relative rounded-[2.5rem] border border-white/10 bg-[#0f172a]/50 backdrop-blur-2xl overflow-hidden p-12 md:p-24 text-center group">
-            {/* Animated Gradient Blobs behind the card content */}
             <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-500/30 rounded-full blur-[128px] group-hover:bg-purple-500/40 transition-colors duration-1000" />
             <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-500/30 rounded-full blur-[128px] group-hover:bg-cyan-500/40 transition-colors duration-1000" />
 
-            {/* Content */}
             <div className="relative z-10 flex flex-col items-center">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -1987,7 +1916,6 @@ const GetStartedSection = () => {
                   </span>
                 </button>
 
-                {/* UPDATED SECONDARY BUTTON */}
                 <button
                   onClick={() =>
                     document
@@ -2001,7 +1929,6 @@ const GetStartedSection = () => {
                 </button>
               </div>
 
-              {/* Decorative Floating Elements */}
               <div className="absolute top-10 left-10 animate-float opacity-30 hidden md:block">
                 <Code2 className="w-12 h-12 text-cyan-500 rotate-12" />
               </div>
@@ -2017,22 +1944,25 @@ const GetStartedSection = () => {
 };
 
 // ==========================================
-// 🦶 FOOTER (Enhanced & Real Links)
+// 🦶 FOOTER (With Custom Logo)
 // ==========================================
 const Footer = () => {
   return (
     <footer className="relative bg-[#020617] pt-24 pb-12 overflow-hidden border-t border-white/5">
-      {/* Background Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
-          {/* BRAND & NEWSLETTER (Left Side) */}
           <div className="lg:col-span-4 space-y-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-lg flex items-center justify-center">
-                <Terminal className="text-white w-4 h-4" />
+              {/* Replaced Terminal Icon with Custom Logo */}
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img
+                  src={logo}
+                  alt="DevDialogue Logo"
+                  className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+                />
               </div>
               <span className="font-bold text-xl text-white tracking-tight">
                 DevDialogue
@@ -2043,7 +1973,6 @@ const Footer = () => {
               applications at the speed of conversation.
             </p>
 
-            {/* Newsletter Input */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
                 Stay in the loop
@@ -2061,12 +1990,10 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* LINKS (Right Side) */}
           <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8 lg:pl-12">
             <div>
               <h4 className="font-bold text-white mb-6">Product</h4>
               <ul className="space-y-4 text-sm text-slate-400">
-                {/* Real product features based on landing page */}
                 {[
                   "Real-time Chat",
                   "AI Assistant",
@@ -2126,14 +2053,12 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* BOTTOM BAR */}
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-xs text-slate-500">
             &copy; {new Date().getFullYear()} DevDialogue Inc. All rights
             reserved.
           </div>
 
-          {/* System Status */}
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/5 border border-green-500/20">
             <div className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -2154,6 +2079,7 @@ const Footer = () => {
     </footer>
   );
 };
+
 // ==========================================
 // 🚀 MAIN LANDING PAGE
 // ==========================================
