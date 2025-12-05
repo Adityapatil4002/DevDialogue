@@ -1,11 +1,17 @@
 <p align="center">
-  <img src="https://via.placeholder.com/1200x350?text=DevDialogue+-+AI+Native+Cloud+IDE" alt="DevDialogue Banner" />
+  <img src="./Frontend/public/favicon.png" width="140" alt="DevDialogue Logo" />
 </p>
 
 <h1 align="center">🚀 DevDialogue – The AI-Native Collaborative Cloud IDE</h1>
 
 <p align="center">
   <strong>Run Node.js inside the browser. Build apps with AI. Collaborate in real-time.</strong>
+</p>
+
+<p align="center">
+  <a href="https://dev-dialogue.vercel.app/">🔗 Live Demo</a> |
+  <a href="#-features">✨ Features</a> |
+  <a href="#-installation">⚙️ Installation</a>
 </p>
 
 <p align="center">
@@ -16,9 +22,29 @@
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" />
 </p>
 
-<p align="center">
-🔗 <a href="https://dev-dialogue.vercel.app/">Live Demo</a>
-</p>
+---
+
+## 📸 Screenshots
+
+> Actual UI screenshots from the running app
+
+### 🏠 Landing Page
+<img src="./Frontend/public/landing-page.png" width="100%" alt="DevDialogue Landing Page" />
+
+---
+
+### 📌 Main Dashboard
+<img src="./Frontend/public/Dashboard.png"" width="100%" alt="DevDialogue Dashboard" />
+
+---
+
+### 💬 Home / Workspace UI
+<img src="./Frontend/public/Home-page.png" width="100%" alt="DevDialogue Workspace UI" />
+
+---
+
+### 🧑‍💻 IDE Interface (Chat + Code + Terminal)
+<img src="./Frontend/public/Main-project.png" width="100%" alt="DevDialogue IDE Interface" />
 
 ---
 
@@ -169,22 +195,7 @@ Try these inside the chat:
 | Core Engine | WebContainers API |
 | Deployment | Vercel (Frontend), Render (Backend) |
 
----
 
-## 📸 Screenshots
-
-> Replace below images with your real screenshots.
-
-**Landing Page**
-![Landing Page](https://via.placeholder.com/1000x500?text=Landing+Page)
-
-**IDE Interface**
-![IDE](https://via.placeholder.com/1000x500?text=IDE+Screenshot)
-
-**Live Collaboration**
-![Collab](https://via.placeholder.com/1000x500?text=Real-time+Collab)
-
----
 
 ## 🚀 Local Installation
 
@@ -336,3 +347,4 @@ LinkedIn: https://linkedin.com/in/your-profile
 GitHub: https://github.com/your-username
 
 <p align="center">⭐ If you like the project, give it a star!</p> 
+
