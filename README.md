@@ -34,7 +34,7 @@
 ---
 
 ### 📌 Main Dashboard
-<img src="./Frontend/public/Dashboard.png"" width="100%" alt="DevDialogue Dashboard" />
+<img src="./Frontend/public/Dashboard.png" width="100%" alt="DevDialogue Dashboard" />
 
 ---
 
@@ -347,4 +347,5 @@ LinkedIn: https://linkedin.com/in/your-profile
 GitHub: https://github.com/your-username
 
 <p align="center">⭐ If you like the project, give it a star!</p> 
+
 
