@@ -341,10 +341,10 @@ See LICENSE for details.
 
 ### 📬 Contact
 
-Developer: Your Name
-LinkedIn: https://linkedin.com/in/your-profile
+Developer: Aditya Patil 
+LinkedIn: https://www.linkedin.com/in/adityapatil0604?utm_source=share_via&utm_content=profile&utm_medium=member_android
 
-GitHub: https://github.com/your-username
+
 
 <p align="center">⭐ If you like the project, give it a star!</p> 
 
