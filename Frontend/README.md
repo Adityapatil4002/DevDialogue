@@ -24,9 +24,7 @@
 - Glassmorphism + dark theme
 - Framer Motion animations
 - Interactive dashboards
-- User profiles with avatars
 
----
 
 
 
