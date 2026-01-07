@@ -22,8 +22,6 @@
 
 ### 🎨 Modern SaaS UI
 - Glassmorphism + dark theme
-- Framer Motion animations
-- Interactive dashboards
 
 
 
