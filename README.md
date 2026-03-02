@@ -347,5 +347,15 @@ LinkedIn: https://www.linkedin.com/in/adityapatil0604?utm_source=share_via&utm_c
 
 
 <p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+<p align="center">⭐ If you like the project, give it a star!</p> 
+
 
 
