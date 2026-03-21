@@ -1,66 +1,68 @@
 import { Router } from "express";
 import { body } from "express-validator";
 import * as projectController from "../Controllers/project.controller.js";
-import * as authMiddleWare from "../Middleware/auth.middleware.js";
+
+// 1. FIXED: Changed from require() to import to match your ES6 module syntax
+import { requireAuth } from "@clerk/express";
 
 const router = Router();
 
+// 2. FIXED: Replaced old authMiddleWare with requireAuth() consistently
+router.put("/leave", requireAuth(), projectController.leaveProject);
+router.delete("/delete", requireAuth(), projectController.deleteProject);
 
-router.put('/leave', authMiddleWare.authUser, projectController.leaveProject);
-router.delete('/delete', authMiddleWare.authUser, projectController.deleteProject);
-
-
+// 3. FIXED: Merged duplicate routes while keeping your express-validator logic
 router.post(
   "/create",
-  authMiddleWare.authUser,
+  requireAuth(),
   body("name").isString().withMessage("Project name is required"),
-  projectController.createProject
+  projectController.createProject,
 );
 
-router.get("/all", authMiddleWare.authUser, projectController.getAllProjects);
+router.get("/all", requireAuth(), projectController.getAllProjects);
 
 router.get(
   "/get-project/:projectId",
-  authMiddleWare.authUser,
-  projectController.getProjectById
+  requireAuth(),
+  projectController.getProjectById,
 );
 
 router.put(
   "/update-file-tree",
-  authMiddleWare.authUser,
+  requireAuth(),
   body("projectId").isString().withMessage("Project ID is required"),
   body("fileTree").isObject().withMessage("File tree is required"),
-  projectController.updateFileTree
+  projectController.updateFileTree,
 );
 
 // --- NEW FEATURES (Privacy & Invites) ---
 
 router.get(
   "/user-search",
-  authMiddleWare.authUser,
-  projectController.getUserByExactEmail
+  requireAuth(),
+  projectController.getUserByExactEmail,
 );
 
 router.post(
   "/send-invite",
-  authMiddleWare.authUser,
+  requireAuth(),
   body("projectId").isString().withMessage("Project ID is required"),
   body("email").isEmail().withMessage("Valid email is required"),
-  projectController.sendInvite
+  projectController.sendInvite,
 );
 
 router.put(
   "/accept-invite",
-  authMiddleWare.authUser,
+  requireAuth(),
   body("projectId").isString().withMessage("Project ID is required"),
-  projectController.acceptInvite
+  projectController.acceptInvite,
 );
 
 router.put(
   "/reject-invite",
-  authMiddleWare.authUser,
+  requireAuth(),
   body("projectId").isString().withMessage("Project ID is required"),
-  projectController.rejectInvite
+  projectController.rejectInvite,
 );
 
 export default router;

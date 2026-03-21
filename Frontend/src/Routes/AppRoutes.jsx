@@ -5,7 +5,7 @@ import Loader from "../components/Loader.jsx"; // Import your new System Loader
 
 // Screens
 import Login from "../screens/login.jsx";
-import Register from "../screens/Register.jsx";
+import Register from "../screens/register.jsx";
 import Home from "../screens/Home.jsx";
 import Project from "../screens/Project.jsx";
 import UserProfile from "../screens/UserProfile.jsx";
@@ -29,8 +29,8 @@ const AppRoutes = () => {
         {/* Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login/*" element={<Login />} />
+        <Route path="/register/*" element={<Register />} />
 
         {/* Protected Routes */}
         <Route

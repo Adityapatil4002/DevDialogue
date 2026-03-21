@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+
 import {
   motion,
   AnimatePresence,
@@ -49,11 +52,6 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// --- Navigation Helper ---
-const handleLoginNavigation = () => {
-  window.location.href = "/login";
-};
-
 // --- 🎬 ANIMATION WRAPPER (Scroll Reveal) ---
 const Reveal = ({ children, delay = 0, className }) => (
   <motion.div
@@ -68,11 +66,15 @@ const Reveal = ({ children, delay = 0, className }) => (
 );
 
 // ==========================================
-// 🧭 NEW NAVBAR COMPONENT (Updated Logo Size & Pos)
+// 🧭 NAVBAR COMPONENT
 // ==========================================
 const Navbar = () => {
+  const { isLoaded, isSignedIn } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Derived auth state: treat as not signed in while Clerk is loading
+  const authed = isLoaded && isSignedIn;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -106,7 +108,7 @@ const Navbar = () => {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
         scrolled
           ? "bg-[#020617]/80 backdrop-blur-md border-white/10 py-3"
-          : "bg-transparent border-transparent py-5"
+          : "bg-transparent border-transparent py-5",
       )}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -115,7 +117,6 @@ const Navbar = () => {
           className="flex items-center cursor-pointer group"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
-          {/* 1. Container Size: w-16 h-16 (64px) makes the logo big enough */}
           <motion.div
             initial={{ rotate: -15, scale: 0.8, opacity: 0 }}
             animate={{ rotate: 0, scale: 1, opacity: 1 }}
@@ -123,19 +124,13 @@ const Navbar = () => {
             whileHover={{ scale: 1.15, rotate: 10 }}
             className="w-16 h-16 flex items-center justify-center relative"
           >
-            {/* Glow effect */}
             <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
             <img
               src={logo}
               alt="DevDialogue Logo"
-              // Optional: scale-110 makes it pop a tiny bit more out of its box
               className="w-full h-full object-contain scale-110 drop-shadow-[0_0_12px_rgba(34,211,238,0.6)] relative z-10"
             />
           </motion.div>
-
-          {/* 2. Negative Margin (-ml-3): Pulls the text LEFT, into the logo's space */}
-          {/* Adjust to -ml-4 or -ml-2 if you need it closer/further */}
           <span className="-ml-3 font-bold text-sm text-white tracking-wide group-hover:text-cyan-400 transition-colors duration-300 relative z-20">
             DevDialogue
           </span>
@@ -157,18 +152,28 @@ const Navbar = () => {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <button
-            onClick={handleLoginNavigation}
-            className="text-sm font-medium text-white hover:text-cyan-400 transition-colors"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={handleLoginNavigation}
-            className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-cyan-50 transition-all transform hover:scale-105"
-          >
-            Get Started
-          </button>
+          {/* Show a subtle loader while Clerk is initializing */}
+          {!isLoaded ? (
+            <div className="flex items-center gap-2 text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {!authed && (
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-white hover:text-cyan-400 transition-colors"
+                >
+                  Sign In
+                </Link>
+              )}
+              <Link to={authed ? "/home" : "/register"}>
+                <button className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform">
+                  {authed ? "Open Workspace →" : "Get Started →"}
+                </button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -201,18 +206,32 @@ const Navbar = () => {
                 </a>
               ))}
               <hr className="border-white/10 my-2" />
-              <button
-                onClick={handleLoginNavigation}
-                className="text-left text-white font-medium"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={handleLoginNavigation}
-                className="w-full py-3 bg-cyan-500 text-white font-bold rounded-lg"
-              >
-                Get Started
-              </button>
+              {!isLoaded ? (
+                <div className="flex items-center justify-center gap-2 text-slate-500 py-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading...</span>
+                </div>
+              ) : !authed ? (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-left text-white font-medium block"
+                  >
+                    Sign In
+                  </Link>
+                  <Link to="/register" className="w-full block">
+                    <button className="w-full py-3 bg-cyan-500 text-white font-bold rounded-lg">
+                      Get Started
+                    </button>
+                  </Link>
+                </>
+              ) : (
+                <Link to="/home" className="w-full block">
+                  <button className="w-full py-3 bg-cyan-500 text-white font-bold rounded-lg">
+                    Open Workspace
+                  </button>
+                </Link>
+              )}
             </div>
           </motion.div>
         )}
@@ -250,7 +269,6 @@ const MemoizedLiquidBackground = React.memo(() => {
   );
 });
 
-// --- Hero Cards Logic ---
 const ChatCardContent = ({ isActive }) => {
   const [step, setStep] = useState(0);
   useEffect(() => {
@@ -388,7 +406,7 @@ const CodeCardContent = ({ isActive }) => {
         indent: 2,
       },
     ],
-    []
+    [],
   );
   useEffect(() => {
     if (isActive) {
@@ -522,23 +540,29 @@ const cards = [
 ];
 
 const HeroSection = () => {
+  const { isLoaded, isSignedIn } = useAuth();
+  const authed = isLoaded && isSignedIn;
+
   const [activeIndex, setActiveIndex] = useState(0);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 100, damping: 20 });
   const springY = useSpring(mouseY, { stiffness: 100, damping: 20 });
+
   const handleMouseMove = (e) => {
     const { clientX, clientY } = e;
     const { left, top } = e.currentTarget.getBoundingClientRect();
     mouseX.set(clientX - left);
     mouseY.set(clientY - top);
   };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % cards.length);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
   const getCardStyle = (index) => {
     const position = (index - activeIndex + cards.length) % cards.length;
     if (position === 0) {
@@ -570,6 +594,7 @@ const HeroSection = () => {
       boxShadow: "none",
     };
   };
+
   return (
     <div
       className="relative h-screen w-full overflow-hidden bg-[#020617] text-white selection:bg-cyan-500/30 group"
@@ -619,14 +644,16 @@ const HeroSection = () => {
             full-stack code, create files, and run logic in real-time.
           </motion.p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
-            <motion.button
-              onClick={handleLoginNavigation}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-violet-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2"
-            >
-              Start Building <ArrowRight className="w-5 h-5" />
-            </motion.button>
+            <Link to={authed ? "/home" : "/register"}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-violet-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+              >
+                {authed ? "Open Workspace" : "Start Building"}{" "}
+                <ArrowRight className="w-5 h-5" />
+              </motion.button>
+            </Link>
           </div>
         </div>
         <div className="flex-1 w-full flex justify-center lg:justify-end relative h-[500px] items-center perspective-[2000px]">
@@ -645,8 +672,8 @@ const HeroSection = () => {
                       card.theme === "cyan"
                         ? "border-cyan-500/30"
                         : card.theme === "violet"
-                        ? "border-violet-500/30"
-                        : "border-green-500/30"
+                          ? "border-violet-500/30"
+                          : "border-green-500/30",
                     )}
                   >
                     <div className="h-11 border-b border-white/5 bg-white/5 backdrop-blur-md flex items-center justify-between px-5">
@@ -858,7 +885,7 @@ const StandardChatSection = () => {
                           "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs",
                           channel === "engineering"
                             ? "bg-white/10 text-white font-medium"
-                            : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-white/5",
                         )}
                       >
                         <span className="opacity-50">#</span> {channel}
@@ -904,7 +931,7 @@ const StandardChatSection = () => {
                         transition={{ duration: 0.4, ease: "easeOut" }}
                         className={cn(
                           "flex w-full",
-                          msg.isMe ? "justify-end" : "justify-start"
+                          msg.isMe ? "justify-end" : "justify-start",
                         )}
                       >
                         <div
@@ -913,8 +940,8 @@ const StandardChatSection = () => {
                             msg.isSystem
                               ? "bg-slate-800/50 border-slate-700 text-slate-400 text-xs text-center w-full max-w-full"
                               : msg.isMe
-                              ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
-                              : "bg-slate-800 border-slate-700 text-slate-100 rounded-bl-none"
+                                ? "bg-blue-600 border-blue-500 text-white rounded-br-none"
+                                : "bg-slate-800 border-slate-700 text-slate-100 rounded-bl-none",
                           )}
                         >
                           {!msg.isMe && !msg.isSystem && (
@@ -922,7 +949,7 @@ const StandardChatSection = () => {
                               <div
                                 className={cn(
                                   "w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white",
-                                  msg.color
+                                  msg.color,
                                 )}
                               >
                                 {msg.avatar}
@@ -1419,7 +1446,7 @@ const ExecutionSection = () => {
         setTimeout(() => {
           setStatus("running");
           setActiveTab("terminal");
-        }, 2000)
+        }, 2000),
       );
 
       const logMessages = [
@@ -1451,14 +1478,14 @@ const ExecutionSection = () => {
         timeouts.push(
           setTimeout(() => {
             setLogs((prev) => [...prev, { text, color }]);
-          }, delay)
+          }, delay),
         );
       });
 
       timeouts.push(
         setTimeout(() => {
           setStatus("success");
-        }, 7000)
+        }, 7000),
       );
 
       timeouts.push(setTimeout(runSequence, 11000));
@@ -1529,7 +1556,7 @@ const ExecutionSection = () => {
                       "px-3 py-1 text-[10px] font-bold rounded transition-all",
                       activeTab === "code"
                         ? "bg-slate-700 text-white shadow-sm"
-                        : "text-slate-500"
+                        : "text-slate-500",
                     )}
                   >
                     server.js
@@ -1539,7 +1566,7 @@ const ExecutionSection = () => {
                       "px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1",
                       activeTab === "terminal"
                         ? "bg-slate-700 text-white shadow-sm"
-                        : "text-slate-500"
+                        : "text-slate-500",
                     )}
                   >
                     <Terminal className="w-3 h-3" /> Terminal
@@ -1557,7 +1584,7 @@ const ExecutionSection = () => {
                   "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all border",
                   status === "running"
                     ? "bg-green-500/10 text-green-400 border-green-500/30"
-                    : "bg-green-600 hover:bg-green-500 text-white border-transparent shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                    : "bg-green-600 hover:bg-green-500 text-white border-transparent shadow-[0_0_15px_rgba(34,197,94,0.4)]",
                 )}
               >
                 {status === "running" ? (
@@ -1752,7 +1779,7 @@ const DashboardFeatureSection = () => {
                     <div
                       className={`h-full rounded-full ${stat.color.replace(
                         "text",
-                        "bg"
+                        "bg",
                       )} opacity-50`}
                       style={{ width: "70%" }}
                     />
@@ -1849,8 +1876,8 @@ const DashboardFeatureSection = () => {
                       i === 0
                         ? "bg-blue-400"
                         : i === 1
-                        ? "bg-purple-400"
-                        : "bg-emerald-400"
+                          ? "bg-purple-400"
+                          : "bg-emerald-400"
                     }`}
                   />
                 </div>
@@ -1866,10 +1893,14 @@ const DashboardFeatureSection = () => {
     </section>
   );
 };
+
 // ==========================================
 // 🚀 FINAL CTA
 // ==========================================
 const GetStartedSection = () => {
+  const { isLoaded, isSignedIn } = useAuth();
+  const authed = isLoaded && isSignedIn;
+
   return (
     <section className="py-32 relative bg-[#020617] overflow-hidden flex items-center justify-center">
       <div
@@ -1906,15 +1937,15 @@ const GetStartedSection = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <button
-                  onClick={handleLoginNavigation}
-                  className="relative group/btn px-8 py-4 bg-white text-black text-lg font-bold rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]"
-                >
-                  <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover/btn:animate-shimmer" />
-                  <span className="flex items-center gap-2 relative z-10">
-                    Get Started Now <ChevronRight className="w-5 h-5" />
-                  </span>
-                </button>
+                <Link to={authed ? "/home" : "/register"}>
+                  <button className="relative group/btn px-8 py-4 bg-white text-black text-lg font-bold rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]">
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover/btn:animate-shimmer" />
+                    <span className="flex items-center gap-2 relative z-10">
+                      {authed ? "Open Workspace" : "Get Started Now"}{" "}
+                      <ChevronRight className="w-5 h-5" />
+                    </span>
+                  </button>
+                </Link>
 
                 <button
                   onClick={() =>
@@ -1956,7 +1987,6 @@ const Footer = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
           <div className="lg:col-span-4 space-y-6">
             <div className="flex items-center gap-2">
-              {/* Replaced Terminal Icon with Custom Logo */}
               <div className="w-8 h-8 flex items-center justify-center">
                 <img
                   src={logo}
@@ -2026,7 +2056,7 @@ const Footer = () => {
                         {item}
                       </a>
                     </li>
-                  )
+                  ),
                 )}
               </ul>
             </div>
