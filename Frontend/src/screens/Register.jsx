@@ -17,15 +17,15 @@ const Register = () => {
   const infiniteChat = [...chatMessages, ...chatMessages];
 
   return (
-    <div className="relative flex items-center justify-center h-screen bg-[#0f131a] text-gray-100 font-sans overflow-hidden selection:bg-cyan-500 selection:text-white">
+    <div className="relative flex items-center justify-center h-screen bg-black text-gray-100 font-sans overflow-hidden selection:bg-gray-300 selection:text-black">
       {/* Background Ambient Glows */}
-      <div className="absolute top-[-20%] right-[-10%] w-[50rem] h-[50rem] bg-purple-500/10 rounded-full blur-[120px] animate-pulse-slow"></div>
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50rem] h-[50rem] bg-cyan-600/10 rounded-full blur-[120px] animate-pulse-slow delay-1000"></div>
+      <div className="absolute top-[-20%] right-[-10%] w-[50rem] h-[50rem] bg-gray-600/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+      <div className="absolute bottom-[-20%] left-[-10%] w-[50rem] h-[50rem] bg-white/5 rounded-full blur-[120px] animate-pulse-slow delay-1000"></div>
 
       {/* Main Card — locked to viewport */}
       <div className="relative w-full max-w-5xl mx-4 flex rounded-3xl shadow-2xl overflow-hidden border border-gray-800 animate-card-entry max-h-[calc(100vh-2rem)]">
         {/* ================= LEFT SIDE ================= */}
-        <div className="hidden md:flex relative w-[45%] bg-gradient-to-br from-[#0f131a] to-cyan-900 flex-col p-8 overflow-hidden border-r border-white/5">
+        <div className="hidden md:flex relative w-[45%] bg-gradient-to-br from-black to-gray-900 flex-col p-8 overflow-hidden border-r border-white/5">
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
           <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
 
@@ -33,11 +33,11 @@ const Register = () => {
           <div className="relative z-10 animate-slide-down flex-shrink-0">
             <h1 className="text-3xl font-black tracking-tighter text-white drop-shadow-lg">
               DEV
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-300">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
                 DIALOGUE
               </span>
             </h1>
-            <div className="h-1 w-12 bg-gradient-to-r from-cyan-500 to-purple-500 mt-2 rounded-full animate-width-expand"></div>
+            <div className="h-1 w-12 bg-gradient-to-r from-gray-300 to-gray-600 mt-2 rounded-full animate-width-expand"></div>
           </div>
 
           {/* Middle: Continuous Chat Animation */}
@@ -51,7 +51,7 @@ const Register = () => {
                   >
                     <div
                       className={`max-w-[85%] px-3 py-2.5 rounded-2xl text-xs font-medium backdrop-blur-sm border shadow-sm
-                      ${msg.type === "sent" ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-100 rounded-tr-none" : "bg-white/5 border-white/5 text-gray-400 rounded-tl-none"}`}
+                      ${msg.type === "sent" ? "bg-gray-100/10 border-gray-100/20 text-gray-100 rounded-tr-none" : "bg-white/5 border-white/5 text-gray-400 rounded-tl-none"}`}
                     >
                       {msg.text}
                     </div>
@@ -66,7 +66,7 @@ const Register = () => {
             <h2 className="text-2xl font-bold text-white leading-tight mb-1">
               Join the Community.
             </h2>
-            <p className="text-cyan-100/60 font-medium text-sm leading-relaxed">
+            <p className="text-gray-400 font-medium text-sm leading-relaxed">
               Start your developer journey here. Connect, collaborate, and build
               something amazing.
             </p>
@@ -74,7 +74,7 @@ const Register = () => {
         </div>
 
         {/* ================= RIGHT SIDE (Clerk Register Form) ================= */}
-        <div className="w-full md:w-[55%] bg-[#141820] p-4 md:p-6 flex flex-col justify-center items-center relative z-20 overflow-y-auto scrollbar-hide">
+        <div className="w-full md:w-[55%] bg-zinc-900 p-4 md:p-6 flex flex-col justify-center items-center relative z-20 overflow-y-auto scrollbar-hide">
           <div className="animate-fade-in-right delay-100 w-full max-w-sm">
             <SignUp
               routing="path"
@@ -88,14 +88,15 @@ const Register = () => {
                   cardBox: "shadow-none w-full",
                   card: "bg-transparent shadow-none w-full p-0",
                   formButtonPrimary:
-                    "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500",
+                    "bg-white text-black hover:bg-gray-200 transition-colors",
                   headerTitle: "text-2xl font-bold text-white tracking-tight",
                   headerSubtitle: "text-gray-500 text-xs",
                   socialButtonsBlockButton:
                     "border-gray-800 hover:bg-gray-800/50 transition-all",
                   formFieldInput:
-                    "bg-[#0f131a] border-gray-800 focus:border-cyan-500 rounded-xl",
-                  footerActionLink: "text-cyan-500 hover:text-cyan-400",
+                    "bg-black border-gray-800 focus:border-gray-400 rounded-xl",
+                  footerActionLink:
+                    "text-gray-300 hover:text-white transition-colors",
                 },
               }}
             />
