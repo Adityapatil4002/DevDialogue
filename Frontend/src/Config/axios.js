@@ -6,20 +6,31 @@ const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:4000",
 });
 
-// Add a request "interceptor"
+// Add an asynchronous request "interceptor"
 instance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
+  async (config) => {
+    // Check if Clerk is loaded and a user session exists
+    if (window.Clerk && window.Clerk.session) {
+      try {
+        // Await the fresh, secure token directly from Clerk
+        const token = await window.Clerk.session.getToken();
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching Clerk token in Axios interceptor:",
+          error,
+        );
+      }
     }
 
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 export default instance;

@@ -20,13 +20,16 @@ import {
   Trash2,
   Upload,
   X,
-  MessageSquare, // New icon for Feedback
+  MessageSquare,
   Star,
   Send,
 } from "lucide-react";
 import { UserContext } from "../Context/user.context.jsx";
 import axios from "../Config/axios.js";
 import { useNavigate } from "react-router-dom";
+
+// 👇 1. IMPORT CLERK'S AUTH HOOK 👇
+import { useAuth } from "@clerk/clerk-react";
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -130,16 +133,17 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
+  // 👇 2. INITIALIZE CLERK SIGN OUT 👇
+  const { signOut } = useAuth();
+
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Avatar States
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [isViewingImage, setIsViewingImage] = useState(false);
-  const [imgError, setImgError] = useState(false); // [NEW] Handles broken images
+  const [imgError, setImgError] = useState(false);
 
-  // Feedback State [NEW]
   const [feedback, setFeedback] = useState({
     rating: 0,
     category: "general",
@@ -167,7 +171,7 @@ const UserProfile = () => {
 
   useEffect(() => {
     if (user) {
-      setImgError(false); // Reset error state on user load
+      setImgError(false);
       setFormData({
         name: user.name || "",
         bio: user.bio || "",
@@ -183,7 +187,6 @@ const UserProfile = () => {
     }
   }, [user]);
 
-  // --- AVATAR LOGIC ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -223,16 +226,9 @@ const UserProfile = () => {
     }
   };
 
-  // --- HANDLERS ---
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-  const handleSettingChange = (key, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      settings: { ...prev.settings, [key]: value },
-    }));
   };
   const handleSocialChange = (platform, value) => {
     setFormData((prev) => ({
@@ -282,7 +278,7 @@ const UserProfile = () => {
     } catch (error) {
       showMessage(
         "error",
-        error.response?.data?.error || "Failed to change password"
+        error.response?.data?.error || "Failed to change password",
       );
     } finally {
       setLoading(false);
@@ -303,21 +299,28 @@ const UserProfile = () => {
     }
   };
 
+  // 👇 3. UPDATE THE LOGOUT FUNCTION 👇
   const handleLogout = async () => {
     try {
-      await axios.get("/user/logout");
-      setUser(null);
+      // Sign out using Clerk natively
+      await signOut();
+
+      // If you are tracking user context manually, clear it
+      if (typeof setUser === "function") {
+        setUser(null);
+      }
+
+      // Navigate back to landing page
       navigate("/");
     } catch (e) {
-      console.log(e);
+      console.error("Error logging out with Clerk:", e);
+      showMessage("error", "Failed to log out");
     }
   };
 
-  // [NEW] Mock Feedback Submit
   const submitFeedback = (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
     setTimeout(() => {
       setLoading(false);
       showMessage("success", "Feedback sent! Thank you.");
@@ -332,11 +335,9 @@ const UserProfile = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // --- TAB CONFIG ---
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
-    // Removed Editor tab
-    { id: "feedback", label: "Feedback", icon: MessageSquare }, // Replaced AI
+    { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "security", label: "Security", icon: Lock },
   ];
 
@@ -377,12 +378,11 @@ const UserProfile = () => {
             >
               <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-75 group-hover:opacity-100 transition duration-200 blur"></div>
 
-              {/* SMART AVATAR: Shows Initials if Image Fails */}
               {!imgError && user?.avatar ? (
                 <img
                   src={user.avatar}
                   alt="Avatar"
-                  onError={() => setImgError(true)} // Fix for broken image
+                  onError={() => setImgError(true)}
                   className="relative w-12 h-12 lg:w-16 lg:h-16 rounded-full border-2 border-[#0b0f19] object-cover"
                 />
               ) : (
@@ -395,7 +395,6 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* --- DROPDOWN MENU --- */}
             <AnimatePresence>
               {isAvatarMenuOpen && (
                 <motion.div
@@ -629,7 +628,7 @@ const UserProfile = () => {
                 </>
               )}
 
-              {/* [NEW] FEEDBACK TAB */}
+              {/* FEEDBACK TAB */}
               {activeTab === "feedback" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-8 flex flex-col justify-center text-white relative overflow-hidden">

@@ -10,6 +10,9 @@ import {
 } from "framer-motion";
 import Loader from "../components/Loader";
 
+// 👇 1. IMPORT CLERK AUTH HOOK 👇
+import { useAuth } from "@clerk/clerk-react";
+
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,7 +41,6 @@ const GlowCard = ({ children, className = "", onClick }) => (
     className={`relative rounded-3xl border border-[#1a1f2e] bg-[#0b0f19]/60 backdrop-blur-2xl p-6 overflow-hidden cursor-pointer group z-20
                 hover:border-blue-500/30 transition-all duration-500 ease-out ${className}`}
   >
-    {/* Clean Background - No Grids */}
     <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
     <div className="relative h-full z-10 flex flex-col">{children}</div>
   </motion.div>
@@ -47,6 +49,9 @@ const GlowCard = ({ children, className = "", onClick }) => (
 const Home = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+
+  // 👇 2. INITIALIZE GET-TOKEN 👇
+  const { getToken } = useAuth();
 
   // Data States
   const [project, setProject] = useState([]);
@@ -75,15 +80,19 @@ const Home = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA (UPDATED WITH TOKEN) ---
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        // Grab the Clerk Token
+        const token = await getToken();
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
         const [projectRes, dashboardRes] = await Promise.all([
-          axios.get("/project/all"),
-          axios.get("/user/dashboard"),
+          axios.get("/project/all", config),
+          axios.get("/user/dashboard", config),
         ]);
 
         if (isMounted) {
@@ -92,7 +101,7 @@ const Home = () => {
           setActivityData(dashboardRes.data.activityChartData || []);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch data:", err);
       } finally {
         if (isMounted) {
           setTimeout(() => setIsLoading(false), 800);
@@ -103,7 +112,7 @@ const Home = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [getToken]);
 
   // --- CALCULATE ACTIVITY ---
   const activityLevel = useMemo(() => {
@@ -114,9 +123,11 @@ const Home = () => {
         badgeBg: "bg-slate-800",
         percent: "0%",
       };
+
     const total = activityData
       .slice(-7)
       .reduce((acc, curr) => acc + curr.count, 0);
+
     if (total === 0)
       return {
         label: "Quiet",
@@ -138,6 +149,7 @@ const Home = () => {
         badgeBg: "bg-amber-900/50",
         percent: "+45%",
       };
+
     return {
       label: "High",
       color: "#ef4444",
@@ -146,53 +158,87 @@ const Home = () => {
     };
   }, [activityData]);
 
-  // --- HANDLERS ---
-  function createProject(e) {
+  // --- HANDLERS (UPDATED WITH TOKENS) ---
+
+  // 1. CREATE PROJECT
+  async function createProject(e) {
     e.preventDefault();
-    axios
-      .post("/project/create", { name: projectName })
-      .then((res) => {
-        setProject((prev) => [...prev, res.data]);
-        setIsModalOpen(false);
-        setProjectName("");
-      })
-      .catch((error) => console.log(error));
+    try {
+      const token = await getToken();
+      const res = await axios.post(
+        "/project/create",
+        { name: projectName },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setProject((prev) => [...prev, res.data]);
+      setIsModalOpen(false);
+      setProjectName("");
+    } catch (error) {
+      console.log("Failed to create project:", error);
+    }
   }
+
+  // 2. ACCEPT INVITE
   const handleAccept = async (projectId) => {
     try {
-      await axios.put("/project/accept-invite", { projectId });
+      const token = await getToken();
+      await axios.put(
+        "/project/accept-invite",
+        { projectId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       window.location.reload();
     } catch (err) {
       console.error(err);
     }
   };
+
+  // 3. REJECT INVITE
   const handleReject = async (projectId) => {
     try {
-      await axios.put("/project/reject-invite", { projectId });
+      const token = await getToken();
+      await axios.put(
+        "/project/reject-invite",
+        { projectId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       setInvites((prev) => prev.filter((i) => i._id !== projectId));
     } catch (err) {
       console.error(err);
     }
   };
+
   const confirmDeleteProject = (e, proj) => {
     e.stopPropagation();
     setProjectToDelete(proj);
     setIsDeleteModalOpen(true);
   };
+
+  // 4. DELETE OR LEAVE PROJECT
   const executeDeleteOrLeave = async () => {
     if (!projectToDelete) return;
     const isOwner = projectToDelete.owner === user._id;
     setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
     setIsDeleteModalOpen(false);
+
     try {
-      if (isOwner)
+      const token = await getToken();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      if (isOwner) {
         await axios.delete(`/project/delete`, {
+          ...config,
           data: { projectId: projectToDelete._id },
         });
-      else
-        await axios.put(`/project/leave`, { projectId: projectToDelete._id });
+      } else {
+        await axios.put(
+          `/project/leave`,
+          { projectId: projectToDelete._id },
+          config,
+        );
+      }
     } catch (error) {
-      alert("Failed");
+      alert("Failed to delete/leave project");
       window.location.reload();
     }
   };
@@ -201,7 +247,6 @@ const Home = () => {
 
   return (
     <main className="min-h-screen bg-[#050505] text-white p-4 md:p-8 font-sans selection:bg-blue-500/30 flex items-center justify-center overflow-hidden relative">
-      {/* Background Gradient Blob */}
       <motion.div
         style={{
           left: smoothX,
@@ -332,7 +377,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 3. INBOX (Requests) - WITH NEW EMPTY STATE ANIMATION */}
+        {/* 3. INBOX (Requests) */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden flex flex-col">
           <div className="flex justify-between items-center mb-8 z-10 relative">
             <div className="flex items-center gap-4">
@@ -407,10 +452,8 @@ const Home = () => {
                   </motion.div>
                 ))
               ) : (
-                /* --- NEW RADAR SCANNING ANIMATION --- */
                 <div className="h-full flex flex-col items-center justify-center relative">
                   <div className="relative w-32 h-32 flex items-center justify-center mb-6">
-                    {/* Pulsing Ripples */}
                     {[...Array(3)].map((_, i) => (
                       <motion.div
                         key={i}
@@ -426,7 +469,6 @@ const Home = () => {
                       />
                     ))}
 
-                    {/* Rotating Scanner Dashed */}
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{
@@ -437,7 +479,6 @@ const Home = () => {
                       className="absolute inset-0 rounded-full border border-dashed border-gray-600/30"
                     />
 
-                    {/* Counter Rotating Inner */}
                     <motion.div
                       animate={{ rotate: -360 }}
                       transition={{
@@ -448,12 +489,10 @@ const Home = () => {
                       className="absolute inset-4 rounded-full border border-dotted border-purple-500/20"
                     />
 
-                    {/* Center Icon */}
                     <div className="relative z-10 w-16 h-16 rounded-full bg-[#1a1f2e] flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)]">
                       <i className="ri-radar-line text-2xl text-purple-400/80"></i>
                     </div>
 
-                    {/* Scanning Beam */}
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{
@@ -617,20 +656,17 @@ const Home = () => {
           onClick={() => navigate("/profile")}
         >
           <div className="h-full flex flex-col items-center justify-center p-6 relative z-10">
-            {/* Avatar */}
             <div className="relative mb-4">
               <div className="w-20 h-20 rounded-full bg-[#1a1f2e] border-2 border-gray-700/50 shadow-2xl flex items-center justify-center overflow-hidden group-hover:border-white/40 transition-all duration-300">
                 <span className="text-3xl font-black bg-gradient-to-br from-white to-gray-500 bg-clip-text text-transparent">
                   {user?.email?.charAt(0).toUpperCase() || "U"}
                 </span>
               </div>
-              {/* Online Dot */}
               <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#0b0f19] rounded-full flex items-center justify-center">
                 <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
               </div>
             </div>
 
-            {/* Simple Username */}
             <h3 className="text-xl font-bold text-white tracking-tight">
               @{user?.email?.split("@")[0] || "User"}
             </h3>
@@ -641,7 +677,7 @@ const Home = () => {
         </GlowCard>
       </motion.div>
 
-      {/* --- MODALS (Unchanged) --- */}
+      {/* --- MODALS --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div
