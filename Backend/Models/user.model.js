@@ -4,6 +4,10 @@ import jwt from "jsonwebtoken";
 
 const userSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+    },
     email: {
       type: String,
       required: true,
@@ -60,7 +64,7 @@ const userSchema = new mongoose.Schema(
       cursorStyle: { type: String, default: "line" },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 ); // Adds createdAt and updatedAt automatically
 
 // --- STATIC METHODS ---

@@ -1,41 +1,39 @@
-import jwt from "jsonwebtoken";
-import redisClient from "../Services/redis.service.js";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
+import userModel from "../Models/user.model.js";
 
+export const authUser = [
+  // 1. ADD THIS: This engine actually parses the token from the headers
+  clerkMiddleware(),
 
-export const authUser = async (req, res, next) => {
-  try {
-    let token;
+  // 2. Reject the request if the parsed token is invalid or missing
+  requireAuth(),
 
-    // Check for token in Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer ")
-    ) {
-      // Correctly get token from "Bearer <token>"
-      token = req.headers.authorization.split(" ")[1];
+  // 3. Our Bridge: Grab the ID and attach your MongoDB user
+  async (req, res, next) => {
+    try {
+      const clerkUserId = req.auth.userId;
+
+      if (!clerkUserId) {
+        return res
+          .status(401)
+          .json({ error: "Unauthorized: No Clerk ID found" });
+      }
+
+      const user = await userModel.findById(clerkUserId);
+
+      if (!user) {
+        return res
+          .status(401)
+          .json({ error: "User not synced to database yet" });
+      }
+
+      req.user = user;
+      next();
+    } catch (error) {
+      console.error("Auth Bridge Error:", error);
+      res
+        .status(500)
+        .json({ error: "Server error during authentication bridge" });
     }
-    // If not in header, check for token in cookies
-    else if (req.cookies.token) {
-      token = req.cookies.token;
-    }
-
-    // If no token is found in either place, send error
-    if (!token) {
-      return res.status(401).send({ error: "Unauthorized: No token provided" });
-    }
-
-    const isBlackListed = await redisClient.get(token);
-      if (isBlackListed) {
-          res.cookie('token', '');
-      return res.status(401).send({ error: "Unauthorized: Token is blacklisted" });
-    }
-      
-    // Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user payload to request
-    next(); // Move to the next function (profileController)
-  } catch (error) {
-    console.log(error);
-    res.status(401).json({ error: "Unauthorized: Invalid token" });
-  }
-};
+  },
+];

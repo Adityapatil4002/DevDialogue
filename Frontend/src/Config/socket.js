@@ -1,20 +1,31 @@
-import socket from "socket.io-client";
+import { io } from "socket.io-client"; // Standardized import
 
 let socketInstance = null;
 
 export const initializeSocket = (projectId) => {
-  // --- FIX: Prevent re-initializing if socket already exists ---
+  // Prevent re-initializing if socket already exists
   if (socketInstance) {
-    console.warn("Socket instance already exists.");
-    // Just return the existing instance
     return socketInstance;
   }
-  // --- END FIX ---
 
   console.log("Initializing socket for project:", projectId);
-  socketInstance = socket(import.meta.env.VITE_API_URL, {
-    auth: {
-      token: localStorage.getItem("token"),
+
+  // Initialize with the async auth callback
+  socketInstance = io(import.meta.env.VITE_API_URL, {
+    // 👇 Socket.io will automatically run this to grab the fresh Clerk token 👇
+    auth: async (cb) => {
+      try {
+        let token = null;
+        // Tap into the global Clerk object injected by your Provider
+        if (window.Clerk && window.Clerk.session) {
+          token = await window.Clerk.session.getToken();
+        }
+        // Pass the token into the socket handshake
+        cb({ token });
+      } catch (error) {
+        console.error("Error fetching Clerk token for socket:", error);
+        cb({ token: null });
+      }
     },
     query: {
       projectId, // Pass projectId in query
@@ -22,7 +33,7 @@ export const initializeSocket = (projectId) => {
   });
 
   socketInstance.on("connect", () => {
-    console.log("Socket minimally connected:", socketInstance.id);
+    console.log("Socket connected securely:", socketInstance.id);
   });
 
   socketInstance.on("connect_error", (error) => {
@@ -40,13 +51,10 @@ export const recieveMessage = (eventName, cb) => {
 
   socketInstance.on(eventName, cb);
 
-  // --- FIX: Return a cleanup function ---
-  // This allows React's useEffect to remove the listener on unmount
+  // Return a cleanup function
   return () => {
-    console.log(`Removing listener for: ${eventName}`);
     socketInstance.off(eventName, cb);
   };
-  // --- END FIX ---
 };
 
 export const sendMessage = (eventName, data) => {
@@ -58,7 +66,6 @@ export const sendMessage = (eventName, data) => {
   socketInstance.emit(eventName, data);
 };
 
-// --- ADDED: A function to properly disconnect the socket ---
 export const disconnectSocket = () => {
   if (socketInstance) {
     console.log("Disconnecting socket...");

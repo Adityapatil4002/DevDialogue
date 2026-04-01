@@ -17,8 +17,10 @@ import StaggeredMenu from "../components/StaggeredMenu";
 import { MoreVertical, Trash2, Reply } from "lucide-react";
 import Loader from "../components/Loader";
 
-// --- UTILITY FUNCTIONS & CONSTANTS ---
+// 👇 1. IMPORT CLERK AUTH HOOK 👇
+import { useAuth } from "@clerk/clerk-react";
 
+// --- UTILITY FUNCTIONS & CONSTANTS ---
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
   const ext = fileName.split(".").pop();
@@ -43,7 +45,7 @@ const cleanTerminalOutput = (text) => {
   if (!text) return "";
   return text.replace(
     /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
-    ""
+    "",
   );
 };
 
@@ -61,8 +63,6 @@ const socialItems = [
 ];
 
 // --- COMPONENTS ---
-
-// Modified to accept newFilePaths for highlighting
 const FileTreeNode = ({
   fileName,
   nodes,
@@ -73,7 +73,7 @@ const FileTreeNode = ({
 }) => {
   const isDir = !!nodes;
   const [isOpen, setIsOpen] = useState(false);
-  const isNew = newFilePaths?.has(path); // Check if file is new
+  const isNew = newFilePaths?.has(path);
 
   const handleToggle = (e) => {
     e.stopPropagation();
@@ -111,7 +111,6 @@ const FileTreeNode = ({
             }`}
           >
             {fileName}
-            {/* Visual Indicator for New Files */}
             {!isDir && isNew && (
               <span className="text-[9px] ml-2 bg-green-500/20 text-green-400 px-1 rounded">
                 NEW
@@ -140,7 +139,7 @@ const FileTreeNode = ({
               onSelect={onSelect}
               onDelete={onDelete}
               path={`${path}/${child}`}
-              newFilePaths={newFilePaths} // Pass down prop
+              newFilePaths={newFilePaths}
             />
           ))}
         </div>
@@ -172,7 +171,9 @@ const Project = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
-  // --- STATE DECLARATIONS ---
+  // 👇 2. INITIALIZE GET-TOKEN 👇
+  const { getToken } = useAuth();
+
   const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
@@ -183,10 +184,8 @@ const Project = () => {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isInstalling, setIsInstalling] = useState(false);
 
-  // New State for "New Files" tracking
   const [newFilePaths, setNewFilePaths] = useState(new Set());
 
-  // UI States
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
@@ -194,7 +193,6 @@ const Project = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
 
-  // Data States
   const [searchEmail, setSearchEmail] = useState("");
   const [searchedUser, setSearchedUser] = useState(null);
   const [pendingInvites, setPendingInvites] = useState([]);
@@ -203,7 +201,6 @@ const Project = () => {
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState(null);
 
-  // Chat & Code States
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -211,7 +208,6 @@ const Project = () => {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  // Menu State
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
   const messageEndRef = useRef(null);
@@ -219,7 +215,6 @@ const Project = () => {
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Click outside listener for menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeMenuMsgId && !event.target.closest(".message-menu-container")) {
@@ -250,6 +245,7 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
+  // --- FETCH PROJECT DATA (SECURED) ---
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -264,9 +260,12 @@ const Project = () => {
       setError(null);
 
       try {
+        const token = await getToken();
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
         const [projectRes, allProjectsRes] = await Promise.all([
-          axios.get(`/project/get-project/${projectId}`),
-          axios.get("/project/all"),
+          axios.get(`/project/get-project/${projectId}`, config),
+          axios.get("/project/all", config),
         ]);
 
         if (isMounted) {
@@ -281,6 +280,7 @@ const Project = () => {
             });
           }
 
+          // Socket logic remains unchanged (unless your socket requires a token payload)
           const socket = initializeSocket(projectId);
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
@@ -321,7 +321,6 @@ const Project = () => {
                 return prev;
               });
 
-              // --- HANDLE AI GENERATED FILES (ADD TO NEW FILES SET) ---
               if (
                 data.isAi &&
                 data.filetree &&
@@ -329,10 +328,9 @@ const Project = () => {
               ) {
                 setFileTree((prev) => {
                   const merged = { ...prev, ...data.filetree };
-                  saveFileTree(merged);
+                  saveFileTree(merged); // saveFileTree handles its own token now
                   return merged;
                 });
-                // Track these files as new
                 setNewFilePaths((prev) => {
                   const newSet = new Set(prev);
                   Object.keys(data.filetree).forEach((key) => newSet.add(key));
@@ -362,7 +360,7 @@ const Project = () => {
       disconnectSocket();
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
     };
-  }, [projectId, user?._id, webContainer]);
+  }, [projectId, user?._id, webContainer, getToken]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -393,10 +391,14 @@ const Project = () => {
     sendMessage("delete-message", { messageId: msgId });
   };
 
+  // --- API HANDLERS (SECURED) ---
   const handleSearchUser = async () => {
     if (!searchEmail.trim()) return;
     try {
-      const res = await axios.get(`/project/user-search?email=${searchEmail}`);
+      const token = await getToken();
+      const res = await axios.get(`/project/user-search?email=${searchEmail}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setSearchedUser(res.data.user);
     } catch (err) {
       setSearchedUser(null);
@@ -407,10 +409,12 @@ const Project = () => {
   const handleSendInvite = async () => {
     if (!searchedUser) return;
     try {
-      await axios.post("/project/send-invite", {
-        projectId,
-        email: searchedUser.email,
-      });
+      const token = await getToken();
+      await axios.post(
+        "/project/send-invite",
+        { projectId, email: searchedUser.email },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       alert("Invitation sent!");
       setAddUserModalOpen(false);
       setSearchEmail("");
@@ -422,12 +426,17 @@ const Project = () => {
 
   const handleInviteResponse = async (inviteProjectId, accept) => {
     try {
+      const token = await getToken();
       const endpoint = accept
         ? "/project/accept-invite"
         : "/project/reject-invite";
-      await axios.put(endpoint, { projectId: inviteProjectId });
+      await axios.put(
+        endpoint,
+        { projectId: inviteProjectId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       setPendingInvites((prev) =>
-        prev.filter((i) => i._id !== inviteProjectId)
+        prev.filter((i) => i._id !== inviteProjectId),
       );
       if (accept) window.location.reload();
     } catch (err) {
@@ -435,14 +444,18 @@ const Project = () => {
     }
   };
 
-  const saveFileTree = (fileTreeToSave) => {
+  const saveFileTree = async (fileTreeToSave) => {
     if (!project?._id) return;
-    axios
-      .put("/project/update-file-tree", {
-        projectId: project._id,
-        fileTree: fileTreeToSave,
-      })
-      .catch((err) => console.error(err));
+    try {
+      const token = await getToken();
+      await axios.put(
+        "/project/update-file-tree",
+        { projectId: project._id, fileTree: fileTreeToSave },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+    } catch (err) {
+      console.error("Failed to auto-save file tree:", err);
+    }
   };
 
   const handleCloseFile = (e, fileToClose) => {
@@ -528,153 +541,132 @@ const Project = () => {
     socket.emit("stop-typing");
   };
 
-const handleRunClick = async () => {
-  if (!webContainer) return;
+  const handleRunClick = async () => {
+    if (!webContainer) return;
 
-  // 1. Reset UI
-  setTerminalOutput("");
-  setActiveTab("terminal");
+    setTerminalOutput("");
+    setActiveTab("terminal");
 
-  try {
-    setTerminalOutput("[System] Syncing files...\n");
+    try {
+      setTerminalOutput("[System] Syncing files...\n");
 
-    // 2. PREPARE FILE SYSTEM TREE (Robust Mounting)
-    // Converts flat paths "src/App.jsx" -> { src: { directory: { App.jsx: { file: ... } } } }
-    const mountStructure = {};
+      const mountStructure = {};
+      Object.keys(fileTree).forEach((filePath) => {
+        const parts = filePath.split("/");
+        let current = mountStructure;
 
-    Object.keys(fileTree).forEach((filePath) => {
-      const parts = filePath.split("/");
-      let current = mountStructure;
-
-      parts.forEach((part, index) => {
-        const isFile = index === parts.length - 1;
-
-        if (isFile) {
-          // It's a file
-          current[part] = {
-            file: { contents: fileTree[filePath].file.contents },
-          };
-        } else {
-          // It's a folder
-          if (!current[part]) {
-            current[part] = { directory: {} };
+        parts.forEach((part, index) => {
+          const isFile = index === parts.length - 1;
+          if (isFile) {
+            current[part] = {
+              file: { contents: fileTree[filePath].file.contents },
+            };
+          } else {
+            if (!current[part]) {
+              current[part] = { directory: {} };
+            }
+            current = current[part].directory;
           }
-          // Walk deeper
-          current = current[part].directory;
-        }
+        });
       });
-    });
 
-    // 3. MOUNT FILES
-    await webContainer.mount(mountStructure);
+      await webContainer.mount(mountStructure);
 
-    // 4. DETERMINE EXECUTION STRATEGY
-    const packageJsonPath = "package.json";
-    const hasPackageJson = !!fileTree[packageJsonPath];
+      const packageJsonPath = "package.json";
+      const hasPackageJson = !!fileTree[packageJsonPath];
 
-    if (hasPackageJson) {
-      // --- STRATEGY A: NPM PROJECT ---
-      setTerminalOutput(
-        "[System] 'package.json' detected. Installing dependencies...\n"
-      );
-      setIsInstalling(true);
-
-      const installProcess = await webContainer.spawn("npm", ["install"]);
-
-      // Stream install output
-      installProcess.output.pipeTo(
-        new WritableStream({
-          write(chunk) {
-            setTerminalOutput((prev) => prev + chunk);
-          },
-        })
-      );
-
-      if ((await installProcess.exit) !== 0) {
-        throw new Error("Dependency installation failed.");
-      }
-
-      setIsInstalling(false);
-      setTerminalOutput(
-        "\n[System] Installation successful. Starting server...\n"
-      );
-
-      // Kill any previous process
-      if (runProcess) {
-        runProcess.kill();
-      }
-
-      // Run 'npm start'
-      const startProcess = await webContainer.spawn("npm", ["start"]);
-
-      startProcess.output.pipeTo(
-        new WritableStream({
-          write(chunk) {
-            setTerminalOutput((prev) => prev + chunk);
-          },
-        })
-      );
-
-      setRunProcess(startProcess);
-
-      // Listen for server-ready to open browser
-      webContainer.on("server-ready", (port, url) => {
-        setTerminalOutput(`\n[System] Server ready at ${url}\n`);
-        setIframeUrl(url);
-        setActiveTab("browser");
-      });
-    } else {
-      // --- STRATEGY B: STANDALONE SCRIPT (NO package.json) ---
-      setIsInstalling(false);
-      setTerminalOutput(
-        "[System] No 'package.json' found. Looking for entry point...\n"
-      );
-
-      // Heuristic: Find a likely entry file
-      const entryFiles = ["index.js", "main.js", "server.js", "app.js"];
-      let entryFile = entryFiles.find((file) => fileTree[file]);
-
-      // Fallback: If no standard entry file, try the currently open file if it's JS
-      if (!entryFile && currentFile && currentFile.endsWith(".js")) {
-        entryFile = currentFile;
+      if (hasPackageJson) {
         setTerminalOutput(
-          `[System] No standard entry point found. Using active file: ${entryFile}\n`
+          "[System] 'package.json' detected. Installing dependencies...\n",
         );
-      }
+        setIsInstalling(true);
 
-      if (!entryFile) {
-        throw new Error(
-          "No runnable JavaScript file found (e.g., index.js, server.js) and no package.json."
+        const installProcess = await webContainer.spawn("npm", ["install"]);
+
+        installProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((prev) => prev + chunk);
+            },
+          }),
         );
+
+        if ((await installProcess.exit) !== 0) {
+          throw new Error("Dependency installation failed.");
+        }
+
+        setIsInstalling(false);
+        setTerminalOutput(
+          "\n[System] Installation successful. Starting server...\n",
+        );
+
+        if (runProcess) {
+          runProcess.kill();
+        }
+
+        const startProcess = await webContainer.spawn("npm", ["start"]);
+
+        startProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((prev) => prev + chunk);
+            },
+          }),
+        );
+
+        setRunProcess(startProcess);
+
+        webContainer.on("server-ready", (port, url) => {
+          setTerminalOutput(`\n[System] Server ready at ${url}\n`);
+          setIframeUrl(url);
+          setActiveTab("browser");
+        });
+      } else {
+        setIsInstalling(false);
+        setTerminalOutput(
+          "[System] No 'package.json' found. Looking for entry point...\n",
+        );
+
+        const entryFiles = ["index.js", "main.js", "server.js", "app.js"];
+        let entryFile = entryFiles.find((file) => fileTree[file]);
+
+        if (!entryFile && currentFile && currentFile.endsWith(".js")) {
+          entryFile = currentFile;
+          setTerminalOutput(
+            `[System] No standard entry point found. Using active file: ${entryFile}\n`,
+          );
+        }
+
+        if (!entryFile) {
+          throw new Error(
+            "No runnable JavaScript file found (e.g., index.js, server.js) and no package.json.",
+          );
+        }
+
+        setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
+
+        if (runProcess) {
+          runProcess.kill();
+        }
+
+        const nodeProcess = await webContainer.spawn("node", [entryFile]);
+
+        nodeProcess.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setTerminalOutput((prev) => prev + chunk);
+            },
+          }),
+        );
+
+        setRunProcess(nodeProcess);
       }
-
-      setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
-
-      if (runProcess) {
-        runProcess.kill();
-      }
-
-      const nodeProcess = await webContainer.spawn("node", [entryFile]);
-
-      nodeProcess.output.pipeTo(
-        new WritableStream({
-          write(chunk) {
-            setTerminalOutput((prev) => prev + chunk);
-          },
-        })
-      );
-
-      setRunProcess(nodeProcess);
-
-      // Note: Simple Node scripts might not start a server, so we don't always switch to 'browser' tab here
-      // unless they emit a "server-ready" event or we manually detect a port.
+    } catch (err) {
+      console.error(err);
+      setTerminalOutput(`\n[Error] ${err.message}\n`);
+      setIsInstalling(false);
     }
-  } catch (err) {
-    console.error(err);
-    setTerminalOutput(`\n[Error] ${err.message}\n`);
-    setIsInstalling(false);
-  }
-};
+  };
 
   const downloadProject = async () => {
     const zip = new JSZip();
@@ -911,7 +903,7 @@ const handleRunClick = async () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveMenuMsgId(
-                                  isMenuOpen ? null : msg._id || i
+                                  isMenuOpen ? null : msg._id || i,
                                 );
                               }}
                               className={`p-1.5 rounded-full transition-all duration-200 ${
@@ -1298,7 +1290,6 @@ const handleRunClick = async () => {
       </PanelGroup>
 
       {!isSidePanelOpen && (
-        // MODIFICATION: Kept on Left, but changed top-4 to top-2 for perfect centering
         <div className="fixed top-2 left-4 z-50">
           <StaggeredMenu
             items={menuItems}
@@ -1309,7 +1300,8 @@ const handleRunClick = async () => {
           />
         </div>
       )}
-      {/* ... Modals kept as is ... */}
+
+      {/* --- MODALS --- */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -1364,6 +1356,7 @@ const handleRunClick = async () => {
           </div>
         </div>
       )}
+
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#161b22] border border-red-900/50 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">

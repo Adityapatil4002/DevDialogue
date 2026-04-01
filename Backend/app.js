@@ -6,6 +6,7 @@ import projectRoutes from "./Routes/Project.routes.js";
 import cookieParser from "cookie-parser";
 import aiRoutes from "./Routes/ai.routes.js";
 import cors from "cors";
+import webhookRoutes from "./Routes/webhook.routes.js";
 
 // --- FIX START: Import Path & URL ---
 import path from "path";
@@ -30,6 +31,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use("/api/webhooks", webhookRoutes);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

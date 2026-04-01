@@ -1,91 +1,59 @@
 import { Router } from "express";
 import * as userController from "../Controllers/user.controller.js";
-import { body } from "express-validator";
-import * as authMiddleware from "../Middleware/auth.middleware.js";
+// Removed express-validator body imports since register/login are gone
+import { authUser } from "../Middleware/auth.middleware.js"; // Destructured for cleaner code
 import multer from "multer";
 
 const router = Router();
 
+// --- MULTER STORAGE SETUP ---
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Save to 'uploads' folder
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    // Rename file to avoid collisions (e.g., user-123-avatar.png)
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(
       null,
-      file.fieldname + "-" + uniqueSuffix + "." + file.mimetype.split("/")[1]
+      file.fieldname + "-" + uniqueSuffix + "." + file.mimetype.split("/")[1],
     );
   },
 });
 
 const upload = multer({ storage: storage });
 
+// ==========================================
+// 🛡️ CLERK-PROTECTED ROUTES
+// ==========================================
+
+// Avatar Routes
 router.post(
   "/upload-avatar",
-  authMiddleware.authUser,
+  authUser,
   upload.single("image"),
-  userController.uploadAvatarController
-);
-
-router.post(
-  "/register",
-  body("email").isEmail().withMessage("Email must be a valid email address"),
-  body("password")
-    .isLength({ min: 3 })
-    .withMessage("Password must be at least 3 characters long"),
-  userController.createUser
-);
-
-router.post(
-  "/login",
-  body("email").isEmail().withMessage("Email must be a valid email address"),
-  body("password")
-    .isLength({ min: 3 })
-    .withMessage("Password must be at least 3 characters long"),
-  userController.loginController
-);
-
-router.get(
-  "/profile",
-  authMiddleware.authUser,
-  userController.profileController
-);
-router.get("/logout", authMiddleware.authUser, userController.logoutController);
-router.get(
-  "/all",
-  authMiddleware.authUser,
-  userController.getAllUsersController
-);
-router.get(
-  "/dashboard",
-  authMiddleware.authUser,
-  userController.getDashboardStats
-);
-
-// --- NEW PROFILE ROUTES ---
-router.put(
-  "/update",
-  authMiddleware.authUser,
-  userController.updateProfileController
-);
-router.put(
-  "/change-password",
-  authMiddleware.authUser,
-  userController.changePasswordController
-);
-router.delete(
-  "/delete",
-  authMiddleware.authUser,
-  userController.deleteAccountController
+  userController.uploadAvatarController,
 );
 
 router.delete(
   "/delete-avatar",
-  authMiddleware.authUser,
-  userController.deleteAvatarController
+  authUser,
+  userController.deleteAvatarController,
 );
 
+// Profile & Dashboard Routes
+router.get("/profile", authUser, userController.profileController);
+
+router.put("/update", authUser, userController.updateProfileController);
+
+router.get("/dashboard", authUser, userController.getDashboardStats);
+
+// App Data Routes
+router.get("/all", authUser, userController.getAllUsersController);
+
+// Account Management Routes
+router.delete("/delete", authUser, userController.deleteAccountController);
+
+// We keep the logout route just in case you still have Redis cleanup logic running
+router.get("/logout", authUser, userController.logoutController);
 
 export default router;
