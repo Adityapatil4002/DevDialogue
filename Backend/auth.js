@@ -9,10 +9,20 @@ await client.connect();
 export const auth = betterAuth({
   database: mongodbAdapter(client.db()),
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:4000",
+
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
   },
+
+  // ✅ Add Google OAuth
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+  },
+
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
@@ -29,5 +39,9 @@ export const auth = betterAuth({
       path: "/",
     },
   },
-  trustedOrigins: ["http://localhost:5173", "https://dev-dialogue.vercel.app"],
+  trustedOrigins: [
+    "http://localhost:5173",
+    "http://localhost:4000",
+    "https://dev-dialogue.vercel.app",
+  ],
 });

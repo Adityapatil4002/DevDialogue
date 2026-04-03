@@ -56,6 +56,7 @@ const Home = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [projectName, setProjectName] = useState("");
+  const [createError, setCreateError] = useState("");
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -140,17 +141,27 @@ const Home = () => {
   }, [activityData]);
 
   // ✅ No getToken() — cookies handle auth
-  async function createProject(e) {
-    e.preventDefault();
-    try {
-      const res = await axios.post("/project/create", { name: projectName });
-      setProject((prev) => [...prev, res.data]);
-      setIsModalOpen(false);
-      setProjectName("");
-    } catch (error) {
-      console.log("Failed to create project:", error);
+async function createProject(e) {
+  e.preventDefault();
+  setCreateError(""); // ✅ Clear previous error
+  try {
+    const res = await axios.post("/project/create", { name: projectName });
+    setProject((prev) => [...prev, res.data]);
+    setIsModalOpen(false);
+    setProjectName("");
+    setCreateError("");
+  } catch (error) {
+    // ✅ Show specific error from backend
+    const msg = error.response?.data || error.message;
+    if (typeof msg === "string" && msg.toLowerCase().includes("unique")) {
+      setCreateError(
+        "This project name is already taken. Please choose another.",
+      );
+    } else {
+      setCreateError(msg || "Failed to create project. Please try again.");
     }
   }
+}
 
   const handleAccept = async (projectId) => {
     try {
@@ -630,7 +641,11 @@ const Home = () => {
         {isModalOpen && (
           <div
             className="fixed inset-0 z-50 flex justify-center items-center p-4"
-            onClick={() => setIsModalOpen(false)}
+            onClick={() => {
+              setIsModalOpen(false);
+              setCreateError(""); // ✅ Clear error when closing
+              setProjectName("");
+            }}
           >
             <motion.div
               initial={{ opacity: 0 }}
@@ -648,32 +663,60 @@ const Home = () => {
               <h2 className="text-2xl font-bold text-white mb-8">
                 New Project
               </h2>
+
               <form onSubmit={createProject}>
-                <div className="mb-8">
+                <div className="mb-6">
                   <label className="block text-sm font-bold text-neutral-300 mb-3">
                     Project Name
                   </label>
                   <input
                     type="text"
                     value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    className="w-full bg-[#141820] border border-[#1f2533] text-white rounded-xl py-4 px-4 focus:outline-none focus:border-cyan-500 transition-all placeholder-neutral-600"
+                    onChange={(e) => {
+                      setProjectName(e.target.value);
+                      if (createError) setCreateError(""); // ✅ Clear error on typing
+                    }}
+                    className={`w-full bg-[#141820] border text-white rounded-xl py-4 px-4 focus:outline-none transition-all placeholder-neutral-600
+              ${
+                createError
+                  ? "border-red-500 focus:border-red-500" // ✅ Red border on error
+                  : "border-[#1f2533] focus:border-cyan-500"
+              }`}
                     placeholder="e.g. Quantum Dashboard"
                     required
                     autoFocus
                   />
+
+                  {/* ✅ Error message shown below input */}
+                  {createError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20"
+                    >
+                      <i className="ri-error-warning-line text-red-400 text-lg flex-shrink-0"></i>
+                      <p className="text-red-400 text-sm font-medium">
+                        {createError}
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
+
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setCreateError(""); // ✅ Clear error on cancel
+                      setProjectName("");
+                    }}
                     className="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm"
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm hover:opacity-90 transition-opacity"
                   >
                     Create Project
                   </button>
