@@ -26,7 +26,7 @@ const io = new Server(server, {
   },
 });
 
-// ✅ Socket Auth — uses Better Auth session instead of Clerk JWT
+// ✅ Socket Auth — uses Better Auth session + finds user by email
 io.use(async (socket, next) => {
   try {
     const projectId = socket.handshake.query.projectId;
@@ -52,9 +52,16 @@ io.use(async (socket, next) => {
       return next(new Error("Authentication error: No active session"));
     }
 
-    const dbUser = await userModel.findById(session.user.id);
+    // ✅ FIX: Find by EMAIL instead of ID
+    let dbUser = await userModel.findOne({ email: session.user.email });
+
+    // ✅ Auto-create if user doesn't exist in your DB yet
     if (!dbUser) {
-      return next(new Error("Authentication error: User not found in DB"));
+      dbUser = await userModel.create({
+        email: session.user.email,
+        name: session.user.name || session.user.email.split("@")[0],
+      });
+      console.log("✅ Auto-created user in DB:", session.user.email);
     }
 
     const isUserInProject = project.users.some(

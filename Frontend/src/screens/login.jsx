@@ -1,3 +1,4 @@
+import axios from "../Config/axios.js";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authClient } from "../Config/auth-client.js";
@@ -11,37 +12,43 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
+  try {
+    const { data, error: authError } = await authClient.signIn.email({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError(authError.message || "Invalid email or password");
+      return;
+    }
+
+    // ✅ FIX: Fetch real Mongoose user instead of using Better Auth ID
     try {
-      const { data, error: authError } = await authClient.signIn.email({
-        email,
-        password,
-      });
-
-      if (authError) {
-        setError(authError.message || "Invalid email or password");
-        return;
-      }
-
-      // Update context with the signed-in user
+      const res = await axios.get("/user/profile");
+      setUser(res.data.user);
+    } catch {
+      // Fallback
       setUser({
         _id: data.user.id,
         email: data.user.email,
         name: data.user.name,
         ...data.user,
       });
-
-      navigate("/home");
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    navigate("/home");
+  } catch (err) {
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="min-h-screen bg-[#050505] flex items-center justify-center p-4">

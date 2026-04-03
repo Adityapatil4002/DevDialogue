@@ -501,6 +501,8 @@ const Project = () => {
 
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
+     console.log("MY USER ID:", user._id);
+     console.log("MY USER EMAIL:", user.email);
 
     let messageToSend = message;
     if (message.trim().toLowerCase().includes("@ai")) {
@@ -759,6 +761,8 @@ const Project = () => {
                   };
 
                   const currentSenderId = getSenderId(msg);
+                  
+                  console.log("MSG sender:", currentSenderId, "MY ID:", user?._id, "MATCH:", currentSenderId?.toString() === user?._id?.toString());
                   const isOwnMessage =
                     currentSenderId?.toString() === user?._id?.toString();
                   const senderEmail =

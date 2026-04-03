@@ -1,3 +1,4 @@
+import axios from "../Config/axios.js";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authClient } from "../Config/auth-client.js";
@@ -29,13 +30,19 @@ const Register = () => {
         return;
       }
 
-      // Update context and redirect
-      setUser({
-        _id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-        ...data.user,
-      });
+      // ✅ FIX: Fetch real Mongoose user instead of using Better Auth ID
+      try {
+        const res = await axios.get("/user/profile");
+        setUser(res.data.user);
+      } catch {
+        // Fallback
+        setUser({
+          _id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          ...data.user,
+        });
+      }
 
       navigate("/home");
     } catch (err) {
