@@ -1,74 +1,41 @@
-import { io } from "socket.io-client"; // Standardized import
+import { io } from "socket.io-client";
 
 let socketInstance = null;
 
 export const initializeSocket = (projectId) => {
-  // Prevent re-initializing if socket already exists
-  if (socketInstance) {
-    return socketInstance;
-  }
+  if (socketInstance) return socketInstance;
 
-  console.log("Initializing socket for project:", projectId);
-
-  // Initialize with the async auth callback
-  socketInstance = io(import.meta.env.VITE_API_URL, {
-    // 👇 Socket.io will automatically run this to grab the fresh Clerk token 👇
-    auth: async (cb) => {
-      try {
-        let token = null;
-        // Tap into the global Clerk object injected by your Provider
-        if (window.Clerk && window.Clerk.session) {
-          token = await window.Clerk.session.getToken();
-        }
-        // Pass the token into the socket handshake
-        cb({ token });
-      } catch (error) {
-        console.error("Error fetching Clerk token for socket:", error);
-        cb({ token: null });
-      }
-    },
-    query: {
-      projectId, // Pass projectId in query
-    },
+  // Better Auth uses cookies — withCredentials sends them automatically
+  // No manual token needed in the auth handshake
+  socketInstance = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
+    withCredentials: true, // ✅ Sends the session cookie to the socket server
+    query: { projectId },
   });
 
   socketInstance.on("connect", () => {
-    console.log("Socket connected securely:", socketInstance.id);
+    console.log("✅ Socket connected:", socketInstance.id);
   });
 
   socketInstance.on("connect_error", (error) => {
-    console.error("Socket connection error:", error.message);
+    console.error("❌ Socket connection error:", error.message);
   });
 
   return socketInstance;
 };
 
 export const recieveMessage = (eventName, cb) => {
-  if (!socketInstance) {
-    console.error("Cannot receive message: Socket not initialized.");
-    return; // Guard clause if socket not initialized
-  }
-
+  if (!socketInstance) return;
   socketInstance.on(eventName, cb);
-
-  // Return a cleanup function
-  return () => {
-    socketInstance.off(eventName, cb);
-  };
+  return () => socketInstance.off(eventName, cb);
 };
 
 export const sendMessage = (eventName, data) => {
-  if (!socketInstance) {
-    console.error("Cannot send message: Socket not initialized.");
-    return; // Guard clause
-  }
-
+  if (!socketInstance) return;
   socketInstance.emit(eventName, data);
 };
 
 export const disconnectSocket = () => {
   if (socketInstance) {
-    console.log("Disconnecting socket...");
     socketInstance.disconnect();
     socketInstance = null;
   }

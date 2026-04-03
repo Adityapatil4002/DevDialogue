@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// ✅ Back to standard ObjectId for all user references
 const projectSchema = new mongoose.Schema(
   {
     name: {
@@ -26,7 +27,6 @@ const projectSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    // [NEW] Store Chat History
     messages: [
       {
         sender: { type: String, required: true },
@@ -34,7 +34,6 @@ const projectSchema = new mongoose.Schema(
         message: { type: String, required: true },
         isAi: { type: Boolean, default: false },
         timestamp: { type: Date, default: Date.now },
-        // [NEW] Reply Data
         replyTo: {
           originalMessage: { type: String },
           originalSender: { type: String },
@@ -46,9 +45,8 @@ const projectSchema = new mongoose.Schema(
       default: {},
     },
   },
-  { timestamps: true }
-); // Adds createdAt and updatedAt automatically
+  { timestamps: true },
+);
 
 const Project = mongoose.model("Project", projectSchema);
-
 export default Project;

@@ -5,29 +5,39 @@ import { validationResult } from "express-validator";
 
 
 export const createProject = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() })
-    }
-    try {
-        const { name } = req.body;
-        const loggedInUser = await userModel.findOne({ email: req.user.email });
-        const userId = loggedInUser._id;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  try {
+    const { name } = req.body;
+    const loggedInUser = await userModel.findOne({ email: req.user.email });
 
-        const newProject = await projectService.createProject({
-            name,
-            userId
-        })
-        
-        // [FIX] Ensure Owner is set (Service usually handles this, but ensure it's saved)
-        // If your service does it, great. If not, make sure newProject.owner = userId
-        
-        res.status(201).json(newProject);
-    } catch (err) {
-        res.status(400).send(err.message);
-        console.log(err);
+    if (!loggedInUser) {
+      return res.status(404).json({
+        message:
+          "User not found in DB. Check if Clerk webhook synced this user.",
+      });
     }
-}
+
+    // ✅ Add this null check
+    if (!loggedInUser) {
+      return res
+        .status(404)
+        .json({
+          message:
+            "User not found in database. Make sure the Clerk webhook has synced this user.",
+        });
+    }
+
+    const userId = loggedInUser._id;
+    const newProject = await projectService.createProject({ name, userId });
+    res.status(201).json(newProject);
+  } catch (err) {
+    res.status(400).send(err.message);
+    console.log(err);
+  }
+};
 
 // [NEW] Leave Project (For Collaborators)
 export const leaveProject = async (req, res) => {

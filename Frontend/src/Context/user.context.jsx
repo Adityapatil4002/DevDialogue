@@ -1,44 +1,45 @@
-import React, { createContext, useContext } from "react";
-// Alias Clerk's hook to 'useClerkUser' so it doesn't collide with your custom hook at the bottom!
-import { useUser as useClerkUser, useAuth } from "@clerk/clerk-react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { authClient } from "../Config/auth-client.js";
 
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-  // 1. Let Clerk handle all the loading, fetching, and session management securely!
-  const { user: clerkUser, isLoaded, isSignedIn } = useClerkUser();
-  const { getToken } = useAuth();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // 2. Map Clerk's data to look exactly like your old MongoDB data.
-  // This maps the Clerk ID to '_id', preventing your Dashboard and other components from breaking.
-  const mappedUser = clerkUser
-    ? {
-        _id: clerkUser.id,
-        email: clerkUser.primaryEmailAddress?.emailAddress,
-        fullName: clerkUser.fullName,
-        imageUrl: clerkUser.imageUrl,
-        ...clerkUser,
+  useEffect(() => {
+    // Better Auth: fetch the current session on app load
+    const fetchSession = async () => {
+      try {
+        const { data } = await authClient.getSession();
+        if (data?.user) {
+          // Map Better Auth user to the shape your app expects
+          setUser({
+            _id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            ...data.user,
+          });
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    : null;
+    };
+
+    fetchSession();
+  }, []);
+
+  const isSignedIn = !!user;
 
   return (
-    <UserContext.Provider
-      value={{
-        user: mappedUser,
-        // We provide a dummy setUser so old components that call setUser don't crash
-        setUser: () =>
-          console.warn("Authentication state is now fully managed by Clerk!"),
-        loading: !isLoaded,
-        isSignedIn,
-        getToken,
-      }}
-    >
+    <UserContext.Provider value={{ user, setUser, loading, isSignedIn }}>
       {children}
     </UserContext.Provider>
   );
 };
 
-// Optional: Custom hook for cleaner imports in newer files (Kept exactly as you had it!)
-export const useUser = () => {
-  return useContext(UserContext);
-};
+export const useUser = () => useContext(UserContext);

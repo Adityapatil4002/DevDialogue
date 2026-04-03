@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
 import {
   motion,
   AnimatePresence,
@@ -49,6 +48,9 @@ import {
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 import logo from "../assets/logo.png";
+
+// ✅ REPLACED: Clerk import → Better Auth user context
+import { useUser } from "../Context/user.context.jsx";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -158,10 +160,12 @@ const ParticleField = React.memo(() => {
 
 // ─── NAVBAR ─────────────────────────────────────────────────
 const Navbar = () => {
-  const { isLoaded, isSignedIn } = useAuth();
+  // ✅ REPLACED: useAuth() → useUser()
+  const { user, loading } = useUser();
+  const authed = !loading && !!user;
+
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const authed = isLoaded && isSignedIn;
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
@@ -230,7 +234,8 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-4">
-          {!isLoaded ? (
+          {/* ✅ REPLACED: !isLoaded → loading */}
+          {loading ? (
             <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
           ) : (
             <>
@@ -276,7 +281,8 @@ const Navbar = () => {
                 </a>
               ))}
               <hr className="border-white/10" />
-              {!isLoaded ? (
+              {/* ✅ REPLACED: !isLoaded → loading */}
+              {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-gray-600 mx-auto" />
               ) : !authed ? (
                 <>
@@ -306,8 +312,9 @@ const Navbar = () => {
 
 // ─── HERO SECTION ───────────────────────────────────────────
 const HeroSection = () => {
-  const { isLoaded, isSignedIn } = useAuth();
-  const authed = isLoaded && isSignedIn;
+  // ✅ REPLACED: useAuth() → useUser()
+  const { user, loading } = useUser();
+  const authed = !loading && !!user;
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black text-white selection:bg-white/20">
@@ -937,7 +944,6 @@ const AIFeatureSection = () => {
           </h2>
         </Reveal>
 
-        {/* Design B: Left Full + 2 Right Stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
           <Reveal className="lg:col-span-3 min-h-[420px]">
             <AIChatPanel />
@@ -997,7 +1003,6 @@ const AIFeatureSection = () => {
           </div>
         </div>
 
-        {/* FAQ + Animated Answer */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Reveal>
             <div className="space-y-3">
@@ -1613,7 +1618,6 @@ const ExecutionFeatureSection = () => {
           </h2>
         </Reveal>
 
-        {/* Design B: Left Full + 2 Right Stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
           <Reveal className="lg:col-span-3 min-h-[400px]">
             <TerminalPanel />
@@ -1669,7 +1673,6 @@ const ExecutionFeatureSection = () => {
           </div>
         </div>
 
-        {/* FAQ + Animated Answer */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Reveal>
             <div className="space-y-3">
@@ -1830,10 +1833,8 @@ const DashboardSection = () => {
           </p>
         </Reveal>
 
-        {/* Dashboard Card */}
         <Reveal>
           <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-3xl overflow-hidden">
-            {/* Dashboard Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/[0.04]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
@@ -1862,7 +1863,6 @@ const DashboardSection = () => {
               </div>
             </div>
 
-            {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 border-b border-white/[0.04]">
               {stats.map((s, i) => (
                 <div
@@ -1879,9 +1879,7 @@ const DashboardSection = () => {
               ))}
             </div>
 
-            {/* Chart + Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-5">
-              {/* Chart Area */}
               <div className="lg:col-span-3 p-6 border-b lg:border-b-0 lg:border-r border-white/[0.04]">
                 <div className="flex items-center justify-between mb-6">
                   <span className="text-xs font-bold text-gray-400">
@@ -1893,7 +1891,6 @@ const DashboardSection = () => {
                   </div>
                 </div>
 
-                {/* Bar Chart */}
                 <div className="flex items-end gap-1.5 h-32">
                   {activityData.map((v, i) => (
                     <motion.div
@@ -1916,7 +1913,6 @@ const DashboardSection = () => {
                 </div>
               </div>
 
-              {/* Activity Feed */}
               <div className="lg:col-span-2 p-6">
                 <div className="text-xs font-bold text-gray-400 mb-4">
                   Recent Activity
@@ -1960,8 +1956,9 @@ const DashboardSection = () => {
 
 // ─── CTA SECTION ────────────────────────────────────────────
 const CTASection = () => {
-  const { isLoaded, isSignedIn } = useAuth();
-  const authed = isLoaded && isSignedIn;
+  // ✅ REPLACED: useAuth() → useUser()
+  const { user, loading } = useUser();
+  const authed = !loading && !!user;
 
   return (
     <section className="py-32 bg-black relative overflow-hidden flex items-center justify-center">

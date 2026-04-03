@@ -1,13 +1,8 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
+// ✅ Back to standard Mongoose ObjectId — no more Clerk string IDs
 const userSchema = new mongoose.Schema(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     email: {
       type: String,
       required: true,
@@ -17,15 +12,11 @@ const userSchema = new mongoose.Schema(
       minLength: [6, "Email must be at least 6 characters long"],
       maxLength: [50, "Email must be at most 50 characters long"],
     },
-    password: {
-      type: String,
-      required: true,
-      select: false,
-    },
-    // --- PROFILE FIELDS ---
+    // NOTE: Password is managed by Better Auth in its own 'account' collection
+    // We don't store or hash it here anymore
+
     name: {
       type: String,
-      // Automatically set a default name based on email if none provided
       default: function () {
         return this.email ? this.email.split("@")[0] : "Developer";
       },
@@ -40,17 +31,13 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: null, // We are using initials now, but keeping this field is good for future upgrades
+      default: null,
     },
-
-    // --- SOCIAL LINKS ---
     socials: {
       github: { type: String, default: "" },
-      twitter: { type: String, default: "" }, // Added this to match frontend
+      twitter: { type: String, default: "" },
       linkedin: { type: String, default: "" },
     },
-
-    // --- EDITOR SETTINGS ---
     settings: {
       theme: {
         type: String,
@@ -65,26 +52,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   { timestamps: true },
-); // Adds createdAt and updatedAt automatically
-
-// --- STATIC METHODS ---
-userSchema.statics.hashPassword = async function (password) {
-  return await bcrypt.hash(password, 10);
-};
-
-// --- INSTANCE METHODS ---
-userSchema.methods.isValidPassword = async function (password) {
-  return await bcrypt.compare(password, this.password);
-};
-
-userSchema.methods.generateJWT = function () {
-  return jwt.sign(
-    { _id: this._id, email: this.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "24h" }
-  );
-};
+);
 
 const User = mongoose.model("User", userSchema);
-
 export default User;

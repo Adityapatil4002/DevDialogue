@@ -28,8 +28,8 @@ import { UserContext } from "../Context/user.context.jsx";
 import axios from "../Config/axios.js";
 import { useNavigate } from "react-router-dom";
 
-// 👇 1. IMPORT CLERK'S AUTH HOOK 👇
-import { useAuth } from "@clerk/clerk-react";
+// ✅ REPLACED: Clerk import → Better Auth client
+import { authClient } from "../Config/auth-client.js";
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -132,9 +132,6 @@ const UserProfile = () => {
   const { user, setUser } = useContext(UserContext);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-
-  // 👇 2. INITIALIZE CLERK SIGN OUT 👇
-  const { signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
@@ -299,21 +296,14 @@ const UserProfile = () => {
     }
   };
 
-  // 👇 3. UPDATE THE LOGOUT FUNCTION 👇
+  // ✅ REPLACED: Clerk signOut → Better Auth signOut
   const handleLogout = async () => {
     try {
-      // Sign out using Clerk natively
-      await signOut();
-
-      // If you are tracking user context manually, clear it
-      if (typeof setUser === "function") {
-        setUser(null);
-      }
-
-      // Navigate back to landing page
+      await authClient.signOut();
+      setUser(null);
       navigate("/");
     } catch (e) {
-      console.error("Error logging out with Clerk:", e);
+      console.error("Error logging out:", e);
       showMessage("error", "Failed to log out");
     }
   };

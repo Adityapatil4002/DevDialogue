@@ -9,9 +9,7 @@ import {
   useSpring,
 } from "framer-motion";
 import Loader from "../components/Loader";
-
-// 👇 1. IMPORT CLERK AUTH HOOK 👇
-import { useAuth } from "@clerk/clerk-react";
+import { authClient } from "../Config/auth-client.js";
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -32,7 +30,6 @@ const cardVariants = {
   },
 };
 
-// --- GLOW CARD WRAPPER ---
 const GlowCard = ({ children, className = "", onClick }) => (
   <motion.div
     variants={cardVariants}
@@ -47,25 +44,19 @@ const GlowCard = ({ children, className = "", onClick }) => (
 );
 
 const Home = () => {
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
   const navigate = useNavigate();
 
-  // 👇 2. INITIALIZE GET-TOKEN 👇
-  const { getToken } = useAuth();
-
-  // Data States
   const [project, setProject] = useState([]);
   const [invites, setInvites] = useState([]);
   const [activityData, setActivityData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [projectName, setProjectName] = useState("");
 
-  // Mouse Follower
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const smoothX = useSpring(mouseX, { damping: 50, stiffness: 400, mass: 0.8 });
@@ -80,19 +71,15 @@ const Home = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
 
-  // --- FETCH DATA (UPDATED WITH TOKEN) ---
+  // ✅ No getToken() needed — axios sends session cookie automatically
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Grab the Clerk Token
-        const token = await getToken();
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-
         const [projectRes, dashboardRes] = await Promise.all([
-          axios.get("/project/all", config),
-          axios.get("/user/dashboard", config),
+          axios.get("/project/all"),
+          axios.get("/user/dashboard"),
         ]);
 
         if (isMounted) {
@@ -103,18 +90,15 @@ const Home = () => {
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
-        if (isMounted) {
-          setTimeout(() => setIsLoading(false), 800);
-        }
+        if (isMounted) setTimeout(() => setIsLoading(false), 800);
       }
     };
     fetchData();
     return () => {
       isMounted = false;
     };
-  }, [getToken]);
+  }, []);
 
-  // --- CALCULATE ACTIVITY ---
   const activityLevel = useMemo(() => {
     if (!activityData || activityData.length === 0)
       return {
@@ -123,11 +107,9 @@ const Home = () => {
         badgeBg: "bg-slate-800",
         percent: "0%",
       };
-
     const total = activityData
       .slice(-7)
       .reduce((acc, curr) => acc + curr.count, 0);
-
     if (total === 0)
       return {
         label: "Quiet",
@@ -149,7 +131,6 @@ const Home = () => {
         badgeBg: "bg-amber-900/50",
         percent: "+45%",
       };
-
     return {
       label: "High",
       color: "#ef4444",
@@ -158,18 +139,11 @@ const Home = () => {
     };
   }, [activityData]);
 
-  // --- HANDLERS (UPDATED WITH TOKENS) ---
-
-  // 1. CREATE PROJECT
+  // ✅ No getToken() — cookies handle auth
   async function createProject(e) {
     e.preventDefault();
     try {
-      const token = await getToken();
-      const res = await axios.post(
-        "/project/create",
-        { name: projectName },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const res = await axios.post("/project/create", { name: projectName });
       setProject((prev) => [...prev, res.data]);
       setIsModalOpen(false);
       setProjectName("");
@@ -178,30 +152,18 @@ const Home = () => {
     }
   }
 
-  // 2. ACCEPT INVITE
   const handleAccept = async (projectId) => {
     try {
-      const token = await getToken();
-      await axios.put(
-        "/project/accept-invite",
-        { projectId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await axios.put("/project/accept-invite", { projectId });
       window.location.reload();
     } catch (err) {
       console.error(err);
     }
   };
 
-  // 3. REJECT INVITE
   const handleReject = async (projectId) => {
     try {
-      const token = await getToken();
-      await axios.put(
-        "/project/reject-invite",
-        { projectId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await axios.put("/project/reject-invite", { projectId });
       setInvites((prev) => prev.filter((i) => i._id !== projectId));
     } catch (err) {
       console.error(err);
@@ -214,33 +176,31 @@ const Home = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // 4. DELETE OR LEAVE PROJECT
   const executeDeleteOrLeave = async () => {
     if (!projectToDelete) return;
-    const isOwner = projectToDelete.owner === user._id;
+    const isOwner = projectToDelete.owner?.toString() === user?._id?.toString();
     setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
     setIsDeleteModalOpen(false);
 
     try {
-      const token = await getToken();
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
       if (isOwner) {
-        await axios.delete(`/project/delete`, {
-          ...config,
+        await axios.delete("/project/delete", {
           data: { projectId: projectToDelete._id },
         });
       } else {
-        await axios.put(
-          `/project/leave`,
-          { projectId: projectToDelete._id },
-          config,
-        );
+        await axios.put("/project/leave", { projectId: projectToDelete._id });
       }
     } catch (error) {
       alert("Failed to delete/leave project");
       window.location.reload();
     }
+  };
+
+  // ✅ Logout via Better Auth
+  const handleLogout = async () => {
+    await authClient.signOut();
+    setUser(null);
+    navigate("/login");
   };
 
   if (isLoading) return <Loader />;
@@ -377,7 +337,7 @@ const Home = () => {
           </div>
         </GlowCard>
 
-        {/* 3. INBOX (Requests) */}
+        {/* 3. INBOX */}
         <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden flex flex-col">
           <div className="flex justify-between items-center mb-8 z-10 relative">
             <div className="flex items-center gap-4">
@@ -405,7 +365,6 @@ const Home = () => {
               </span>
             )}
           </div>
-
           <div className="relative flex-1 overflow-hidden h-full">
             <div className="space-y-3 overflow-y-auto h-full custom-scrollbar pr-2">
               {invites.length > 0 ? (
@@ -468,7 +427,6 @@ const Home = () => {
                         className="absolute inset-0 rounded-full border border-purple-500/30"
                       />
                     ))}
-
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{
@@ -478,7 +436,6 @@ const Home = () => {
                       }}
                       className="absolute inset-0 rounded-full border border-dashed border-gray-600/30"
                     />
-
                     <motion.div
                       animate={{ rotate: -360 }}
                       transition={{
@@ -488,22 +445,10 @@ const Home = () => {
                       }}
                       className="absolute inset-4 rounded-full border border-dotted border-purple-500/20"
                     />
-
                     <div className="relative z-10 w-16 h-16 rounded-full bg-[#1a1f2e] flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)]">
                       <i className="ri-radar-line text-2xl text-purple-400/80"></i>
                     </div>
-
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                      className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-purple-500/5 to-transparent z-0"
-                    />
                   </div>
-
                   <p className="text-xs font-mono tracking-widest text-gray-500 animate-pulse">
                     All caught up
                   </p>
@@ -528,7 +473,6 @@ const Home = () => {
               </div>
             </div>
           </div>
-
           <div className="relative flex-1 overflow-hidden h-full">
             <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 h-full pb-4">
               {project.map((proj, i) => (
@@ -556,7 +500,6 @@ const Home = () => {
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-4">
                     <div className="flex -space-x-2">
                       {proj.users?.slice(0, 3).map((u, idx) => (
@@ -567,7 +510,7 @@ const Home = () => {
                           {u.email?.[0]?.toUpperCase() || "U"}
                         </div>
                       ))}
-                      {proj.users.length > 3 && (
+                      {proj.users?.length > 3 && (
                         <div className="w-6 h-6 rounded-full bg-gray-800 border-2 border-[#13161c] flex items-center justify-center text-[8px] text-gray-400">
                           +{proj.users.length - 3}
                         </div>
@@ -579,7 +522,7 @@ const Home = () => {
                     >
                       <i
                         className={
-                          proj.owner === user?._id
+                          proj.owner?.toString() === user?._id?.toString()
                             ? "ri-delete-bin-line"
                             : "ri-logout-box-r-line"
                         }
@@ -588,7 +531,6 @@ const Home = () => {
                   </div>
                 </motion.div>
               ))}
-
               {project.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-gray-600">
                   <i className="ri-folder-add-line text-4xl opacity-20 mb-2"></i>
@@ -618,7 +560,6 @@ const Home = () => {
               <i className="ri-arrow-right-up-line"></i>
             </button>
           </div>
-
           <div className="grid grid-cols-2 gap-3 mt-2 flex-1 relative z-10">
             <div className="bg-[#13161c] border border-white/5 rounded-2xl p-3 flex flex-col justify-between group hover:border-blue-500/20 transition-colors">
               <div className="flex justify-between items-start">
@@ -639,14 +580,12 @@ const Home = () => {
               </div>
             </div>
           </div>
-
           <div className="mt-3 relative z-10 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
             <span className="text-[10px] text-emerald-500 font-mono tracking-wider">
               SYSTEM ONLINE
             </span>
           </div>
-
           <div className="absolute inset-0 bg-gradient-to-t from-blue-900/10 to-transparent opacity-20 pointer-events-none"></div>
         </GlowCard>
 
@@ -666,18 +605,27 @@ const Home = () => {
                 <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
               </div>
             </div>
-
             <h3 className="text-xl font-bold text-white tracking-tight">
               @{user?.email?.split("@")[0] || "User"}
             </h3>
             <p className="text-xs text-gray-500 mt-1 font-medium">
               Authorized Personnel
             </p>
+            {/* ✅ Logout button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
+              className="mt-4 text-xs text-gray-600 hover:text-red-400 transition-colors flex items-center gap-1"
+            >
+              <i className="ri-logout-box-r-line"></i> Sign out
+            </button>
           </div>
         </GlowCard>
       </motion.div>
 
-      {/* --- MODALS --- */}
+      {/* MODALS */}
       <AnimatePresence>
         {isModalOpen && (
           <div
@@ -734,6 +682,7 @@ const Home = () => {
             </motion.div>
           </div>
         )}
+
         {isDeleteModalOpen && (
           <div
             className="fixed inset-0 z-[60] flex justify-center items-center p-4"
@@ -755,15 +704,11 @@ const Home = () => {
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
                   <i
-                    className={`text-3xl text-red-500 ${
-                      projectToDelete?.owner === user?._id
-                        ? "ri-delete-bin-line"
-                        : "ri-logout-box-r-line"
-                    }`}
+                    className={`text-3xl text-red-500 ${projectToDelete?.owner?.toString() === user?._id?.toString() ? "ri-delete-bin-line" : "ri-logout-box-r-line"}`}
                   ></i>
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">
-                  {projectToDelete?.owner === user?._id
+                  {projectToDelete?.owner?.toString() === user?._id?.toString()
                     ? "Delete Project?"
                     : "Leave Project?"}
                 </h2>
@@ -778,7 +723,10 @@ const Home = () => {
                     onClick={executeDeleteOrLeave}
                     className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-900/20"
                   >
-                    {projectToDelete?.owner === user?._id ? "Delete" : "Leave"}
+                    {projectToDelete?.owner?.toString() ===
+                    user?._id?.toString()
+                      ? "Delete"
+                      : "Leave"}
                   </button>
                 </div>
               </div>

@@ -17,8 +17,7 @@ import StaggeredMenu from "../components/StaggeredMenu";
 import { MoreVertical, Trash2, Reply } from "lucide-react";
 import Loader from "../components/Loader";
 
-// 👇 1. IMPORT CLERK AUTH HOOK 👇
-import { useAuth } from "@clerk/clerk-react";
+// ✅ REMOVED: import { useAuth } from "@clerk/clerk-react";
 
 // --- UTILITY FUNCTIONS & CONSTANTS ---
 const getLanguageFromFileName = (fileName) => {
@@ -171,8 +170,7 @@ const Project = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
-  // 👇 2. INITIALIZE GET-TOKEN 👇
-  const { getToken } = useAuth();
+  // ✅ REMOVED: const { getToken } = useAuth();
 
   const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
@@ -245,7 +243,7 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
-  // --- FETCH PROJECT DATA (SECURED) ---
+  // --- FETCH PROJECT DATA ---
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -260,12 +258,10 @@ const Project = () => {
       setError(null);
 
       try {
-        const token = await getToken();
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-
+        // ✅ No token or config needed — axios sends session cookie automatically
         const [projectRes, allProjectsRes] = await Promise.all([
-          axios.get(`/project/get-project/${projectId}`, config),
-          axios.get("/project/all", config),
+          axios.get(`/project/get-project/${projectId}`),
+          axios.get("/project/all"),
         ]);
 
         if (isMounted) {
@@ -280,7 +276,7 @@ const Project = () => {
             });
           }
 
-          // Socket logic remains unchanged (unless your socket requires a token payload)
+          // ✅ Socket now uses withCredentials cookie — no token needed
           const socket = initializeSocket(projectId);
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
@@ -295,7 +291,8 @@ const Project = () => {
 
               setMessages((prev) => {
                 const incomingSenderId = data.sender?._id || data.senderId;
-                const isMyMessage = incomingSenderId === user?._id;
+                const isMyMessage =
+                  incomingSenderId?.toString() === user?._id?.toString();
 
                 if (isMyMessage) {
                   let replaced = false;
@@ -328,7 +325,7 @@ const Project = () => {
               ) {
                 setFileTree((prev) => {
                   const merged = { ...prev, ...data.filetree };
-                  saveFileTree(merged); // saveFileTree handles its own token now
+                  saveFileTree(merged);
                   return merged;
                 });
                 setNewFilePaths((prev) => {
@@ -345,9 +342,7 @@ const Project = () => {
         if (isMounted) setError("Failed to load project.");
       } finally {
         if (isMounted) {
-          setTimeout(() => {
-            setIsBooting(false);
-          }, 800);
+          setTimeout(() => setIsBooting(false), 800);
         }
       }
     };
@@ -360,7 +355,7 @@ const Project = () => {
       disconnectSocket();
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
     };
-  }, [projectId, user?._id, webContainer, getToken]);
+  }, [projectId, user?._id, webContainer]); // ✅ REMOVED getToken from deps
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -391,14 +386,13 @@ const Project = () => {
     sendMessage("delete-message", { messageId: msgId });
   };
 
-  // --- API HANDLERS (SECURED) ---
+  // --- API HANDLERS ---
+  // ✅ All getToken() and config objects removed — cookies handle auth automatically
+
   const handleSearchUser = async () => {
     if (!searchEmail.trim()) return;
     try {
-      const token = await getToken();
-      const res = await axios.get(`/project/user-search?email=${searchEmail}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(`/project/user-search?email=${searchEmail}`);
       setSearchedUser(res.data.user);
     } catch (err) {
       setSearchedUser(null);
@@ -409,12 +403,10 @@ const Project = () => {
   const handleSendInvite = async () => {
     if (!searchedUser) return;
     try {
-      const token = await getToken();
-      await axios.post(
-        "/project/send-invite",
-        { projectId, email: searchedUser.email },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await axios.post("/project/send-invite", {
+        projectId,
+        email: searchedUser.email,
+      });
       alert("Invitation sent!");
       setAddUserModalOpen(false);
       setSearchEmail("");
@@ -426,15 +418,10 @@ const Project = () => {
 
   const handleInviteResponse = async (inviteProjectId, accept) => {
     try {
-      const token = await getToken();
       const endpoint = accept
         ? "/project/accept-invite"
         : "/project/reject-invite";
-      await axios.put(
-        endpoint,
-        { projectId: inviteProjectId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await axios.put(endpoint, { projectId: inviteProjectId });
       setPendingInvites((prev) =>
         prev.filter((i) => i._id !== inviteProjectId),
       );
@@ -447,12 +434,10 @@ const Project = () => {
   const saveFileTree = async (fileTreeToSave) => {
     if (!project?._id) return;
     try {
-      const token = await getToken();
-      await axios.put(
-        "/project/update-file-tree",
-        { projectId: project._id, fileTree: fileTreeToSave },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await axios.put("/project/update-file-tree", {
+        projectId: project._id,
+        fileTree: fileTreeToSave,
+      });
     } catch (err) {
       console.error("Failed to auto-save file tree:", err);
     }
@@ -543,7 +528,6 @@ const Project = () => {
 
   const handleRunClick = async () => {
     if (!webContainer) return;
-
     setTerminalOutput("");
     setActiveTab("terminal");
 
@@ -554,7 +538,6 @@ const Project = () => {
       Object.keys(fileTree).forEach((filePath) => {
         const parts = filePath.split("/");
         let current = mountStructure;
-
         parts.forEach((part, index) => {
           const isFile = index === parts.length - 1;
           if (isFile) {
@@ -562,9 +545,7 @@ const Project = () => {
               file: { contents: fileTree[filePath].file.contents },
             };
           } else {
-            if (!current[part]) {
-              current[part] = { directory: {} };
-            }
+            if (!current[part]) current[part] = { directory: {} };
             current = current[part].directory;
           }
         });
@@ -572,8 +553,7 @@ const Project = () => {
 
       await webContainer.mount(mountStructure);
 
-      const packageJsonPath = "package.json";
-      const hasPackageJson = !!fileTree[packageJsonPath];
+      const hasPackageJson = !!fileTree["package.json"];
 
       if (hasPackageJson) {
         setTerminalOutput(
@@ -582,7 +562,6 @@ const Project = () => {
         setIsInstalling(true);
 
         const installProcess = await webContainer.spawn("npm", ["install"]);
-
         installProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
@@ -591,21 +570,17 @@ const Project = () => {
           }),
         );
 
-        if ((await installProcess.exit) !== 0) {
+        if ((await installProcess.exit) !== 0)
           throw new Error("Dependency installation failed.");
-        }
 
         setIsInstalling(false);
         setTerminalOutput(
           "\n[System] Installation successful. Starting server...\n",
         );
 
-        if (runProcess) {
-          runProcess.kill();
-        }
+        if (runProcess) runProcess.kill();
 
         const startProcess = await webContainer.spawn("npm", ["start"]);
-
         startProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
@@ -613,7 +588,6 @@ const Project = () => {
             },
           }),
         );
-
         setRunProcess(startProcess);
 
         webContainer.on("server-ready", (port, url) => {
@@ -637,20 +611,15 @@ const Project = () => {
           );
         }
 
-        if (!entryFile) {
+        if (!entryFile)
           throw new Error(
-            "No runnable JavaScript file found (e.g., index.js, server.js) and no package.json.",
+            "No runnable JavaScript file found and no package.json.",
           );
-        }
 
         setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
-
-        if (runProcess) {
-          runProcess.kill();
-        }
+        if (runProcess) runProcess.kill();
 
         const nodeProcess = await webContainer.spawn("node", [entryFile]);
-
         nodeProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
@@ -658,7 +627,6 @@ const Project = () => {
             },
           }),
         );
-
         setRunProcess(nodeProcess);
       }
     } catch (err) {
@@ -672,9 +640,7 @@ const Project = () => {
     const zip = new JSZip();
     Object.keys(fileTree).forEach((path) => {
       const fileContent = fileTree[path].file?.contents;
-      if (fileContent) {
-        zip.file(path, fileContent);
-      }
+      if (fileContent) zip.file(path, fileContent);
     });
     try {
       const content = await zip.generateAsync({ type: "blob" });
@@ -694,6 +660,7 @@ const Project = () => {
       setTerminalOutput((p) => p + "\nProcess stopped by user.\n");
     }
   };
+
   const handleClear = () => {
     if (activeTab === "browser") setIframeUrl(null);
     else setTerminalOutput("");
@@ -721,9 +688,7 @@ const Project = () => {
     }
   };
 
-  if (isBooting) {
-    return <Loader />;
-  }
+  if (isBooting) return <Loader />;
 
   if (error)
     return (
@@ -746,7 +711,6 @@ const Project = () => {
         {/* LEFT PANEL */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
-            {/* Header: Kept pl-16 to allow space for the left-aligned menu */}
             <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-14 min-h-[3.5rem] flex-shrink-0">
               <div className="flex items-center gap-3">
                 <button
@@ -797,7 +761,6 @@ const Project = () => {
                   const currentSenderId = getSenderId(msg);
                   const isOwnMessage =
                     currentSenderId?.toString() === user?._id?.toString();
-
                   const senderEmail =
                     typeof msg.sender === "object" ? msg.sender.email : "User";
                   const isMenuOpen = activeMenuMsgId === (msg._id || i);
@@ -814,14 +777,10 @@ const Project = () => {
                   return (
                     <div
                       key={msg._id || i}
-                      className={`flex w-full animate-fade-in group relative ${
-                        isOwnMessage ? "justify-end" : "justify-start"
-                      } ${isSameSender ? "mt-1" : "mt-4"}`}
+                      className={`flex w-full animate-fade-in group relative ${isOwnMessage ? "justify-end" : "justify-start"} ${isSameSender ? "mt-1" : "mt-4"}`}
                     >
                       <div
-                        className={`max-w-[85%] flex flex-col relative ${
-                          isOwnMessage ? "items-end" : "items-start"
-                        }`}
+                        className={`max-w-[85%] flex flex-col relative ${isOwnMessage ? "items-end" : "items-start"}`}
                       >
                         {!isSameSender && !isOwnMessage && !msg.isAi && (
                           <div className="flex items-center gap-2 mb-1 ml-1">
@@ -840,11 +799,7 @@ const Project = () => {
 
                         {msg.replyTo && (
                           <div
-                            className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${
-                              isOwnMessage
-                                ? "bg-blue-900/30 border-blue-400 text-blue-100"
-                                : "bg-gray-800 border-gray-500 text-gray-400"
-                            }`}
+                            className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${isOwnMessage ? "bg-blue-900/30 border-blue-400 text-blue-100" : "bg-gray-800 border-gray-500 text-gray-400"}`}
                           >
                             <span className="font-bold block mb-0.5 text-[10px]">
                               {msg.replyTo.originalSender}
@@ -857,19 +812,8 @@ const Project = () => {
 
                         <div
                           className={`relative px-4 py-2 shadow-md text-sm break-words overflow-hidden 
-                            ${
-                              isOwnMessage
-                                ? "bg-blue-600 text-white rounded-2xl rounded-tr-none"
-                                : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700"
-                            }
-                            ${
-                              isSameSender
-                                ? isOwnMessage
-                                  ? "rounded-tr-2xl"
-                                  : "rounded-tl-2xl"
-                                : ""
-                            } 
-                        `}
+                          ${isOwnMessage ? "bg-blue-600 text-white rounded-2xl rounded-tr-none" : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700"}
+                          ${isSameSender ? (isOwnMessage ? "rounded-tr-2xl" : "rounded-tl-2xl") : ""}`}
                         >
                           {msg.isAi ? (
                             <div className="flex gap-2">
@@ -882,9 +826,7 @@ const Project = () => {
                             <p>{msg.message}</p>
                           )}
                           <div
-                            className={`text-[10px] mt-1 text-right ${
-                              isOwnMessage ? "text-blue-200" : "text-gray-500"
-                            }`}
+                            className={`text-[10px] mt-1 text-right ${isOwnMessage ? "text-blue-200" : "text-gray-500"}`}
                           >
                             {new Date(msg.timestamp).toLocaleTimeString([], {
                               hour: "2-digit",
@@ -894,9 +836,7 @@ const Project = () => {
                         </div>
 
                         <div
-                          className={`absolute top-2 ${
-                            isOwnMessage ? "-left-8" : "-right-8"
-                          } z-50 message-menu-container`}
+                          className={`absolute top-2 ${isOwnMessage ? "-left-8" : "-right-8"} z-50 message-menu-container`}
                         >
                           <div className="relative">
                             <button
@@ -906,21 +846,13 @@ const Project = () => {
                                   isMenuOpen ? null : msg._id || i,
                                 );
                               }}
-                              className={`p-1.5 rounded-full transition-all duration-200 ${
-                                isMenuOpen
-                                  ? "bg-gray-800 text-white opacity-100"
-                                  : "text-gray-500 hover:text-white hover:bg-gray-800 opacity-0 group-hover:opacity-100"
-                              }`}
+                              className={`p-1.5 rounded-full transition-all duration-200 ${isMenuOpen ? "bg-gray-800 text-white opacity-100" : "text-gray-500 hover:text-white hover:bg-gray-800 opacity-0 group-hover:opacity-100"}`}
                             >
                               <MoreVertical size={16} />
                             </button>
                             {isMenuOpen && (
                               <div
-                                className={`absolute bottom-full mb-2 ${
-                                  isOwnMessage
-                                    ? "left-0 origin-bottom-left"
-                                    : "right-0 origin-bottom-right"
-                                } w-28 bg-[#030712] border border-gray-700 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-fade-in-up z-[9999]`}
+                                className={`absolute bottom-full mb-2 ${isOwnMessage ? "left-0 origin-bottom-left" : "right-0 origin-bottom-right"} w-28 bg-[#030712] border border-gray-700 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-fade-in-up z-[9999]`}
                               >
                                 <button
                                   onClick={(e) => {
@@ -988,11 +920,7 @@ const Project = () => {
                   </div>
                 )}
                 <div
-                  className={`flex items-center gap-2 bg-[#161b22] p-2 pr-2 border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors ${
-                    replyingTo
-                      ? "rounded-b-xl rounded-t-none border-t-0 mx-2"
-                      : "rounded-full"
-                  }`}
+                  className={`flex items-center gap-2 bg-[#161b22] p-2 pr-2 border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors ${replyingTo ? "rounded-b-xl rounded-t-none border-t-0 mx-2" : "rounded-full"}`}
                 >
                   <input
                     value={message}
@@ -1012,13 +940,10 @@ const Project = () => {
               </div>
             </div>
 
-            {/* COLLABORATORS & NOTIFICATIONS */}
+            {/* COLLABORATORS PANEL */}
             <div
-              className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${
-                isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
-              } top-0 z-30 border-r border-gray-800`}
+              className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${isSidePanelOpen ? "translate-x-0" : "-translate-x-full"} top-0 z-30 border-r border-gray-800`}
             >
-              {/* Header: Standardized h-14 */}
               <header className="flex justify-between items-center p-4 border-b border-gray-800 h-14 min-h-[3.5rem]">
                 <h2 className="font-bold text-gray-200">Collaborators</h2>
                 <button
@@ -1050,6 +975,7 @@ const Project = () => {
                 ))}
               </div>
             </div>
+
             {isNotificationPanelOpen && (
               <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
                 {pendingInvites.map((invite) => (
@@ -1092,7 +1018,6 @@ const Project = () => {
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
                   <div className="h-full w-full bg-[#0d1117] flex flex-col border-r border-gray-800">
-                    {/* Header: Standardized h-14 */}
                     <div
                       onClick={() => setIsExplorerOpen(!isExplorerOpen)}
                       className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] px-4 cursor-pointer hover:bg-[#161b22] h-14 min-h-[3.5rem]"
@@ -1102,9 +1027,7 @@ const Project = () => {
                           Explorer
                         </span>
                         <i
-                          className={`ri-arrow-down-s-line text-gray-500 transition-transform ${
-                            isExplorerOpen ? "" : "-rotate-90"
-                          }`}
+                          className={`ri-arrow-down-s-line text-gray-500 transition-transform ${isExplorerOpen ? "" : "-rotate-90"}`}
                         ></i>
                       </div>
                       <button
@@ -1145,18 +1068,13 @@ const Project = () => {
 
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
               <div className="flex flex-col h-full w-full bg-[#0d1117]">
-                {/* Header: Standardized h-14 */}
                 <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-14 min-h-[3.5rem] flex-shrink-0">
                   <div className="files flex overflow-x-auto no-scrollbar h-full items-end">
                     {openFiles.map((file) => (
                       <div
                         key={file}
                         onClick={() => setCurrentFile(file)}
-                        className={`group relative flex items-center min-w-fit px-4 h-full text-sm border-r border-gray-800 cursor-pointer ${
-                          currentFile === file
-                            ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500"
-                            : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"
-                        }`}
+                        className={`group relative flex items-center min-w-fit px-4 h-full text-sm border-r border-gray-800 cursor-pointer ${currentFile === file ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500" : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"}`}
                       >
                         <span className="mr-2">{file.split("/").pop()}</span>
                         <button
@@ -1225,26 +1143,17 @@ const Project = () => {
 
             <Panel defaultSize={40} minSize={20}>
               <div className="flex flex-col h-full w-full border-l border-gray-800 bg-[#0d1117]">
-                {/* Header: Standardized h-14 */}
                 <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 px-4 h-14 min-h-[3.5rem]">
                   <div className="flex gap-2">
                     <button
                       onClick={() => setActiveTab("browser")}
-                      className={`px-4 py-1.5 text-xs font-medium rounded ${
-                        activeTab === "browser"
-                          ? "bg-[#1f2937] text-blue-400"
-                          : "text-gray-500"
-                      }`}
+                      className={`px-4 py-1.5 text-xs font-medium rounded ${activeTab === "browser" ? "bg-[#1f2937] text-blue-400" : "text-gray-500"}`}
                     >
                       Browser
                     </button>
                     <button
                       onClick={() => setActiveTab("terminal")}
-                      className={`px-4 py-1.5 text-xs font-medium rounded ${
-                        activeTab === "terminal"
-                          ? "bg-[#1f2937] text-green-400"
-                          : "text-gray-500"
-                      }`}
+                      className={`px-4 py-1.5 text-xs font-medium rounded ${activeTab === "terminal" ? "bg-[#1f2937] text-green-400" : "text-gray-500"}`}
                     >
                       Terminal
                     </button>
@@ -1301,7 +1210,7 @@ const Project = () => {
         </div>
       )}
 
-      {/* --- MODALS --- */}
+      {/* MODALS */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -1373,7 +1282,8 @@ const Project = () => {
                   <span className="text-white font-mono bg-gray-800 px-1 rounded">
                     {fileToDelete}
                   </span>
-                  ?<br />
+                  ?
+                  <br />
                   This action cannot be undone.
                 </p>
               </div>
