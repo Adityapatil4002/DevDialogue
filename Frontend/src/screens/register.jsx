@@ -16,18 +16,21 @@ const Register = () => {
 
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: `${window.location.origin}/home`,
-      });
-    } catch (err) {
-      setError("Google login failed. Please try again.");
-      setGoogleLoading(false);
-    }
-  };
+const handleGoogleLogin = async () => {
+  setGoogleLoading(true);
+  try {
+    await authClient.signIn.social({
+      provider: "google",
+      // ✅ window.location.origin automatically gives:
+      // Local:      http://localhost:5173
+      // Production: https://dev-dialogue.vercel.app
+      callbackURL: `${window.location.origin}/home`,
+    });
+  } catch (err) {
+    setError("Google login failed. Please try again.");
+    setGoogleLoading(false);
+  }
+};
 
 
   const handleSubmit = async (e) => {

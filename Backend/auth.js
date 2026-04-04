@@ -43,5 +43,6 @@ export const auth = betterAuth({
     "http://localhost:5173",
     "http://localhost:4000",
     "https://dev-dialogue.vercel.app",
+    "https://devdialogue.onrender.com",
   ],
 });
