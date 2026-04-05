@@ -15,7 +15,6 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
 
-  // ✅ Add Google OAuth
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -31,14 +30,16 @@ export const auth = betterAuth({
       maxAge: 60 * 5,
     },
   },
+
   advanced: {
     defaultCookieAttributes: {
-      secure: false,
+      secure: true, // ✅ required when sameSite is "none"
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none", // ✅ allows cross-origin cookie sending
       path: "/",
     },
   },
+
   trustedOrigins: [
     "http://localhost:5173",
     "http://localhost:4000",
