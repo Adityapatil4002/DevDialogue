@@ -1,156 +1,133 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Code2, Cpu, Network, Terminal, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+
+const loadingSteps = [
+  "Initializing runtime...",
+  "Mounting file system...",
+  "Connecting socket mesh...",
+  "Awakening AI core...",
+  "Preparing environment...",
+];
 
 const Loader = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Loading steps tailored to your Project's Tech Stack
-  const loadingSteps = [
-    {
-      text: "Initializing WebContainer Runtime...",
-      icon: <Terminal size={14} />,
-    },
-    { text: "Mounting Virtual File System...", icon: <Code2 size={14} /> },
-    { text: "Connecting to Socket.io Mesh...", icon: <Network size={14} /> },
-    { text: "Awakening Gemini 2.0 Flash...", icon: <Sparkles size={14} /> },
-    { text: "Optimizing DevDialogue Environment...", icon: <Cpu size={14} /> },
-  ];
-
   useEffect(() => {
-    // Cycle through the loading steps
     const timer = setInterval(() => {
       setCurrentStep((prev) =>
-        prev < loadingSteps.length - 1 ? prev + 1 : prev
+        prev < loadingSteps.length - 1 ? prev + 1 : prev,
       );
-    }, 800); // Change text every 800ms
-
+    }, 800);
     return () => clearInterval(timer);
   }, []);
+
+  const progress = ((currentStep + 1) / loadingSteps.length) * 100;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#020617] text-white font-sans overflow-hidden"
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#050505] text-white font-sans overflow-hidden"
     >
-      {/* --- NEW BACKGROUND (Minimal Dark Blue) --- */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Deep radial gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#020617]" />
-
-        {/* Subtle Ambient Glow (Top Left) */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-900/10 rounded-full blur-[120px] opacity-50"></div>
-
-        {/* Subtle Ambient Glow (Bottom Right) */}
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-violet-900/10 rounded-full blur-[120px] opacity-50"></div>
-      </div>
-
-      {/* --- CENTER PIECE: THE "CORE" --- */}
-      <div className="relative flex items-center justify-center w-40 h-40 mb-12">
-        {/* 1. Outer Tech Ring (Dashed) */}
-        <motion.svg
-          className="absolute w-full h-full text-slate-700/50"
-          viewBox="0 0 100 100"
+      {/* SPINNER */}
+      <div className="relative w-10 h-10 mb-8">
+        <motion.div
+          className="absolute inset-0 border border-white/20"
           animate={{ rotate: 360 }}
-          transition={{ duration: 10, ease: "linear", repeat: Infinity }}
-        >
-          <circle
-            cx="50"
-            cy="50"
-            r="48"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="0.5"
-            strokeDasharray="4 4"
-          />
-        </motion.svg>
-
-        {/* 2. Middle Energy Ring (Cyan/Violet Gradient) */}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        />
         <motion.div
-          className="absolute w-32 h-32 rounded-full border-2 border-transparent border-t-cyan-500/80 border-l-violet-500/80"
+          className="absolute inset-2 border-t border-white/60"
           animate={{ rotate: -360 }}
-          transition={{ duration: 3, ease: "linear", repeat: Infinity }}
-          style={{ filter: "drop-shadow(0 0 10px rgba(6,182,212,0.3))" }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-
-        {/* 3. Inner Pulsing Circle */}
-        <motion.div
-          className="absolute w-24 h-24 rounded-full border border-slate-700/30 bg-slate-900/80 backdrop-blur-sm"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-
-        {/* 4. Central Icon (Code Brackets) */}
-        <motion.div
-          className="relative z-10 text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 to-violet-400"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <Code2
-            size={48}
-            className="text-white/90 drop-shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            className="w-[3px] h-[3px] bg-white"
+            animate={{ opacity: [1, 0.2, 1] }}
+            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
           />
-        </motion.div>
+        </div>
       </div>
 
-      {/* --- LOADING STATUS (TERMINAL STYLE) --- */}
-      <div className="w-[320px] relative z-10">
-        {/* Header */}
-        <div className="flex justify-between items-end mb-2 px-1">
-          <h2 className="text-2xl font-bold tracking-tight text-white/90">
-            DevDialogue
-          </h2>
-          <span className="text-xs font-mono text-cyan-500/80 animate-pulse">
-            v2.0.0
-          </span>
+      {/* STATUS BLOCK */}
+      <div className="w-[260px] flex flex-col gap-4">
+        {/* Step text */}
+        <div className="h-5 flex items-center">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-[10px] font-mono text-[#444] tabular-nums flex-shrink-0">
+              {String(currentStep + 1).padStart(2, "0")}
+            </span>
+            <span className="w-px h-3 bg-[#222] flex-shrink-0" />
+            <span className="text-[10px] font-mono text-[#666] tracking-wide">
+              {loadingSteps[currentStep]}
+            </span>
+          </motion.div>
         </div>
 
-        {/* Glassmorphic Status Bar */}
-        <div className="relative overflow-hidden bg-[#0f172a]/40 border border-slate-700/30 rounded-lg backdrop-blur-md p-4 shadow-xl">
-          {/* Scanline overlay (Subtle) */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 pointer-events-none bg-[length:100%_4px]" />
+        {/* Progress bar */}
+        <div className="relative h-px w-full bg-[#1a1a1a] overflow-hidden">
+          <motion.div
+            className="absolute inset-y-0 left-0 bg-white"
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.div
+            className="absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+            animate={{ x: ["-2.5rem", "260px"] }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              ease: "linear",
+              repeatDelay: 0.3,
+            }}
+          />
+        </div>
 
-          <div className="flex flex-col space-y-3">
-            {/* Progress Bar */}
-            <div className="h-1 w-full bg-slate-800/50 rounded-full overflow-hidden">
+        {/* Segmented step indicators */}
+        <div className="flex items-center gap-[5px]">
+          {loadingSteps.map((_, i) => (
+            <div
+              key={i}
+              className="h-px flex-1 bg-[#1a1a1a] relative overflow-hidden"
+            >
               <motion.div
-                className="h-full bg-gradient-to-r from-cyan-500 to-violet-500"
-                initial={{ width: "0%" }}
-                animate={{
-                  width: `${((currentStep + 1) / loadingSteps.length) * 100}%`,
+                className="absolute inset-0 bg-white"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: i <= currentStep ? 1 : 0 }}
+                transition={{
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                  delay: i * 0.04,
                 }}
-                transition={{ ease: "easeInOut" }}
+                style={{ transformOrigin: "left" }}
               />
             </div>
-
-            {/* Dynamic Text Output */}
-            <div className="h-6 flex items-center space-x-2 text-sm font-mono text-slate-300">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="text-cyan-400">
-                    {loadingSteps[currentStep].icon}
-                  </span>
-                  <span>{loadingSteps[currentStep].text}</span>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Decorative System ID */}
-        <div className="mt-3 text-center">
-          <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">
-            System Ready //{" "}
-            <span className="text-violet-500/60">Waiting for Input</span>
-          </p>
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-mono text-[#333] tracking-[0.16em] uppercase">
+            system init
+          </span>
+          <motion.span
+            key={Math.round(progress)}
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[9px] font-mono text-[#444] tabular-nums"
+          >
+            {Math.round(progress)}%
+          </motion.span>
         </div>
       </div>
     </motion.div>
