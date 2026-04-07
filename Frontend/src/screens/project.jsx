@@ -63,8 +63,8 @@ const getLanguageFromFileName = (fileName) => {
 };
 
 const getFileIcon = (fileName) => {
-  if (!fileName) return <File size={11} className="text-neutral-600" />;
-  return <File size={11} className="text-neutral-500" />;
+  if (!fileName) return <File size={11} className="text-[#666]" />;
+  return <File size={11} className="text-[#555]" />;
 };
 
 const cleanTerminalOutput = (text) => {
@@ -113,25 +113,25 @@ const FileTreeNode = ({
     <div className="select-none">
       <div
         onClick={handleToggle}
-        className={`group flex items-center justify-between cursor-pointer py-[4px] px-2 mx-1 transition-all duration-150 text-[11px] font-mono ${
+        className={`group flex items-center justify-between cursor-pointer py-[5px] px-2 mx-1 rounded-md transition-all duration-150 text-[11px] font-mono ${
           !isDir && isSelected
-            ? "bg-white/10 text-white border-l-2 border-white/60"
+            ? "bg-[#2a2a2a] text-[#ececec]"
             : !isDir
-              ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200 border-l-2 border-transparent"
-              : "text-neutral-600 hover:text-neutral-300 hover:bg-white/3 border-l-2 border-transparent"
+              ? "hover:bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
+              : "text-[#666] hover:text-[#aaa] hover:bg-[#181818]"
         }`}
       >
         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
           {isDir ? (
             <>
-              <span className="text-neutral-700 flex-shrink-0">
+              <span className="text-[#555] flex-shrink-0">
                 {isOpen ? (
                   <ChevronDown size={11} />
                 ) : (
                   <ChevronRight size={11} />
                 )}
               </span>
-              <span className="flex-shrink-0 text-neutral-600">
+              <span className="flex-shrink-0 text-[#555]">
                 {isOpen ? <FolderOpen size={11} /> : <Folder size={11} />}
               </span>
             </>
@@ -144,17 +144,17 @@ const FileTreeNode = ({
           <span
             className={`truncate text-[11px] ${
               isDir
-                ? "font-medium text-neutral-500"
+                ? "font-medium text-[#666]"
                 : isSelected
-                  ? "text-white"
+                  ? "text-[#ececec]"
                   : ""
             }`}
           >
             {fileName}
           </span>
           {!isDir && isNew && (
-            <span className="flex-shrink-0 text-[8px] bg-white/8 text-white/60 border border-white/15 px-1 py-0.5 font-mono tracking-wider">
-              NEW
+            <span className="flex-shrink-0 text-[9px] bg-[#2a2a2a] text-[#888] border border-[#333] px-1.5 py-0.5 font-mono tracking-wider rounded-sm">
+              new
             </span>
           )}
         </div>
@@ -163,7 +163,7 @@ const FileTreeNode = ({
             e.stopPropagation();
             onDelete(path);
           }}
-          className="opacity-0 group-hover:opacity-100 text-neutral-700 hover:text-white transition-all duration-150 p-0.5 flex-shrink-0"
+          className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ccc] transition-all duration-150 p-0.5 flex-shrink-0"
         >
           <Trash2 size={10} />
         </button>
@@ -171,7 +171,7 @@ const FileTreeNode = ({
 
       {isDir && isOpen && (
         <div
-          className="ml-3 border-l border-white/5 pl-1"
+          className="ml-3 border-l border-[#222] pl-1"
           style={{ animation: "expandDown 0.15s ease-out forwards" }}
         >
           {Object.keys(nodes).map((child) => (
@@ -208,16 +208,16 @@ const FileTreeSkeleton = () => (
         className="flex items-center gap-2 animate-pulse"
         style={{ marginLeft: `${item.indent * 12}px` }}
       >
-        <div className="w-2.5 h-2.5 bg-neutral-800 rounded-sm flex-shrink-0" />
+        <div className="w-2.5 h-2.5 bg-[#252525] rounded-sm flex-shrink-0" />
         <div
-          className="h-2 bg-neutral-800/80 rounded-sm"
+          className="h-2 bg-[#222] rounded-sm"
           style={{ width: `${item.w}px` }}
         />
       </div>
     ))}
     <div className="flex items-center gap-2 mt-4 ml-1">
-      <div className="w-1 h-1 bg-white/20 rounded-full animate-pulse" />
-      <div className="text-[9px] font-mono text-neutral-700 tracking-widest animate-pulse">
+      <div className="w-1 h-1 bg-[#444] rounded-full animate-pulse" />
+      <div className="text-[9px] font-mono text-[#444] tracking-widest animate-pulse">
         generating files...
       </div>
     </div>
@@ -226,8 +226,8 @@ const FileTreeSkeleton = () => (
 
 // --- RESIZE HANDLE ---
 const ResizeHandle = () => (
-  <PanelResizeHandle className="group w-[3px] bg-transparent hover:bg-white/8 transition-all duration-200 cursor-col-resize z-50 flex items-center justify-center">
-    <div className="w-px h-6 bg-neutral-800 group-hover:bg-neutral-600 group-hover:h-10 transition-all duration-200" />
+  <PanelResizeHandle className="group w-[3px] bg-transparent hover:bg-[#333] transition-all duration-200 cursor-col-resize z-50 flex items-center justify-center">
+    <div className="w-px h-8 bg-[#2a2a2a] group-hover:bg-[#444] group-hover:h-12 transition-all duration-200" />
   </PanelResizeHandle>
 );
 
@@ -235,11 +235,11 @@ const ResizeHandle = () => (
 const StatusDot = ({ active = false, pulse = false }) => (
   <span className="relative flex h-1.5 w-1.5">
     {pulse && active && (
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/40 opacity-50" />
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#666] opacity-60" />
     )}
     <span
       className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-        active ? "bg-white/70" : "bg-neutral-700"
+        active ? "bg-[#888]" : "bg-[#333]"
       }`}
     />
   </span>
@@ -690,9 +690,9 @@ const Project = () => {
         <div className="prose prose-invert prose-sm max-w-none space-y-2 break-words">
           <div dangerouslySetInnerHTML={{ __html: msgObj.text || "" }} />
           {msgObj.buildCommand && (
-            <div className="p-2 bg-black/60 border border-white/8 text-[10px] font-mono text-white/50 overflow-x-auto">
-              <strong>Build:</strong>{" "}
-              <span className="text-white/70">
+            <div className="p-2 bg-[#111] border border-[#2a2a2a] text-[10px] font-mono text-[#666] overflow-x-auto rounded">
+              <strong className="text-[#888]">Build:</strong>{" "}
+              <span className="text-[#aaa]">
                 {msgObj.buildCommand.mainItem}
               </span>{" "}
               {msgObj.buildCommand.commands.join(" ")}
@@ -712,20 +712,20 @@ const Project = () => {
   if (isBooting) return <Loader />;
   if (error)
     return (
-      <div className="h-screen bg-[#080808] text-neutral-400 flex flex-col items-center justify-center font-mono text-[12px] tracking-wider gap-3">
-        <AlertTriangle size={20} className="text-neutral-600" />
+      <div className="h-screen bg-[#111] text-[#666] flex flex-col items-center justify-center font-mono text-[12px] tracking-wider gap-3">
+        <AlertTriangle size={20} className="text-[#444]" />
         <span>{error}</span>
       </div>
     );
 
   return (
-    <main className="h-screen w-screen flex flex-col bg-[#080808] text-white overflow-hidden font-sans selection:bg-white/10">
+    <main className="h-screen w-screen flex flex-col bg-[#111] text-[#ececec] overflow-hidden font-sans selection:bg-[#333]">
       <style>{`
         /* ── Scrollbars ── */
-        .styled-scroll::-webkit-scrollbar { width: 2px; height: 2px; }
+        .styled-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
         .styled-scroll::-webkit-scrollbar-track { background: transparent; }
-        .styled-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 99px; }
-        .styled-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+        .styled-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 99px; }
+        .styled-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
         /* ── Keyframes ── */
@@ -742,21 +742,16 @@ const Project = () => {
           to   { opacity: 1; transform: scaleY(1); }
         }
         @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.94); }
+          from { opacity: 0; transform: scale(0.96); }
           to   { opacity: 1; transform: scale(1); }
         }
         @keyframes dotBounce {
           0%, 80%, 100% { transform: translateY(0);    opacity: 0.3; }
-          40%            { transform: translateY(-4px); opacity: 1; }
+          40%            { transform: translateY(-3px); opacity: 1; }
         }
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0; }
-        }
-        @keyframes shimmerLine {
-          0%   { opacity: 0.3; }
-          50%  { opacity: 0.7; }
-          100% { opacity: 0.3; }
         }
 
         /* ── Utility classes ── */
@@ -773,32 +768,40 @@ const Project = () => {
         /* Terminal cursor blink */
         .terminal-cursor { animation: blink 1s step-end infinite; }
 
-        /* Active file-tab top line */
-        .tab-active::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-          animation: shimmerLine 3s ease-in-out infinite;
+        /* Active file-tab indicator */
+        .tab-active {
+          background: #161616 !important;
+          border-bottom: 1.5px solid #555 !important;
         }
 
-        /* Own message bubble */
+        /* Own message bubble — clean white */
         .bubble-own {
-          background: #ffffff;
+          background: #ececec;
           color: #111;
+          border-radius: 12px 12px 3px 12px;
         }
 
         /* AI message bubble */
         .bubble-ai {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: #1a1a1a;
+          border: 1px solid #2a2a2a;
+          border-radius: 12px 12px 12px 3px;
         }
 
         /* Other user bubble */
         .bubble-other {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.07);
+          background: #1a1a1a;
+          border: 1px solid #252525;
+          border-radius: 12px 12px 12px 3px;
+        }
+
+        /* Divider line for section headers */
+        .section-label {
+          font-size: 9px;
+          font-family: monospace;
+          letter-spacing: 0.1em;
+          color: #444;
+          text-transform: uppercase;
         }
       `}</style>
 
@@ -807,16 +810,13 @@ const Project = () => {
             LEFT PANEL — CHAT
         ════════════════════════════════════════ */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
-          <section className="relative flex flex-col h-full w-full border-r border-white/5 bg-[#0a0a0a] z-10 overflow-hidden">
-            {/* Top hairline */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
+          <section className="relative flex flex-col h-full w-full border-r border-[#1e1e1e] bg-[#131313] z-10 overflow-hidden">
             {/* ── Chat header ── */}
-            <header className="flex justify-between items-center px-3 pl-14 bg-[#080808] border-b border-white/5 h-11 min-h-[2.75rem] flex-shrink-0">
+            <header className="flex justify-between items-center px-3 pl-14 bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   onClick={() => navigate("/home")}
-                  className="text-neutral-600 hover:text-white transition-colors duration-150 group flex-shrink-0"
+                  className="text-[#555] hover:text-[#ccc] transition-colors duration-150 group flex-shrink-0"
                 >
                   <ArrowLeft
                     size={13}
@@ -825,7 +825,7 @@ const Project = () => {
                 </button>
                 <div className="flex items-center gap-2 min-w-0">
                   <StatusDot active pulse />
-                  <h1 className="text-[12px] font-semibold text-white truncate max-w-[100px] tracking-tight">
+                  <h1 className="text-[12px] font-semibold text-[#ddd] truncate max-w-[100px] tracking-tight">
                     {project?.name}
                   </h1>
                 </div>
@@ -837,16 +837,16 @@ const Project = () => {
                   onClick={() =>
                     setIsNotificationPanelOpen(!isNotificationPanelOpen)
                   }
-                  className={`relative p-2 rounded transition-colors duration-150 ${
+                  className={`relative p-2 rounded-md transition-colors duration-150 ${
                     isNotificationPanelOpen
-                      ? "bg-white/8 text-white"
-                      : "text-neutral-600 hover:text-neutral-300 hover:bg-white/5"
+                      ? "bg-[#222] text-[#ccc]"
+                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
                   }`}
                 >
                   <Bell size={13} />
                   {pendingInvites.length > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full">
-                      <span className="absolute inset-0 animate-ping bg-white/70 rounded-full" />
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#ccc] rounded-full">
+                      <span className="absolute inset-0 animate-ping bg-[#aaa] rounded-full opacity-60" />
                     </span>
                   )}
                 </button>
@@ -854,10 +854,10 @@ const Project = () => {
                 {/* Collaborators */}
                 <button
                   onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-                  className={`p-2 rounded transition-colors duration-150 ${
+                  className={`p-2 rounded-md transition-colors duration-150 ${
                     isSidePanelOpen
-                      ? "bg-white/8 text-white"
-                      : "text-neutral-600 hover:text-neutral-300 hover:bg-white/5"
+                      ? "bg-[#222] text-[#ccc]"
+                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
                   }`}
                 >
                   <Users size={13} />
@@ -899,12 +899,12 @@ const Project = () => {
                         {/* Sender label — other user */}
                         {!isSameSender && !isOwnMessage && !msg.isAi && (
                           <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
-                            <div className="w-5 h-5 bg-neutral-800 border border-white/8 flex items-center justify-center text-[8px] font-bold text-neutral-400">
+                            <div className="w-5 h-5 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[8px] font-bold text-[#888]">
                               {typeof senderEmail === "string"
                                 ? senderEmail[0]?.toUpperCase()
                                 : "?"}
                             </div>
-                            <span className="text-[9px] font-mono text-neutral-600 tracking-wide">
+                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
                               {senderEmail}
                             </span>
                           </div>
@@ -913,10 +913,10 @@ const Project = () => {
                         {/* Sender label — AI */}
                         {!isSameSender && msg.isAi && (
                           <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
-                            <div className="w-5 h-5 bg-neutral-900 border border-white/10 flex items-center justify-center">
-                              <Bot size={10} className="text-neutral-400" />
+                            <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center">
+                              <Bot size={10} className="text-[#777]" />
                             </div>
-                            <span className="text-[9px] font-mono text-neutral-500 tracking-wide">
+                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
                               AI Assistant
                             </span>
                           </div>
@@ -925,13 +925,13 @@ const Project = () => {
                         {/* Reply preview */}
                         {msg.replyTo && (
                           <div
-                            className={`text-[10px] mb-1 px-2.5 py-1.5 border-l-2 font-mono max-w-full ${
+                            className={`text-[10px] mb-1 px-2.5 py-1.5 border-l-2 font-mono max-w-full rounded ${
                               isOwnMessage
-                                ? "border-white/30 bg-white/5 text-white/40"
-                                : "border-white/10 bg-white/3 text-neutral-600"
+                                ? "border-[#555] bg-[#1c1c1c] text-[#777]"
+                                : "border-[#333] bg-[#181818] text-[#555]"
                             }`}
                           >
-                            <span className="block mb-0.5 text-[9px] text-neutral-700">
+                            <span className="block mb-0.5 text-[9px] text-[#444]">
                               {msg.replyTo.originalSender}
                             </span>
                             <span className="line-clamp-1 opacity-70">
@@ -946,9 +946,9 @@ const Project = () => {
                             isOwnMessage
                               ? "bubble-own"
                               : msg.isAi
-                                ? "bubble-ai text-neutral-300"
-                                : "bubble-other text-neutral-300"
-                          } ${msg.isOptimistic ? "opacity-50" : ""}`}
+                                ? "bubble-ai text-[#ccc]"
+                                : "bubble-other text-[#ccc]"
+                          } ${msg.isOptimistic ? "opacity-40" : ""}`}
                         >
                           {msg.isAi ? (
                             <div className="flex gap-2">
@@ -961,9 +961,7 @@ const Project = () => {
                           )}
                           <div
                             className={`text-[9px] mt-1.5 text-right font-mono ${
-                              isOwnMessage
-                                ? "text-black/35"
-                                : "text-neutral-700"
+                              isOwnMessage ? "text-[#555]" : "text-[#444]"
                             }`}
                           >
                             {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -987,10 +985,10 @@ const Project = () => {
                                   isMenuOpen ? null : msg._id || i,
                                 );
                               }}
-                              className={`p-1.5 rounded transition-all duration-150 ${
+                              className={`p-1.5 rounded-md transition-all duration-150 ${
                                 isMenuOpen
-                                  ? "opacity-100 bg-white/8 text-white"
-                                  : "opacity-0 group-hover:opacity-100 text-neutral-700 hover:text-white hover:bg-white/5"
+                                  ? "opacity-100 bg-[#222] text-[#ccc]"
+                                  : "opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] hover:bg-[#1e1e1e]"
                               }`}
                             >
                               <MoreVertical size={12} />
@@ -1002,7 +1000,7 @@ const Project = () => {
                                   isOwnMessage
                                     ? "left-0 origin-bottom-left"
                                     : "right-0 origin-bottom-right"
-                                } w-28 bg-[#111] border border-white/8 overflow-hidden shadow-xl shadow-black/60 animate-fade-in-up z-[9999]`}
+                                } w-28 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden shadow-xl shadow-black/80 animate-fade-in-up z-[9999]`}
                               >
                                 <button
                                   onClick={(e) => {
@@ -1013,7 +1011,7 @@ const Project = () => {
                                     });
                                     setActiveMenuMsgId(null);
                                   }}
-                                  className="w-full text-left px-3 py-2 text-[10px] font-mono text-neutral-600 hover:bg-white/5 hover:text-white flex items-center gap-2 transition-colors"
+                                  className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#666] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 transition-colors"
                                 >
                                   <Reply size={10} />
                                   Reply
@@ -1025,7 +1023,7 @@ const Project = () => {
                                       handleDeleteMessage(msg._id);
                                       setActiveMenuMsgId(null);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-[10px] font-mono text-neutral-700 hover:bg-white/4 hover:text-white flex items-center gap-2 border-t border-white/5 transition-colors"
+                                    className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#555] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 border-t border-[#222] transition-colors"
                                   >
                                     <Trash2 size={10} />
                                     Delete
@@ -1044,13 +1042,13 @@ const Project = () => {
                 {isAiThinking && (
                   <div className="flex justify-start animate-fade-in mt-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-neutral-900 border border-white/10 flex items-center justify-center flex-shrink-0">
-                        <Bot size={10} className="text-neutral-500" />
+                      <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center flex-shrink-0">
+                        <Bot size={10} className="text-[#666]" />
                       </div>
                       <div className="bubble-ai px-3 py-2.5 flex items-center gap-1.5">
-                        <span className="typing-dot w-1.5 h-1.5 bg-neutral-500 rounded-full" />
-                        <span className="typing-dot w-1.5 h-1.5 bg-neutral-500 rounded-full" />
-                        <span className="typing-dot w-1.5 h-1.5 bg-neutral-500 rounded-full" />
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
                       </div>
                     </div>
                   </div>
@@ -1059,10 +1057,10 @@ const Project = () => {
                 {/* Remote user typing */}
                 {remoteTypingUser && (
                   <div className="flex justify-start animate-fade-in mt-1">
-                    <div className="px-2 py-1 text-[9px] font-mono text-neutral-700 flex items-center gap-1.5">
-                      <span className="typing-dot w-1 h-1 bg-neutral-700 rounded-full" />
-                      <span className="typing-dot w-1 h-1 bg-neutral-700 rounded-full" />
-                      <span className="typing-dot w-1 h-1 bg-neutral-700 rounded-full" />
+                    <div className="px-2 py-1 text-[9px] font-mono text-[#444] flex items-center gap-1.5">
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
                       <span className="ml-1">{remoteTypingUser}</span>
                     </div>
                   </div>
@@ -1072,12 +1070,12 @@ const Project = () => {
               </div>
 
               {/* ── Message input ── */}
-              <div className="absolute bottom-0 w-full bg-[#0a0a0a]/95 border-t border-white/5 z-20 backdrop-blur-sm">
+              <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
                 {/* Reply preview strip */}
                 {replyingTo && (
-                  <div className="border-b border-white/5 px-3 py-2 flex justify-between items-center animate-fade-in bg-white/2">
-                    <div className="text-[9px] font-mono text-neutral-600 border-l-2 border-white/20 pl-2 min-w-0">
-                      <span className="text-neutral-500 flex items-center gap-1 mb-0.5">
+                  <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
+                    <div className="text-[9px] font-mono text-[#555] border-l-2 border-[#333] pl-2 min-w-0">
+                      <span className="text-[#666] flex items-center gap-1 mb-0.5">
                         <Reply size={9} />
                         {replyingTo.originalSender}
                       </span>
@@ -1087,7 +1085,7 @@ const Project = () => {
                     </div>
                     <button
                       onClick={() => setReplyingTo(null)}
-                      className="text-neutral-700 hover:text-white p-1 rounded hover:bg-white/5 transition-all ml-2 flex-shrink-0"
+                      className="text-[#444] hover:text-[#ccc] p-1 rounded hover:bg-[#222] transition-all ml-2 flex-shrink-0"
                     >
                       <X size={11} />
                     </button>
@@ -1095,25 +1093,25 @@ const Project = () => {
                 )}
 
                 <div className="flex items-center gap-2 p-2.5">
-                  <div className="flex-grow flex items-center bg-white/4 border border-white/6 px-3 py-1.5 focus-within:border-white/12 focus-within:bg-white/5 transition-all duration-200">
+                  <div className="flex-grow flex items-center bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-3 py-2 focus-within:border-[#3a3a3a] focus-within:bg-[#1e1e1e] transition-all duration-200">
                     <input
                       value={message}
                       onChange={handleTyping}
                       onKeyPress={(e) => e.key === "Enter" && send()}
-                      className="flex-grow bg-transparent text-white outline-none placeholder-neutral-700 text-[11px] font-mono"
+                      className="flex-grow bg-transparent text-[#ddd] outline-none placeholder-[#3a3a3a] text-[11px] font-mono"
                       placeholder="message or @ai ..."
                     />
                     {message.toLowerCase().includes("@ai") && (
                       <Bot
                         size={11}
-                        className="text-neutral-500 flex-shrink-0 ml-1"
+                        className="text-[#555] flex-shrink-0 ml-1"
                       />
                     )}
                   </div>
                   <button
                     onClick={send}
                     disabled={!message.trim()}
-                    className="w-8 h-8 bg-white flex items-center justify-center text-black hover:bg-neutral-200 transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
+                    className="w-8 h-8 bg-[#ececec] rounded-lg flex items-center justify-center text-[#111] hover:bg-white transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <Send size={12} />
                   </button>
@@ -1123,23 +1121,20 @@ const Project = () => {
 
             {/* ── Collaborators slide-in panel ── */}
             <div
-              className={`sidePanel w-full h-full flex flex-col bg-[#0a0a0a] border-r border-white/5 absolute transition-all duration-300 ease-out ${
+              className={`sidePanel w-full h-full flex flex-col bg-[#131313] border-r border-[#1e1e1e] absolute transition-all duration-300 ease-out ${
                 isSidePanelOpen
                   ? "translate-x-0 opacity-100"
                   : "-translate-x-full opacity-0"
               } top-0 z-30`}
             >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-              <header className="flex justify-between items-center px-4 border-b border-white/5 h-11 min-h-[2.75rem]">
+              <header className="flex justify-between items-center px-4 border-b border-[#1e1e1e] h-11 min-h-[2.75rem]">
                 <div className="flex items-center gap-2">
-                  <Users size={12} className="text-neutral-600" />
-                  <span className="text-[10px] font-semibold tracking-widest uppercase text-neutral-600">
-                    Collaborators
-                  </span>
+                  <Users size={12} className="text-[#555]" />
+                  <span className="section-label">Collaborators</span>
                 </div>
                 <button
                   onClick={() => setisSidePanelOpen(false)}
-                  className="text-neutral-700 hover:text-white p-1 hover:bg-white/5 transition-all"
+                  className="text-[#444] hover:text-[#ccc] p-1 hover:bg-[#1e1e1e] rounded-md transition-all"
                 >
                   <X size={13} />
                 </button>
@@ -1148,7 +1143,7 @@ const Project = () => {
               <div className="p-3 flex-grow overflow-y-auto styled-scroll">
                 <button
                   onClick={() => setAddUserModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-white/8 text-[10px] font-mono text-neutral-600 hover:border-white/20 hover:text-white hover:bg-white/3 transition-all duration-200 mb-4 group"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-[#2a2a2a] text-[10px] font-mono text-[#555] hover:border-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a] transition-all duration-200 mb-4 group rounded-lg"
                 >
                   <Plus
                     size={11}
@@ -1160,12 +1155,12 @@ const Project = () => {
                   {project?.users?.map((u) => (
                     <div
                       key={u._id}
-                      className="py-2 px-2 flex gap-2.5 items-center hover:bg-white/3 transition-colors"
+                      className="py-2 px-2 flex gap-2.5 items-center hover:bg-[#1a1a1a] transition-colors rounded-md"
                     >
-                      <div className="w-6 h-6 bg-neutral-800 border border-white/8 flex items-center justify-center text-[9px] font-bold text-neutral-400 flex-shrink-0">
+                      <div className="w-6 h-6 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[9px] font-bold text-[#888] flex-shrink-0">
                         {u.email[0].toUpperCase()}
                       </div>
-                      <span className="font-mono text-[10px] text-neutral-600 truncate flex-grow">
+                      <span className="font-mono text-[10px] text-[#666] truncate flex-grow">
                         {u.email}
                       </span>
                       <StatusDot active />
@@ -1177,35 +1172,33 @@ const Project = () => {
 
             {/* ── Notifications dropdown ── */}
             {isNotificationPanelOpen && (
-              <div className="absolute top-11 right-0 left-0 bg-[#0c0c0c]/98 border-b border-white/5 z-40 p-3 animate-fade-in shadow-xl shadow-black/60 backdrop-blur-sm">
+              <div className="absolute top-11 right-0 left-0 bg-[#141414]/98 border-b border-[#1e1e1e] z-40 p-3 animate-fade-in shadow-xl shadow-black/60 backdrop-blur-sm">
                 <div className="flex items-center gap-2 mb-3">
-                  <Bell size={10} className="text-neutral-700" />
-                  <span className="text-[9px] font-mono text-neutral-700 tracking-widest uppercase">
-                    Notifications
-                  </span>
+                  <Bell size={10} className="text-[#444]" />
+                  <span className="section-label">Notifications</span>
                 </div>
                 {pendingInvites.length === 0 ? (
-                  <p className="text-[9px] font-mono text-neutral-800 tracking-wider py-2 text-center">
+                  <p className="text-[9px] font-mono text-[#3a3a3a] tracking-wider py-2 text-center">
                     All caught up ✓
                   </p>
                 ) : (
                   pendingInvites.map((invite) => (
                     <div
                       key={invite._id}
-                      className="flex justify-between items-center py-2.5 border-b border-white/4 last:border-b-0"
+                      className="flex justify-between items-center py-2.5 border-b border-[#1e1e1e] last:border-b-0"
                     >
                       <div>
-                        <p className="text-[10px] font-mono text-neutral-400">
+                        <p className="text-[10px] font-mono text-[#bbb]">
                           {invite.name}
                         </p>
-                        <p className="text-[9px] font-mono text-neutral-700 mt-0.5">
+                        <p className="text-[9px] font-mono text-[#555] mt-0.5">
                           Project invitation
                         </p>
                       </div>
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => handleInviteResponse(invite._id, true)}
-                          className="text-[9px] font-mono bg-white/8 text-white border border-white/15 hover:bg-white/15 px-2 py-1 transition-colors"
+                          className="text-[9px] font-mono bg-[#ececec] text-[#111] border border-[#ddd] hover:bg-white px-2 py-1 transition-colors rounded-md"
                         >
                           Accept
                         </button>
@@ -1213,7 +1206,7 @@ const Project = () => {
                           onClick={() =>
                             handleInviteResponse(invite._id, false)
                           }
-                          className="text-[9px] font-mono bg-white/4 text-neutral-600 border border-white/8 hover:bg-white/8 hover:text-neutral-400 px-2 py-1 transition-colors"
+                          className="text-[9px] font-mono bg-[#1e1e1e] text-[#666] border border-[#2a2a2a] hover:bg-[#252525] hover:text-[#aaa] px-2 py-1 transition-colors rounded-md"
                         >
                           Reject
                         </button>
@@ -1236,13 +1229,13 @@ const Project = () => {
             {isExplorerOpen && (
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
-                  <div className="h-full w-full bg-[#090909] flex flex-col border-r border-white/5">
+                  <div className="h-full w-full bg-[#111] flex flex-col border-r border-[#1e1e1e]">
                     {/* Explorer header */}
                     <div
                       onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                      className="flex items-center justify-between border-b border-white/5 px-3 cursor-pointer hover:bg-white/2 h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
+                      className="flex items-center justify-between border-b border-[#1e1e1e] px-3 cursor-pointer hover:bg-[#161616] h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
                     >
-                      <span className="text-[9px] font-semibold tracking-widest uppercase text-neutral-700 flex items-center gap-1.5 group-hover:text-neutral-500 transition-colors">
+                      <span className="section-label flex items-center gap-1.5 group-hover:text-[#666] transition-colors">
                         <Code2 size={10} />
                         Explorer
                       </span>
@@ -1251,7 +1244,7 @@ const Project = () => {
                           e.stopPropagation();
                           downloadProject();
                         }}
-                        className="text-neutral-700 hover:text-white transition-all duration-150 p-1 hover:bg-white/5 group/btn"
+                        className="text-[#444] hover:text-[#ccc] transition-all duration-150 p-1 hover:bg-[#1e1e1e] rounded-md group/btn"
                         title="Download ZIP"
                       >
                         <Download
@@ -1292,9 +1285,9 @@ const Project = () => {
                 CODE EDITOR
             ════════════════════════════════════════ */}
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
-              <div className="flex flex-col h-full w-full bg-[#0c0c0c]">
+              <div className="flex flex-col h-full w-full bg-[#141414]">
                 {/* Tab bar */}
-                <div className="top-bar flex justify-between items-center bg-[#090909] border-b border-white/5 h-11 min-h-[2.75rem] flex-shrink-0">
+                <div className="top-bar flex justify-between items-center bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
                   <div className="files flex overflow-x-auto no-scrollbar h-full items-end flex-grow">
                     {openFiles.map((file) => {
                       const isActive = currentFile === file;
@@ -1302,10 +1295,10 @@ const Project = () => {
                         <div
                           key={file}
                           onClick={() => setCurrentFile(file)}
-                          className={`group relative flex items-center min-w-fit px-3 h-full text-[10px] font-mono border-r border-white/5 cursor-pointer transition-all duration-150 gap-1.5 ${
+                          className={`group relative flex items-center min-w-fit px-3 h-full text-[10px] font-mono border-r border-[#1e1e1e] cursor-pointer transition-all duration-150 gap-1.5 ${
                             isActive
-                              ? "tab-active bg-[#0c0c0c] text-white"
-                              : "bg-[#090909] text-neutral-600 hover:text-neutral-300 hover:bg-white/2"
+                              ? "tab-active text-[#ddd]"
+                              : "bg-[#111] text-[#555] hover:text-[#aaa] hover:bg-[#161616]"
                           }`}
                         >
                           <span className="flex-shrink-0">
@@ -1316,7 +1309,7 @@ const Project = () => {
                           </span>
                           <button
                             onClick={(e) => handleCloseFile(e, file)}
-                            className="opacity-0 group-hover:opacity-100 text-neutral-700 hover:text-white flex-shrink-0 p-0.5 hover:bg-white/8 transition-all"
+                            className="opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] flex-shrink-0 p-0.5 hover:bg-[#222] rounded transition-all"
                           >
                             <X size={9} />
                           </button>
@@ -1328,7 +1321,7 @@ const Project = () => {
                     {!isExplorerOpen && (
                       <button
                         onClick={() => setIsExplorerOpen(true)}
-                        className="h-full px-3 text-neutral-700 hover:text-neutral-400 hover:bg-white/3 transition-colors border-r border-white/5"
+                        className="h-full px-3 text-[#444] hover:text-[#888] hover:bg-[#161616] transition-colors border-r border-[#1e1e1e]"
                       >
                         <ChevronRight size={12} />
                       </button>
@@ -1341,16 +1334,16 @@ const Project = () => {
                       <button
                         onClick={handleRunClick}
                         disabled={isInstalling}
-                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-white/15 text-white/70 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/25 transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#aaa] bg-[#1a1a1a] hover:bg-[#222] hover:text-[#ececec] hover:border-[#3a3a3a] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed rounded-md"
                       >
                         {isInstalling ? (
                           <>
-                            <span className="w-2 h-2 border border-white/40 border-t-transparent rounded-full animate-spin" />
+                            <span className="w-2 h-2 border border-[#555] border-t-transparent rounded-full animate-spin" />
                             <span className="animate-pulse">installing</span>
                           </>
                         ) : (
                           <>
-                            <Play size={10} className="fill-white/70" />
+                            <Play size={10} className="fill-[#aaa]" />
                             Run
                           </>
                         )}
@@ -1358,9 +1351,9 @@ const Project = () => {
                     ) : (
                       <button
                         onClick={handleStopClick}
-                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-white/10 text-white/50 bg-white/3 hover:bg-white/8 hover:text-white/80 hover:border-white/20 transition-all duration-150"
+                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#777] bg-[#181818] hover:bg-[#1e1e1e] hover:text-[#aaa] hover:border-[#333] transition-all duration-150 rounded-md"
                       >
-                        <Square size={10} className="fill-white/50" />
+                        <Square size={10} className="fill-[#777]" />
                         Stop
                       </button>
                     )}
@@ -1401,16 +1394,16 @@ const Project = () => {
                       />
                     </div>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#0c0c0c]">
+                    <div className="w-full h-full flex items-center justify-center bg-[#141414]">
                       <div className="text-center space-y-4">
-                        <div className="w-14 h-14 mx-auto border border-white/5 bg-white/2 flex items-center justify-center">
-                          <Code2 size={22} className="text-neutral-800" />
+                        <div className="w-14 h-14 mx-auto border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                          <Code2 size={22} className="text-[#333]" />
                         </div>
                         <div>
-                          <p className="text-[11px] font-mono text-neutral-700 tracking-widest uppercase mb-1">
+                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
                             No file selected
                           </p>
-                          <p className="text-[10px] font-mono text-neutral-800">
+                          <p className="text-[10px] font-mono text-[#333]">
                             Choose a file from the explorer
                           </p>
                         </div>
@@ -1427,10 +1420,10 @@ const Project = () => {
                 BROWSER / TERMINAL
             ════════════════════════════════════════ */}
             <Panel defaultSize={40} minSize={20}>
-              <div className="flex flex-col h-full w-full border-l border-white/5 bg-[#090909]">
+              <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
                 {/* Tab bar */}
-                <div className="flex items-center justify-between bg-[#090909] border-b border-white/5 px-3 h-11 min-h-[2.75rem]">
-                  <div className="flex gap-px">
+                <div className="flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-11 min-h-[2.75rem]">
+                  <div className="flex gap-1">
                     {[
                       { id: "browser", icon: Globe, label: "Browser" },
                       {
@@ -1442,10 +1435,10 @@ const Project = () => {
                       <button
                         key={id}
                         onClick={() => setActiveTab(id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide transition-all duration-150 ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide transition-all duration-150 rounded-md ${
                           activeTab === id
-                            ? "bg-white/6 text-white border border-white/8"
-                            : "text-neutral-600 hover:text-neutral-400 hover:bg-white/3"
+                            ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                            : "text-[#555] hover:text-[#aaa] hover:bg-[#181818]"
                         }`}
                       >
                         <Icon size={11} />
@@ -1459,7 +1452,7 @@ const Project = () => {
                   </div>
                   <button
                     onClick={handleClear}
-                    className="text-neutral-700 hover:text-white transition-colors p-1.5 hover:bg-white/5"
+                    className="text-[#444] hover:text-[#ccc] transition-colors p-1.5 hover:bg-[#1a1a1a] rounded-md"
                     title="Clear"
                   >
                     <X size={12} />
@@ -1468,13 +1461,13 @@ const Project = () => {
 
                 {/* Browser panel */}
                 {activeTab === "browser" && (
-                  <div className="flex-grow bg-[#0c0c0c] relative flex items-center justify-center overflow-hidden">
+                  <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
                     {iframeUrl ? (
                       <>
                         {/* URL bar */}
-                        <div className="absolute top-0 left-0 right-0 z-10 bg-[#090909]/95 border-b border-white/5 px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
+                        <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
                           <StatusDot active pulse />
-                          <span className="text-[9px] font-mono text-neutral-600 truncate">
+                          <span className="text-[9px] font-mono text-[#555] truncate">
                             {iframeUrl}
                           </span>
                         </div>
@@ -1485,23 +1478,23 @@ const Project = () => {
                       </>
                     ) : (
                       <div className="flex flex-col items-center gap-4 text-center">
-                        <div className="w-14 h-14 border border-white/5 bg-white/2 flex items-center justify-center">
-                          <Globe size={20} className="text-neutral-800" />
+                        <div className="w-14 h-14 border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                          <Globe size={20} className="text-[#333]" />
                         </div>
                         <div>
-                          <p className="text-[11px] font-mono text-neutral-700 tracking-widest uppercase mb-1">
+                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
                             No preview
                           </p>
-                          <p className="text-[10px] font-mono text-neutral-800">
+                          <p className="text-[10px] font-mono text-[#333]">
                             Run your project to see it here
                           </p>
                         </div>
                         <button
                           onClick={handleRunClick}
                           disabled={!webContainer}
-                          className="flex items-center gap-2 py-2 px-4 text-[10px] font-mono border border-white/10 text-white/50 bg-white/4 hover:bg-white/8 hover:text-white/80 transition-all duration-150 disabled:opacity-30"
+                          className="flex items-center gap-2 py-2 px-4 text-[10px] font-mono border border-[#2a2a2a] text-[#777] bg-[#1a1a1a] hover:bg-[#1e1e1e] hover:text-[#ccc] transition-all duration-150 disabled:opacity-30 rounded-md"
                         >
-                          <Play size={10} className="fill-white/50" />
+                          <Play size={10} className="fill-[#777]" />
                           Run Project
                         </button>
                       </div>
@@ -1511,17 +1504,15 @@ const Project = () => {
 
                 {/* Terminal panel */}
                 {activeTab === "terminal" && (
-                  <div className="flex-grow bg-[#060606] flex flex-col overflow-hidden">
+                  <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
                     {/* Terminal chrome */}
-                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/4">
-                      <div className="w-2.5 h-2.5 rounded-full bg-white/8" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-white/8" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-white/8" />
-                      <span className="ml-2 text-[9px] font-mono text-neutral-800 tracking-widest">
-                        TERMINAL
-                      </span>
+                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <span className="ml-2 section-label">TERMINAL</span>
                       {runProcess && (
-                        <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-neutral-600">
+                        <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-[#555]">
                           <StatusDot active pulse />
                           running
                         </span>
@@ -1531,13 +1522,13 @@ const Project = () => {
                     {/* Output */}
                     <div className="styled-scroll flex-grow p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
                       {cleanTerminalOutput(terminalOutput) ? (
-                        <span className="text-neutral-400">
+                        <span className="text-[#aaa]">
                           {cleanTerminalOutput(terminalOutput)}
                         </span>
                       ) : (
-                        <span className="text-neutral-800 flex items-center gap-2">
-                          <span className="text-neutral-700">$</span>
-                          <span className="terminal-cursor text-neutral-700">
+                        <span className="text-[#333] flex items-center gap-2">
+                          <span className="text-[#3a3a3a]">$</span>
+                          <span className="terminal-cursor text-[#3a3a3a]">
                             ▌
                           </span>
                           <span>Waiting for output...</span>
@@ -1570,30 +1561,14 @@ const Project = () => {
           INVITE MODAL
       ════════════════════════════════════════ */}
       {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex justify-center items-center p-4 animate-fade-in">
-          <div className="bg-[#0e0e0e] border border-white/8 w-full max-w-md overflow-hidden relative shadow-2xl shadow-black/80 animate-scale-in">
-            {/* Top accent */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
-            {/* Corner accents */}
-            {[
-              "top-0 left-0 border-l border-t",
-              "top-0 right-0 border-r border-t",
-              "bottom-0 left-0 border-l border-b",
-              "bottom-0 right-0 border-r border-b",
-            ].map((c, i) => (
-              <div
-                key={i}
-                className={`absolute w-3 h-3 border-white/15 ${c}`}
-              />
-            ))}
-
-            <div className="flex justify-between items-center px-5 py-4 border-b border-white/5">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-[#1e1e1e]">
               <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 bg-white/6 border border-white/10 flex items-center justify-center">
-                  <Users size={11} className="text-neutral-400" />
+                <div className="w-7 h-7 bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg flex items-center justify-center">
+                  <Users size={12} className="text-[#888]" />
                 </div>
-                <span className="text-[11px] font-semibold tracking-wide text-neutral-300">
+                <span className="text-[12px] font-semibold tracking-wide text-[#ccc]">
                   Invite Member
                 </span>
               </div>
@@ -1603,7 +1578,7 @@ const Project = () => {
                   setSearchedUser(null);
                   setSearchEmail("");
                 }}
-                className="text-neutral-700 hover:text-white p-1.5 hover:bg-white/5 transition-all"
+                className="text-[#444] hover:text-[#ccc] p-1.5 hover:bg-[#1e1e1e] rounded-lg transition-all"
               >
                 <X size={13} />
               </button>
@@ -1611,7 +1586,7 @@ const Project = () => {
 
             <div className="p-5 flex flex-col gap-4">
               <div>
-                <label className="text-[9px] font-semibold tracking-widest uppercase text-neutral-700 block mb-2">
+                <label className="text-[9px] font-semibold tracking-widest uppercase text-[#555] block mb-2">
                   Email Address
                 </label>
                 <div className="flex gap-2">
@@ -1620,12 +1595,12 @@ const Project = () => {
                     value={searchEmail}
                     onChange={(e) => setSearchEmail(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleSearchUser()}
-                    className="flex-grow bg-white/4 border border-white/8 px-3 py-2.5 text-[11px] text-white font-mono focus:border-white/20 focus:bg-white/5 outline-none placeholder-neutral-800 transition-all"
+                    className="flex-grow bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[11px] text-[#ddd] font-mono focus:border-[#3a3a3a] focus:bg-[#1e1e1e] outline-none placeholder-[#333] transition-all"
                     placeholder="user@example.com"
                   />
                   <button
                     onClick={handleSearchUser}
-                    className="border border-white/8 bg-white/4 text-neutral-600 hover:text-white hover:border-white/20 hover:bg-white/8 px-3 text-[11px] font-mono transition-all group"
+                    className="border border-[#2a2a2a] bg-[#1a1a1a] text-[#666] hover:text-[#ccc] hover:border-[#3a3a3a] hover:bg-[#1e1e1e] px-3 text-[11px] font-mono transition-all group rounded-lg"
                   >
                     <ChevronRight
                       size={13}
@@ -1636,18 +1611,18 @@ const Project = () => {
               </div>
 
               {searchedUser && (
-                <div className="bg-white/3 border border-white/8 px-3 py-3 flex justify-between items-center animate-fade-in">
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-3 flex justify-between items-center animate-fade-in">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 bg-neutral-800 border border-white/10 flex items-center justify-center text-[10px] font-bold text-neutral-400">
+                    <div className="w-7 h-7 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[10px] font-bold text-[#888]">
                       {searchedUser.email[0]?.toUpperCase()}
                     </div>
-                    <span className="text-[11px] font-mono text-neutral-300">
+                    <span className="text-[11px] font-mono text-[#ccc]">
                       {searchedUser.email}
                     </span>
                   </div>
                   <button
                     onClick={handleSendInvite}
-                    className="text-[9px] font-mono tracking-wide bg-white text-black px-3 py-1.5 hover:bg-neutral-200 transition-colors flex items-center gap-1.5 font-semibold"
+                    className="text-[9px] font-mono tracking-wide bg-[#ececec] text-[#111] px-3 py-1.5 hover:bg-white transition-colors flex items-center gap-1.5 font-semibold rounded-lg"
                   >
                     <Check size={10} />
                     Invite
@@ -1663,35 +1638,19 @@ const Project = () => {
           DELETE MODAL
       ════════════════════════════════════════ */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex justify-center items-center p-4 animate-fade-in">
-          <div className="bg-[#0e0e0e] border border-white/8 w-full max-w-sm overflow-hidden relative shadow-2xl shadow-black/80 animate-scale-in">
-            {/* Top accent */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-
-            {/* Corner accents */}
-            {[
-              "top-0 left-0 border-l border-t",
-              "top-0 right-0 border-r border-t",
-              "bottom-0 left-0 border-l border-b",
-              "bottom-0 right-0 border-r border-b",
-            ].map((c, i) => (
-              <div
-                key={i}
-                className={`absolute w-3 h-3 border-white/10 ${c}`}
-              />
-            ))}
-
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-sm overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
             <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-12 h-12 border border-white/8 bg-white/3 flex items-center justify-center">
-                <AlertTriangle size={18} className="text-neutral-500" />
+              <div className="w-12 h-12 border border-[#2a2a2a] bg-[#1c1c1c] rounded-xl flex items-center justify-center">
+                <AlertTriangle size={18} className="text-[#666]" />
               </div>
               <div>
-                <h3 className="text-[13px] font-semibold text-white mb-2 tracking-tight">
+                <h3 className="text-[13px] font-semibold text-[#ddd] mb-2 tracking-tight">
                   Delete this item?
                 </h3>
-                <p className="text-[10px] font-mono text-neutral-600 leading-relaxed">
+                <p className="text-[10px] font-mono text-[#555] leading-relaxed">
                   This will permanently delete{" "}
-                  <code className="text-neutral-300 bg-white/5 border border-white/8 px-1.5 py-0.5">
+                  <code className="text-[#aaa] bg-[#1e1e1e] border border-[#2a2a2a] px-1.5 py-0.5 rounded">
                     {fileToDelete}
                   </code>
                   <br />
@@ -1700,16 +1659,16 @@ const Project = () => {
               </div>
             </div>
 
-            <div className="flex border-t border-white/5">
+            <div className="flex border-t border-[#1e1e1e]">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-3.5 text-[10px] font-mono text-neutral-600 hover:text-white hover:bg-white/3 transition-colors border-r border-white/5 tracking-wider"
+                className="flex-1 py-3.5 text-[10px] font-mono text-[#555] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors border-r border-[#1e1e1e] tracking-wider"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteFile}
-                className="flex-1 py-3.5 text-[10px] font-mono text-neutral-500 hover:text-white hover:bg-white/5 transition-colors tracking-wider flex items-center justify-center gap-1.5"
+                className="flex-1 py-3.5 text-[10px] font-mono text-[#666] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors tracking-wider flex items-center justify-center gap-1.5"
               >
                 <Trash2 size={10} />
                 Delete
