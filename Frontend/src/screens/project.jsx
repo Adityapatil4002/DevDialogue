@@ -14,12 +14,34 @@ import { UserContext } from "../Context/user.context.jsx";
 import { getWebContainer } from "../Config/webContainer.js";
 import Editor from "@monaco-editor/react";
 import StaggeredMenu from "../components/StaggeredMenu";
-import { MoreVertical, Trash2, Reply } from "lucide-react";
+import {
+  MoreVertical,
+  Trash2,
+  Reply,
+  Play,
+  Square,
+  Download,
+  Globe,
+  Terminal,
+  Users,
+  Bell,
+  X,
+  ChevronRight,
+  ChevronDown,
+  FolderOpen,
+  Folder,
+  File,
+  Send,
+  Bot,
+  ArrowLeft,
+  Plus,
+  Check,
+  AlertTriangle,
+  Code2,
+} from "lucide-react";
 import Loader from "../components/Loader";
 
-// ✅ REMOVED: import { useAuth } from "@clerk/clerk-react";
-
-// --- UTILITY FUNCTIONS & CONSTANTS ---
+// --- UTILITY ---
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
   const ext = fileName.split(".").pop();
@@ -38,6 +60,11 @@ const getLanguageFromFileName = (fileName) => {
     default:
       return "plaintext";
   }
+};
+
+const getFileIcon = (fileName) => {
+  if (!fileName) return <File size={11} className="text-[#666]" />;
+  return <File size={11} className="text-[#555]" />;
 };
 
 const cleanTerminalOutput = (text) => {
@@ -61,7 +88,7 @@ const socialItems = [
   { label: "LinkedIn", link: "https://linkedin.com" },
 ];
 
-// --- COMPONENTS ---
+// --- FILE TREE NODE ---
 const FileTreeNode = ({
   fileName,
   nodes,
@@ -69,10 +96,12 @@ const FileTreeNode = ({
   onDelete,
   path,
   newFilePaths,
+  selectedFile,
 }) => {
   const isDir = !!nodes;
   const [isOpen, setIsOpen] = useState(false);
   const isNew = newFilePaths?.has(path);
+  const isSelected = selectedFile === path;
 
   const handleToggle = (e) => {
     e.stopPropagation();
@@ -81,55 +110,70 @@ const FileTreeNode = ({
   };
 
   return (
-    <div className="ml-4 select-none">
+    <div className="select-none">
       <div
         onClick={handleToggle}
-        className={`group flex items-center justify-between cursor-pointer py-1 px-2 rounded-md transition-colors text-sm ${
-          !isDir
-            ? "hover:bg-gray-800"
-            : "hover:text-white text-gray-400 font-semibold"
+        className={`group flex items-center justify-between cursor-pointer py-[5px] px-2 mx-1 rounded-md transition-all duration-150 text-[11px] font-mono ${
+          !isDir && isSelected
+            ? "bg-[#2a2a2a] text-[#ececec]"
+            : !isDir
+              ? "hover:bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
+              : "text-[#666] hover:text-[#aaa] hover:bg-[#181818]"
         }`}
       >
-        <div className="flex items-center gap-2 overflow-hidden">
-          <i
-            className={
-              isDir
-                ? isOpen
-                  ? "ri-folder-open-fill text-yellow-500"
-                  : "ri-folder-fill text-yellow-500"
-                : "ri-file-code-line text-blue-400"
-            }
-          ></i>
+        <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
+          {isDir ? (
+            <>
+              <span className="text-[#555] flex-shrink-0">
+                {isOpen ? (
+                  <ChevronDown size={11} />
+                ) : (
+                  <ChevronRight size={11} />
+                )}
+              </span>
+              <span className="flex-shrink-0 text-[#555]">
+                {isOpen ? <FolderOpen size={11} /> : <Folder size={11} />}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="w-3 flex-shrink-0" />
+              <span className="flex-shrink-0">{getFileIcon(fileName)}</span>
+            </>
+          )}
           <span
-            className={`truncate ${
-              !isDir
-                ? isNew
-                  ? "text-green-400 font-medium"
-                  : "text-gray-300"
-                : "text-gray-200"
+            className={`truncate text-[11px] ${
+              isDir
+                ? "font-medium text-[#666]"
+                : isSelected
+                  ? "text-[#ececec]"
+                  : ""
             }`}
           >
             {fileName}
-            {!isDir && isNew && (
-              <span className="text-[9px] ml-2 bg-green-500/20 text-green-400 px-1 rounded">
-                NEW
-              </span>
-            )}
           </span>
+          {!isDir && isNew && (
+            <span className="flex-shrink-0 text-[9px] bg-[#2a2a2a] text-[#888] border border-[#333] px-1.5 py-0.5 font-mono tracking-wider rounded-sm">
+              new
+            </span>
+          )}
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onDelete(path);
           }}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity p-1"
-          title="Delete"
+          className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ccc] transition-all duration-150 p-0.5 flex-shrink-0"
         >
-          <i className="ri-delete-bin-line"></i>
+          <Trash2 size={10} />
         </button>
       </div>
+
       {isDir && isOpen && (
-        <div className="border-l border-gray-700 ml-2">
+        <div
+          className="ml-3 border-l border-[#222] pl-1"
+          style={{ animation: "expandDown 0.15s ease-out forwards" }}
+        >
           {Object.keys(nodes).map((child) => (
             <FileTreeNode
               key={child}
@@ -139,6 +183,7 @@ const FileTreeNode = ({
               onDelete={onDelete}
               path={`${path}/${child}`}
               newFilePaths={newFilePaths}
+              selectedFile={selectedFile}
             />
           ))}
         </div>
@@ -147,30 +192,63 @@ const FileTreeNode = ({
   );
 };
 
+// --- FILE TREE SKELETON ---
 const FileTreeSkeleton = () => (
-  <div className="p-4 space-y-3 opacity-60">
-    <div className="flex items-center gap-2 animate-pulse">
-      <div className="w-4 h-4 bg-gray-600 rounded"></div>
-      <div className="h-4 bg-gray-600 rounded w-24"></div>
-    </div>
-    <div className="ml-4 space-y-2">
-      <div className="flex items-center gap-2 animate-pulse">
-        <div className="w-4 h-4 bg-gray-600 rounded"></div>
-        <div className="h-4 bg-gray-600 rounded w-16"></div>
+  <div className="p-3 space-y-1.5">
+    {[
+      { w: 56, indent: 0 },
+      { w: 44, indent: 1 },
+      { w: 72, indent: 1 },
+      { w: 36, indent: 2 },
+      { w: 60, indent: 2 },
+      { w: 48, indent: 0 },
+    ].map((item, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-2 animate-pulse"
+        style={{ marginLeft: `${item.indent * 12}px` }}
+      >
+        <div className="w-2.5 h-2.5 bg-[#252525] rounded-sm flex-shrink-0" />
+        <div
+          className="h-2 bg-[#222] rounded-sm"
+          style={{ width: `${item.w}px` }}
+        />
+      </div>
+    ))}
+    <div className="flex items-center gap-2 mt-4 ml-1">
+      <div className="w-1 h-1 bg-[#444] rounded-full animate-pulse" />
+      <div className="text-[9px] font-mono text-[#444] tracking-widest animate-pulse">
+        generating files...
       </div>
     </div>
-    <div className="text-xs text-blue-400 mt-2 animate-pulse flex items-center gap-2">
-      <i className="ri-loader-4-line animate-spin"></i> Generating structure...
-    </div>
   </div>
+);
+
+// --- RESIZE HANDLE ---
+const ResizeHandle = () => (
+  <PanelResizeHandle className="group w-[3px] bg-transparent hover:bg-[#333] transition-all duration-200 cursor-col-resize z-50 flex items-center justify-center">
+    <div className="w-px h-8 bg-[#2a2a2a] group-hover:bg-[#444] group-hover:h-12 transition-all duration-200" />
+  </PanelResizeHandle>
+);
+
+// --- STATUS DOT ---
+const StatusDot = ({ active = false, pulse = false }) => (
+  <span className="relative flex h-1.5 w-1.5">
+    {pulse && active && (
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#666] opacity-60" />
+    )}
+    <span
+      className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+        active ? "bg-[#888]" : "bg-[#333]"
+      }`}
+    />
+  </span>
 );
 
 const Project = () => {
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
-
-  // ✅ REMOVED: const { getToken } = useAuth();
 
   const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
@@ -181,7 +259,6 @@ const Project = () => {
   const [activeTab, setActiveTab] = useState("terminal");
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isInstalling, setIsInstalling] = useState(false);
-
   const [newFilePaths, setNewFilePaths] = useState(new Set());
 
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
@@ -205,7 +282,6 @@ const Project = () => {
   const [remoteTypingUser, setRemoteTypingUser] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
-
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
   const messageEndRef = useRef(null);
@@ -230,9 +306,8 @@ const Project = () => {
       const parts = filePath.split("/");
       let current = root;
       parts.forEach((part, index) => {
-        if (index === parts.length - 1) {
-          current[part] = null;
-        } else {
+        if (index === parts.length - 1) current[part] = null;
+        else {
           current[part] = current[part] || {};
           current = current[part];
         }
@@ -243,7 +318,6 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
-  // --- FETCH PROJECT DATA ---
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -256,14 +330,11 @@ const Project = () => {
       }
       setIsBooting(true);
       setError(null);
-
       try {
-        // ✅ No token or config needed — axios sends session cookie automatically
         const [projectRes, allProjectsRes] = await Promise.all([
           axios.get(`/project/get-project/${projectId}`),
           axios.get("/project/all"),
         ]);
-
         if (isMounted) {
           setProject(projectRes.data.project);
           setFileTree(projectRes.data.project.fileTree || {});
@@ -271,16 +342,14 @@ const Project = () => {
           setMessages(projectRes.data.project.messages || []);
 
           if (!webContainer) {
-            getWebContainer().then((containerInstance) => {
-              if (isMounted) setWebContainer(containerInstance);
+            getWebContainer().then((c) => {
+              if (isMounted) setWebContainer(c);
             });
           }
 
-          // ✅ Socket now uses withCredentials cookie — no token needed
           const socket = initializeSocket(projectId);
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
-
           socket.on("message-deleted", ({ messageId }) => {
             setMessages((prev) => prev.filter((m) => m._id !== messageId));
           });
@@ -288,12 +357,10 @@ const Project = () => {
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
               if (data.isAi) setIsAiThinking(false);
-
               setMessages((prev) => {
                 const incomingSenderId = data.sender?._id || data.senderId;
                 const isMyMessage =
                   incomingSenderId?.toString() === user?._id?.toString();
-
                 if (isMyMessage) {
                   let replaced = false;
                   const updated = prev.map((m) => {
@@ -317,7 +384,6 @@ const Project = () => {
                 }
                 return prev;
               });
-
               if (
                 data.isAi &&
                 data.filetree &&
@@ -341,44 +407,38 @@ const Project = () => {
         console.error(err);
         if (isMounted) setError("Failed to load project.");
       } finally {
-        if (isMounted) {
-          setTimeout(() => setIsBooting(false), 800);
-        }
+        if (isMounted) setTimeout(() => setIsBooting(false), 800);
       }
     };
 
     fetchProjectAndData();
-
     return () => {
       isMounted = false;
       if (cleanupMessageListener) cleanupMessageListener();
       disconnectSocket();
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
     };
-  }, [projectId, user?._id, webContainer]); // ✅ REMOVED getToken from deps
+  }, [projectId, user?._id, webContainer]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAiThinking]);
 
   useEffect(() => {
-    if (activeTab === "terminal") {
+    if (activeTab === "terminal")
       terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
   }, [terminalOutput, activeTab]);
 
   const handleTyping = (e) => {
     setMessage(e.target.value);
     if (!isTyping) {
       setIsTyping(true);
-      const socket = initializeSocket(projectId);
-      socket.emit("typing");
+      initializeSocket(projectId).emit("typing");
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      const socket = initializeSocket(projectId);
-      socket.emit("stop-typing");
+      initializeSocket(projectId).emit("stop-typing");
     }, 2000);
   };
 
@@ -386,15 +446,12 @@ const Project = () => {
     sendMessage("delete-message", { messageId: msgId });
   };
 
-  // --- API HANDLERS ---
-  // ✅ All getToken() and config objects removed — cookies handle auth automatically
-
   const handleSearchUser = async () => {
     if (!searchEmail.trim()) return;
     try {
       const res = await axios.get(`/project/user-search?email=${searchEmail}`);
       setSearchedUser(res.data.user);
-    } catch (err) {
+    } catch {
       setSearchedUser(null);
       alert("User not found");
     }
@@ -418,10 +475,10 @@ const Project = () => {
 
   const handleInviteResponse = async (inviteProjectId, accept) => {
     try {
-      const endpoint = accept
-        ? "/project/accept-invite"
-        : "/project/reject-invite";
-      await axios.put(endpoint, { projectId: inviteProjectId });
+      await axios.put(
+        accept ? "/project/accept-invite" : "/project/reject-invite",
+        { projectId: inviteProjectId },
+      );
       setPendingInvites((prev) =>
         prev.filter((i) => i._id !== inviteProjectId),
       );
@@ -439,20 +496,17 @@ const Project = () => {
         fileTree: fileTreeToSave,
       });
     } catch (err) {
-      console.error("Failed to auto-save file tree:", err);
+      console.error("Failed to auto-save:", err);
     }
   };
 
   const handleCloseFile = (e, fileToClose) => {
     e.stopPropagation();
     setOpenFiles((prev) => {
-      const newOpenFiles = prev.filter((f) => f !== fileToClose);
-      if (currentFile === fileToClose) {
-        if (newOpenFiles.length > 0)
-          setCurrentFile(newOpenFiles[newOpenFiles.length - 1]);
-        else setCurrentFile(null);
-      }
-      return newOpenFiles;
+      const next = prev.filter((f) => f !== fileToClose);
+      if (currentFile === fileToClose)
+        setCurrentFile(next.length > 0 ? next[next.length - 1] : null);
+      return next;
     });
   };
 
@@ -461,7 +515,10 @@ const Project = () => {
       ...fileTree,
       [currentFile]: {
         ...fileTree[currentFile],
-        file: { ...fileTree[currentFile]?.file, contents: newValue },
+        file: {
+          ...fileTree[currentFile]?.file,
+          contents: newValue,
+        },
       },
     };
     setFileTree(newFileTree);
@@ -471,9 +528,8 @@ const Project = () => {
 
   const handleFileSelect = (filePath) => {
     setCurrentFile(filePath);
-    if (!openFiles.includes(filePath)) {
+    if (!openFiles.includes(filePath))
       setOpenFiles((prev) => [...prev, filePath]);
-    }
   };
 
   const onRequestDelete = (path) => {
@@ -484,13 +540,10 @@ const Project = () => {
   const confirmDeleteFile = () => {
     if (!fileToDelete) return;
     const newFileTree = { ...fileTree };
-    const pathsToDelete = [];
-    Object.keys(newFileTree).forEach((key) => {
-      if (key === fileToDelete || key.startsWith(fileToDelete + "/")) {
-        pathsToDelete.push(key);
-      }
-    });
-    pathsToDelete.forEach((key) => delete newFileTree[key]);
+    const pathsToDelete = Object.keys(newFileTree).filter(
+      (k) => k === fileToDelete || k.startsWith(fileToDelete + "/"),
+    );
+    pathsToDelete.forEach((k) => delete newFileTree[k]);
     setFileTree(newFileTree);
     saveFileTree(newFileTree);
     setOpenFiles((prev) => prev.filter((f) => !pathsToDelete.includes(f)));
@@ -501,97 +554,73 @@ const Project = () => {
 
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
-     console.log("MY USER ID:", user._id);
-     console.log("MY USER EMAIL:", user.email);
-
     let messageToSend = message;
     if (message.trim().toLowerCase().includes("@ai")) {
       setIsAiThinking(true);
       if (currentFile && fileTree[currentFile]?.file) {
-        const fileContent = fileTree[currentFile].file.contents;
-        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileContent}\n\`\`\`\n***`;
+        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileTree[currentFile].file.contents}\n\`\`\`\n***`;
       }
     }
-
-    const messageData = {
+    sendMessage("project-message", {
       projectId,
       message: messageToSend,
       sender: { _id: user._id, email: user.email },
       replyTo: replyingTo,
-    };
-
-    sendMessage("project-message", messageData);
+    });
     setMessage("");
     setReplyingTo(null);
     setIsTyping(false);
-    const socket = initializeSocket(projectId);
-    socket.emit("stop-typing");
+    initializeSocket(projectId).emit("stop-typing");
   };
 
   const handleRunClick = async () => {
     if (!webContainer) return;
     setTerminalOutput("");
     setActiveTab("terminal");
-
     try {
       setTerminalOutput("[System] Syncing files...\n");
-
       const mountStructure = {};
       Object.keys(fileTree).forEach((filePath) => {
         const parts = filePath.split("/");
         let current = mountStructure;
         parts.forEach((part, index) => {
-          const isFile = index === parts.length - 1;
-          if (isFile) {
+          if (index === parts.length - 1)
             current[part] = {
               file: { contents: fileTree[filePath].file.contents },
             };
-          } else {
+          else {
             if (!current[part]) current[part] = { directory: {} };
             current = current[part].directory;
           }
         });
       });
-
       await webContainer.mount(mountStructure);
-
       const hasPackageJson = !!fileTree["package.json"];
-
       if (hasPackageJson) {
-        setTerminalOutput(
-          "[System] 'package.json' detected. Installing dependencies...\n",
-        );
+        setTerminalOutput("[System] Installing dependencies...\n");
         setIsInstalling(true);
-
         const installProcess = await webContainer.spawn("npm", ["install"]);
         installProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
-              setTerminalOutput((prev) => prev + chunk);
+              setTerminalOutput((p) => p + chunk);
             },
           }),
         );
-
         if ((await installProcess.exit) !== 0)
-          throw new Error("Dependency installation failed.");
-
+          throw new Error("Installation failed.");
         setIsInstalling(false);
-        setTerminalOutput(
-          "\n[System] Installation successful. Starting server...\n",
-        );
-
+        setTerminalOutput("\n[System] Starting server...\n");
         if (runProcess) runProcess.kill();
-
         const startProcess = await webContainer.spawn("npm", ["start"]);
         startProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
-              setTerminalOutput((prev) => prev + chunk);
+              setTerminalOutput((p) => p + chunk);
             },
           }),
         );
         setRunProcess(startProcess);
-
         webContainer.on("server-ready", (port, url) => {
           setTerminalOutput(`\n[System] Server ready at ${url}\n`);
           setIframeUrl(url);
@@ -599,33 +628,17 @@ const Project = () => {
         });
       } else {
         setIsInstalling(false);
-        setTerminalOutput(
-          "[System] No 'package.json' found. Looking for entry point...\n",
-        );
-
         const entryFiles = ["index.js", "main.js", "server.js", "app.js"];
-        let entryFile = entryFiles.find((file) => fileTree[file]);
-
-        if (!entryFile && currentFile && currentFile.endsWith(".js")) {
-          entryFile = currentFile;
-          setTerminalOutput(
-            `[System] No standard entry point found. Using active file: ${entryFile}\n`,
-          );
-        }
-
-        if (!entryFile)
-          throw new Error(
-            "No runnable JavaScript file found and no package.json.",
-          );
-
+        let entryFile = entryFiles.find((f) => fileTree[f]);
+        if (!entryFile && currentFile?.endsWith(".js")) entryFile = currentFile;
+        if (!entryFile) throw new Error("No runnable entry point found.");
         setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
         if (runProcess) runProcess.kill();
-
         const nodeProcess = await webContainer.spawn("node", [entryFile]);
         nodeProcess.output.pipeTo(
           new WritableStream({
             write(chunk) {
-              setTerminalOutput((prev) => prev + chunk);
+              setTerminalOutput((p) => p + chunk);
             },
           }),
         );
@@ -641,16 +654,18 @@ const Project = () => {
   const downloadProject = async () => {
     const zip = new JSZip();
     Object.keys(fileTree).forEach((path) => {
-      const fileContent = fileTree[path].file?.contents;
-      if (fileContent) zip.file(path, fileContent);
+      const c = fileTree[path].file?.contents;
+      if (c) zip.file(path, c);
     });
     try {
       const content = await zip.generateAsync({ type: "blob" });
-      const safeName =
-        project?.name?.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";
-      saveAs(content, `${safeName}.zip`);
-    } catch (error) {
-      console.error("Failed to zip project:", error);
+      saveAs(
+        content,
+        `${
+          project?.name?.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project"
+        }.zip`,
+      );
+    } catch {
       alert("Failed to download project.");
     }
   };
@@ -659,7 +674,7 @@ const Project = () => {
     if (runProcess) {
       runProcess.kill();
       setRunProcess(null);
-      setTerminalOutput((p) => p + "\nProcess stopped by user.\n");
+      setTerminalOutput((p) => p + "\nProcess stopped.\n");
     }
   };
 
@@ -675,9 +690,9 @@ const Project = () => {
         <div className="prose prose-invert prose-sm max-w-none space-y-2 break-words">
           <div dangerouslySetInnerHTML={{ __html: msgObj.text || "" }} />
           {msgObj.buildCommand && (
-            <div className="p-2 bg-[#0d1117] border border-gray-700 rounded-md text-xs font-mono text-yellow-400 overflow-x-auto">
-              <strong>Build:</strong>{" "}
-              <span className="text-green-400">
+            <div className="p-2 bg-[#111] border border-[#2a2a2a] text-[10px] font-mono text-[#666] overflow-x-auto rounded">
+              <strong className="text-[#888]">Build:</strong>{" "}
+              <span className="text-[#aaa]">
                 {msgObj.buildCommand.mainItem}
               </span>{" "}
               {msgObj.buildCommand.commands.join(" ")}
@@ -686,151 +701,268 @@ const Project = () => {
         </div>
       );
     } catch {
-      return <p className="text-sm whitespace-pre-wrap break-words">{raw}</p>;
+      return (
+        <p className="text-[11px] whitespace-pre-wrap break-words font-mono">
+          {raw}
+        </p>
+      );
     }
   };
 
   if (isBooting) return <Loader />;
-
   if (error)
     return (
-      <div className="h-screen bg-[#0d1117] text-red-500 flex items-center justify-center">
-        {error}
+      <div className="h-screen bg-[#111] text-[#666] flex flex-col items-center justify-center font-mono text-[12px] tracking-wider gap-3">
+        <AlertTriangle size={20} className="text-[#444]" />
+        <span>{error}</span>
       </div>
     );
 
-  const ResizeHandle = ({ className = "" }) => (
-    <PanelResizeHandle
-      className={`w-[2px] bg-gray-800 hover:bg-blue-500 transition-colors cursor-col-resize z-50 ${className}`}
-    />
-  );
-
   return (
-    <main className="h-screen w-screen flex flex-col bg-[#030712] text-white overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
-      <style>{` .message-box::-webkit-scrollbar { width: 6px; } .message-box::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; } .no-scrollbar::-webkit-scrollbar { display: none; } .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; } .animate-fade-in-up { animation: fadeInUp 0.2s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } } `}</style>
+    <main className="h-screen w-screen flex flex-col bg-[#111] text-[#ececec] overflow-hidden font-sans selection:bg-[#333]">
+      <style>{`
+        /* ── Scrollbars ── */
+        .styled-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
+        .styled-scroll::-webkit-scrollbar-track { background: transparent; }
+        .styled-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 99px; }
+        .styled-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* ── Keyframes ── */
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes expandDown {
+          from { opacity: 0; transform: scaleY(0.92); transform-origin: top; }
+          to   { opacity: 1; transform: scaleY(1); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes dotBounce {
+          0%, 80%, 100% { transform: translateY(0);    opacity: 0.3; }
+          40%            { transform: translateY(-3px); opacity: 1; }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
+        }
+
+        /* ── Utility classes ── */
+        .animate-fade-in    { animation: fadeIn   0.2s  ease-out forwards; }
+        .animate-fade-in-up { animation: fadeInUp 0.18s ease-out forwards; }
+        .animate-scale-in   { animation: scaleIn  0.2s  ease-out forwards; }
+
+        /* Typing dots */
+        .typing-dot { animation: dotBounce 1.4s ease-in-out infinite both; }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.16s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+        /* Terminal cursor blink */
+        .terminal-cursor { animation: blink 1s step-end infinite; }
+
+        /* Active file-tab indicator */
+        .tab-active {
+          background: #161616 !important;
+          border-bottom: 1.5px solid #555 !important;
+        }
+
+        /* Own message bubble — clean white */
+        .bubble-own {
+          background: #ececec;
+          color: #111;
+          border-radius: 12px 12px 3px 12px;
+        }
+
+        /* AI message bubble */
+        .bubble-ai {
+          background: #1a1a1a;
+          border: 1px solid #2a2a2a;
+          border-radius: 12px 12px 12px 3px;
+        }
+
+        /* Other user bubble */
+        .bubble-other {
+          background: #1a1a1a;
+          border: 1px solid #252525;
+          border-radius: 12px 12px 12px 3px;
+        }
+
+        /* Divider line for section headers */
+        .section-label {
+          font-size: 9px;
+          font-family: monospace;
+          letter-spacing: 0.1em;
+          color: #444;
+          text-transform: uppercase;
+        }
+      `}</style>
 
       <PanelGroup direction="horizontal">
-        {/* LEFT PANEL */}
+        {/* ════════════════════════════════════════
+            LEFT PANEL — CHAT
+        ════════════════════════════════════════ */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
-          <section className="relative flex flex-col h-full w-full bg-[#0b0f19] border-r border-gray-800 z-10">
-            <header className="flex justify-between items-center p-4 pl-16 bg-[#0d1117] border-b border-gray-800 shadow-sm h-14 min-h-[3.5rem] flex-shrink-0">
-              <div className="flex items-center gap-3">
+          <section className="relative flex flex-col h-full w-full border-r border-[#1e1e1e] bg-[#131313] z-10 overflow-hidden">
+            {/* ── Chat header ── */}
+            <header className="flex justify-between items-center px-3 pl-14 bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   onClick={() => navigate("/home")}
-                  className="p-1.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                  className="text-[#555] hover:text-[#ccc] transition-colors duration-150 group flex-shrink-0"
                 >
-                  <i className="ri-arrow-left-line text-lg"></i>
+                  <ArrowLeft
+                    size={13}
+                    className="group-hover:-translate-x-0.5 transition-transform duration-150"
+                  />
                 </button>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 shadow-green-500/50 shadow-lg"></div>
-                  <h1 className="text-lg font-bold truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent max-w-[120px]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <StatusDot active pulse />
+                  <h1 className="text-[12px] font-semibold text-[#ddd] truncate max-w-[100px] tracking-tight">
                     {project?.name}
                   </h1>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-0.5">
+                {/* Notifications */}
                 <button
                   onClick={() =>
                     setIsNotificationPanelOpen(!isNotificationPanelOpen)
                   }
-                  className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white relative"
+                  className={`relative p-2 rounded-md transition-colors duration-150 ${
+                    isNotificationPanelOpen
+                      ? "bg-[#222] text-[#ccc]"
+                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
+                  }`}
                 >
-                  <i className="ri-notification-3-line text-xl"></i>
+                  <Bell size={13} />
                   {pendingInvites.length > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#ccc] rounded-full">
+                      <span className="absolute inset-0 animate-ping bg-[#aaa] rounded-full opacity-60" />
+                    </span>
                   )}
                 </button>
+
+                {/* Collaborators */}
                 <button
                   onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-                  className="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white"
+                  className={`p-2 rounded-md transition-colors duration-150 ${
+                    isSidePanelOpen
+                      ? "bg-[#222] text-[#ccc]"
+                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
+                  }`}
                 >
-                  <i className="ri-group-line text-xl"></i>
+                  <Users size={13} />
                 </button>
               </div>
             </header>
 
-            {/* CHAT AREA */}
-            <div className="conversation-area flex-grow flex flex-col overflow-hidden relative bg-[#0b0f19]">
-              <div className="message-box p-4 flex-grow flex flex-col gap-4 overflow-y-auto pb-24">
+            {/* ── Messages area ── */}
+            <div className="conversation-area flex-grow flex flex-col overflow-hidden relative">
+              <div className="message-box styled-scroll p-3 flex-grow flex flex-col gap-0.5 overflow-y-auto pb-24">
                 {messages.map((msg, i) => {
-                  const getSenderId = (m) => {
-                    if (m.sender && typeof m.sender === "object")
-                      return m.sender._id;
-                    if (m.senderId) return m.senderId;
-                    return m.sender;
-                  };
-
+                  const getSenderId = (m) =>
+                    m.sender?._id || m.senderId || m.sender;
                   const currentSenderId = getSenderId(msg);
-                  
-                  console.log("MSG sender:", currentSenderId, "MY ID:", user?._id, "MATCH:", currentSenderId?.toString() === user?._id?.toString());
                   const isOwnMessage =
                     currentSenderId?.toString() === user?._id?.toString();
                   const senderEmail =
                     typeof msg.sender === "object" ? msg.sender.email : "User";
                   const isMenuOpen = activeMenuMsgId === (msg._id || i);
-
                   const previousMsg = messages[i - 1];
-                  const prevSenderId = previousMsg
-                    ? getSenderId(previousMsg)
-                    : null;
                   const isSameSender =
                     previousMsg &&
-                    currentSenderId === prevSenderId &&
+                    getSenderId(previousMsg) === currentSenderId &&
                     previousMsg.isAi === msg.isAi;
 
                   return (
                     <div
                       key={msg._id || i}
-                      className={`flex w-full animate-fade-in group relative ${isOwnMessage ? "justify-end" : "justify-start"} ${isSameSender ? "mt-1" : "mt-4"}`}
+                      className={`flex w-full group relative ${
+                        isOwnMessage ? "justify-end" : "justify-start"
+                      } ${isSameSender ? "mt-0.5" : "mt-4"}`}
+                      style={{ animation: "fadeIn 0.18s ease-out forwards" }}
                     >
                       <div
-                        className={`max-w-[85%] flex flex-col relative ${isOwnMessage ? "items-end" : "items-start"}`}
+                        className={`max-w-[87%] flex flex-col relative ${
+                          isOwnMessage ? "items-end" : "items-start"
+                        }`}
                       >
+                        {/* Sender label — other user */}
                         {!isSameSender && !isOwnMessage && !msg.isAi && (
-                          <div className="flex items-center gap-2 mb-1 ml-1">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-[8px] font-bold text-white">
+                          <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
+                            <div className="w-5 h-5 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[8px] font-bold text-[#888]">
                               {typeof senderEmail === "string"
                                 ? senderEmail[0]?.toUpperCase()
                                 : "?"}
                             </div>
-                            <span className="text-[10px] text-gray-400 opacity-80">
-                              {typeof senderEmail === "string"
-                                ? senderEmail
-                                : "User"}
+                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
+                              {senderEmail}
                             </span>
                           </div>
                         )}
 
+                        {/* Sender label — AI */}
+                        {!isSameSender && msg.isAi && (
+                          <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
+                            <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center">
+                              <Bot size={10} className="text-[#777]" />
+                            </div>
+                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
+                              AI Assistant
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Reply preview */}
                         {msg.replyTo && (
                           <div
-                            className={`text-xs mb-1 px-3 py-2 rounded-lg opacity-70 border-l-2 ${isOwnMessage ? "bg-blue-900/30 border-blue-400 text-blue-100" : "bg-gray-800 border-gray-500 text-gray-400"}`}
+                            className={`text-[10px] mb-1 px-2.5 py-1.5 border-l-2 font-mono max-w-full rounded ${
+                              isOwnMessage
+                                ? "border-[#555] bg-[#1c1c1c] text-[#777]"
+                                : "border-[#333] bg-[#181818] text-[#555]"
+                            }`}
                           >
-                            <span className="font-bold block mb-0.5 text-[10px]">
+                            <span className="block mb-0.5 text-[9px] text-[#444]">
                               {msg.replyTo.originalSender}
                             </span>
-                            <span className="line-clamp-1">
+                            <span className="line-clamp-1 opacity-70">
                               {msg.replyTo.originalMessage}
                             </span>
                           </div>
                         )}
 
+                        {/* Message bubble */}
                         <div
-                          className={`relative px-4 py-2 shadow-md text-sm break-words overflow-hidden 
-                          ${isOwnMessage ? "bg-blue-600 text-white rounded-2xl rounded-tr-none" : "bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none border border-gray-700"}
-                          ${isSameSender ? (isOwnMessage ? "rounded-tr-2xl" : "rounded-tl-2xl") : ""}`}
+                          className={`relative px-3 py-2 text-[11px] break-words font-mono leading-relaxed ${
+                            isOwnMessage
+                              ? "bubble-own"
+                              : msg.isAi
+                                ? "bubble-ai text-[#ccc]"
+                                : "bubble-other text-[#ccc]"
+                          } ${msg.isOptimistic ? "opacity-40" : ""}`}
                         >
                           {msg.isAi ? (
                             <div className="flex gap-2">
-                              <i className="ri-robot-2-line text-blue-400 text-lg mt-1 flex-shrink-0"></i>
                               <div className="overflow-hidden w-full">
                                 <AiMessage raw={msg.message} />
                               </div>
                             </div>
                           ) : (
-                            <p>{msg.message}</p>
+                            <p className="leading-relaxed">{msg.message}</p>
                           )}
                           <div
-                            className={`text-[10px] mt-1 text-right ${isOwnMessage ? "text-blue-200" : "text-gray-500"}`}
+                            className={`text-[9px] mt-1.5 text-right font-mono ${
+                              isOwnMessage ? "text-[#555]" : "text-[#444]"
+                            }`}
                           >
                             {new Date(msg.timestamp).toLocaleTimeString([], {
                               hour: "2-digit",
@@ -839,8 +971,11 @@ const Project = () => {
                           </div>
                         </div>
 
+                        {/* Message context menu trigger */}
                         <div
-                          className={`absolute top-2 ${isOwnMessage ? "-left-8" : "-right-8"} z-50 message-menu-container`}
+                          className={`absolute top-0 ${
+                            isOwnMessage ? "-left-8" : "-right-8"
+                          } z-50 message-menu-container`}
                         >
                           <div className="relative">
                             <button
@@ -850,13 +985,22 @@ const Project = () => {
                                   isMenuOpen ? null : msg._id || i,
                                 );
                               }}
-                              className={`p-1.5 rounded-full transition-all duration-200 ${isMenuOpen ? "bg-gray-800 text-white opacity-100" : "text-gray-500 hover:text-white hover:bg-gray-800 opacity-0 group-hover:opacity-100"}`}
+                              className={`p-1.5 rounded-md transition-all duration-150 ${
+                                isMenuOpen
+                                  ? "opacity-100 bg-[#222] text-[#ccc]"
+                                  : "opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] hover:bg-[#1e1e1e]"
+                              }`}
                             >
-                              <MoreVertical size={16} />
+                              <MoreVertical size={12} />
                             </button>
+
                             {isMenuOpen && (
                               <div
-                                className={`absolute bottom-full mb-2 ${isOwnMessage ? "left-0 origin-bottom-left" : "right-0 origin-bottom-right"} w-28 bg-[#030712] border border-gray-700 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-fade-in-up z-[9999]`}
+                                className={`absolute bottom-full mb-1.5 ${
+                                  isOwnMessage
+                                    ? "left-0 origin-bottom-left"
+                                    : "right-0 origin-bottom-right"
+                                } w-28 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden shadow-xl shadow-black/80 animate-fade-in-up z-[9999]`}
                               >
                                 <button
                                   onClick={(e) => {
@@ -867,9 +1011,10 @@ const Project = () => {
                                     });
                                     setActiveMenuMsgId(null);
                                   }}
-                                  className="w-full text-left px-3 py-2.5 text-xs text-gray-300 hover:bg-blue-600 hover:text-white flex items-center gap-2 transition-colors"
+                                  className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#666] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 transition-colors"
                                 >
-                                  <Reply size={13} /> Reply
+                                  <Reply size={10} />
+                                  Reply
                                 </button>
                                 {isOwnMessage && (
                                   <button
@@ -878,9 +1023,10 @@ const Project = () => {
                                       handleDeleteMessage(msg._id);
                                       setActiveMenuMsgId(null);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-gray-700 transition-colors"
+                                    className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#555] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 border-t border-[#222] transition-colors"
                                   >
-                                    <Trash2 size={13} /> Delete
+                                    <Trash2 size={10} />
+                                    Delete
                                   </button>
                                 )}
                               </div>
@@ -891,123 +1037,182 @@ const Project = () => {
                     </div>
                   );
                 })}
+
+                {/* AI Thinking indicator */}
                 {isAiThinking && (
-                  <div className="flex justify-start animate-fade-in">
-                    <div className="bg-gray-800 border border-gray-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3 shadow-lg">
-                      <i className="ri-robot-2-line text-blue-400 animate-spin-slow"></i>
-                      <span className="text-xs font-medium text-gray-300">
-                        Processing...
-                      </span>
+                  <div className="flex justify-start animate-fade-in mt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center flex-shrink-0">
+                        <Bot size={10} className="text-[#666]" />
+                      </div>
+                      <div className="bubble-ai px-3 py-2.5 flex items-center gap-1.5">
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Remote user typing */}
+                {remoteTypingUser && (
+                  <div className="flex justify-start animate-fade-in mt-1">
+                    <div className="px-2 py-1 text-[9px] font-mono text-[#444] flex items-center gap-1.5">
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+                      <span className="ml-1">{remoteTypingUser}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messageEndRef} />
               </div>
 
-              <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19] to-transparent z-20">
+              {/* ── Message input ── */}
+              <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
+                {/* Reply preview strip */}
                 {replyingTo && (
-                  <div className="bg-[#161b22] border border-gray-700 rounded-t-xl p-3 flex justify-between items-center mb-[-1px] mx-2 animate-fade-in">
-                    <div className="text-xs text-gray-300 border-l-2 border-blue-500 pl-2">
-                      <span className="font-bold text-blue-400 block mb-0.5">
-                        Replying to {replyingTo.originalSender}
+                  <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
+                    <div className="text-[9px] font-mono text-[#555] border-l-2 border-[#333] pl-2 min-w-0">
+                      <span className="text-[#666] flex items-center gap-1 mb-0.5">
+                        <Reply size={9} />
+                        {replyingTo.originalSender}
                       </span>
-                      <div className="truncate max-w-[200px] opacity-70">
+                      <span className="truncate max-w-[140px] block opacity-50 text-[9px]">
                         {replyingTo.originalMessage}
-                      </div>
+                      </span>
                     </div>
                     <button
                       onClick={() => setReplyingTo(null)}
-                      className="text-gray-500 hover:text-white"
+                      className="text-[#444] hover:text-[#ccc] p-1 rounded hover:bg-[#222] transition-all ml-2 flex-shrink-0"
                     >
-                      <i className="ri-close-line"></i>
+                      <X size={11} />
                     </button>
                   </div>
                 )}
-                <div
-                  className={`flex items-center gap-2 bg-[#161b22] p-2 pr-2 border border-gray-700 shadow-xl focus-within:border-blue-500 transition-colors ${replyingTo ? "rounded-b-xl rounded-t-none border-t-0 mx-2" : "rounded-full"}`}
-                >
-                  <input
-                    value={message}
-                    onChange={handleTyping}
-                    onKeyPress={(e) => e.key === "Enter" && send()}
-                    className="flex-grow bg-transparent text-white px-4 py-2 border-none outline-none placeholder-gray-500 text-sm"
-                    placeholder="Type a message to @ai..."
-                  />
+
+                <div className="flex items-center gap-2 p-2.5">
+                  <div className="flex-grow flex items-center bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-3 py-2 focus-within:border-[#3a3a3a] focus-within:bg-[#1e1e1e] transition-all duration-200">
+                    <input
+                      value={message}
+                      onChange={handleTyping}
+                      onKeyPress={(e) => e.key === "Enter" && send()}
+                      className="flex-grow bg-transparent text-[#ddd] outline-none placeholder-[#3a3a3a] text-[11px] font-mono"
+                      placeholder="message or @ai ..."
+                    />
+                    {message.toLowerCase().includes("@ai") && (
+                      <Bot
+                        size={11}
+                        className="text-[#555] flex-shrink-0 ml-1"
+                      />
+                    )}
+                  </div>
                   <button
                     onClick={send}
-                    className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 disabled:opacity-50"
                     disabled={!message.trim()}
+                    className="w-8 h-8 bg-[#ececec] rounded-lg flex items-center justify-center text-[#111] hover:bg-white transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
                   >
-                    <i className="ri-send-plane-2-fill"></i>
+                    <Send size={12} />
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* COLLABORATORS PANEL */}
+            {/* ── Collaborators slide-in panel ── */}
             <div
-              className={`sidePanel w-full h-full flex flex-col gap-2 bg-[#0d1117]/95 backdrop-blur-md absolute transition-all duration-300 ease-in-out ${isSidePanelOpen ? "translate-x-0" : "-translate-x-full"} top-0 z-30 border-r border-gray-800`}
+              className={`sidePanel w-full h-full flex flex-col bg-[#131313] border-r border-[#1e1e1e] absolute transition-all duration-300 ease-out ${
+                isSidePanelOpen
+                  ? "translate-x-0 opacity-100"
+                  : "-translate-x-full opacity-0"
+              } top-0 z-30`}
             >
-              <header className="flex justify-between items-center p-4 border-b border-gray-800 h-14 min-h-[3.5rem]">
-                <h2 className="font-bold text-gray-200">Collaborators</h2>
+              <header className="flex justify-between items-center px-4 border-b border-[#1e1e1e] h-11 min-h-[2.75rem]">
+                <div className="flex items-center gap-2">
+                  <Users size={12} className="text-[#555]" />
+                  <span className="section-label">Collaborators</span>
+                </div>
                 <button
                   onClick={() => setisSidePanelOpen(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-[#444] hover:text-[#ccc] p-1 hover:bg-[#1e1e1e] rounded-md transition-all"
                 >
-                  <i className="ri-close-line text-2xl"></i>
+                  <X size={13} />
                 </button>
               </header>
-              <div className="p-4 flex-grow overflow-y-auto">
+
+              <div className="p-3 flex-grow overflow-y-auto styled-scroll">
                 <button
                   onClick={() => setAddUserModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-500 mb-4"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-[#2a2a2a] text-[10px] font-mono text-[#555] hover:border-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a] transition-all duration-200 mb-4 group rounded-lg"
                 >
-                  <i className="ri-user-add-line"></i> Invite New Member
+                  <Plus
+                    size={11}
+                    className="group-hover:rotate-90 transition-transform duration-200"
+                  />
+                  Invite member
                 </button>
-                {project?.users?.map((u) => (
-                  <div
-                    key={u._id}
-                    className="p-3 flex gap-3 items-center rounded-lg hover:bg-[#1f2937] transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-xs font-bold">
-                      {u.email[0].toUpperCase()}
+                <div className="space-y-0.5">
+                  {project?.users?.map((u) => (
+                    <div
+                      key={u._id}
+                      className="py-2 px-2 flex gap-2.5 items-center hover:bg-[#1a1a1a] transition-colors rounded-md"
+                    >
+                      <div className="w-6 h-6 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[9px] font-bold text-[#888] flex-shrink-0">
+                        {u.email[0].toUpperCase()}
+                      </div>
+                      <span className="font-mono text-[10px] text-[#666] truncate flex-grow">
+                        {u.email}
+                      </span>
+                      <StatusDot active />
                     </div>
-                    <h1 className="font-medium text-gray-300 text-sm truncate">
-                      {u.email}
-                    </h1>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
+            {/* ── Notifications dropdown ── */}
             {isNotificationPanelOpen && (
-              <div className="absolute top-16 right-0 left-0 bg-[#161b22] border-b border-gray-800 z-40 p-4 animate-fade-in shadow-2xl">
-                {pendingInvites.map((invite) => (
-                  <div
-                    key={invite._id}
-                    className="flex justify-between items-center bg-[#0d1117] p-3 mb-2 rounded-lg border border-gray-700"
-                  >
-                    <p className="text-sm font-bold text-white">
-                      {invite.name}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleInviteResponse(invite._id, true)}
-                        className="px-2 text-green-400"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleInviteResponse(invite._id, false)}
-                        className="px-2 text-red-400"
-                      >
-                        Reject
-                      </button>
+              <div className="absolute top-11 right-0 left-0 bg-[#141414]/98 border-b border-[#1e1e1e] z-40 p-3 animate-fade-in shadow-xl shadow-black/60 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Bell size={10} className="text-[#444]" />
+                  <span className="section-label">Notifications</span>
+                </div>
+                {pendingInvites.length === 0 ? (
+                  <p className="text-[9px] font-mono text-[#3a3a3a] tracking-wider py-2 text-center">
+                    All caught up ✓
+                  </p>
+                ) : (
+                  pendingInvites.map((invite) => (
+                    <div
+                      key={invite._id}
+                      className="flex justify-between items-center py-2.5 border-b border-[#1e1e1e] last:border-b-0"
+                    >
+                      <div>
+                        <p className="text-[10px] font-mono text-[#bbb]">
+                          {invite.name}
+                        </p>
+                        <p className="text-[9px] font-mono text-[#555] mt-0.5">
+                          Project invitation
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handleInviteResponse(invite._id, true)}
+                          className="text-[9px] font-mono bg-[#ececec] text-[#111] border border-[#ddd] hover:bg-white px-2 py-1 transition-colors rounded-md"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleInviteResponse(invite._id, false)
+                          }
+                          className="text-[9px] font-mono bg-[#1e1e1e] text-[#666] border border-[#2a2a2a] hover:bg-[#252525] hover:text-[#aaa] px-2 py-1 transition-colors rounded-md"
+                        >
+                          Reject
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {pendingInvites.length === 0 && (
-                  <p className="text-gray-500 text-sm">No notifications</p>
+                  ))
                 )}
               </div>
             )}
@@ -1018,38 +1223,43 @@ const Project = () => {
 
         <Panel>
           <PanelGroup direction="horizontal">
+            {/* ════════════════════════════════════════
+                FILE EXPLORER
+            ════════════════════════════════════════ */}
             {isExplorerOpen && (
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
-                  <div className="h-full w-full bg-[#0d1117] flex flex-col border-r border-gray-800">
+                  <div className="h-full w-full bg-[#111] flex flex-col border-r border-[#1e1e1e]">
+                    {/* Explorer header */}
                     <div
                       onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                      className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] px-4 cursor-pointer hover:bg-[#161b22] h-14 min-h-[3.5rem]"
+                      className="flex items-center justify-between border-b border-[#1e1e1e] px-3 cursor-pointer hover:bg-[#161616] h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
                     >
-                      <div className="flex flex-grow items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                          Explorer
-                        </span>
-                        <i
-                          className={`ri-arrow-down-s-line text-gray-500 transition-transform ${isExplorerOpen ? "" : "-rotate-90"}`}
-                        ></i>
-                      </div>
+                      <span className="section-label flex items-center gap-1.5 group-hover:text-[#666] transition-colors">
+                        <Code2 size={10} />
+                        Explorer
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           downloadProject();
                         }}
-                        className="text-gray-400 hover:text-white transition-colors"
-                        title="Download Project as ZIP"
+                        className="text-[#444] hover:text-[#ccc] transition-all duration-150 p-1 hover:bg-[#1e1e1e] rounded-md group/btn"
+                        title="Download ZIP"
                       >
-                        <i className="ri-download-cloud-2-line text-lg"></i>
+                        <Download
+                          size={11}
+                          className="group-hover/btn:translate-y-0.5 transition-transform duration-150"
+                        />
                       </button>
                     </div>
-                    <div className="file-tree w-full flex-grow overflow-y-auto pt-2 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-700">
+
+                    {/* File tree */}
+                    <div className="styled-scroll w-full flex-grow overflow-y-auto py-2">
                       {isAiThinking ? (
                         <FileTreeSkeleton />
                       ) : (
-                        <div className="-ml-2">
+                        <div className="space-y-0.5">
                           {Object.keys(folderStructure).map((key) => (
                             <FileTreeNode
                               key={key}
@@ -1059,6 +1269,7 @@ const Project = () => {
                               onDelete={onRequestDelete}
                               path={key}
                               newFilePaths={newFilePaths}
+                              selectedFile={currentFile}
                             />
                           ))}
                         </div>
@@ -1070,55 +1281,92 @@ const Project = () => {
               </>
             )}
 
+            {/* ════════════════════════════════════════
+                CODE EDITOR
+            ════════════════════════════════════════ */}
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
-              <div className="flex flex-col h-full w-full bg-[#0d1117]">
-                <div className="top-bar flex justify-between items-center bg-[#010409] border-b border-gray-800 h-14 min-h-[3.5rem] flex-shrink-0">
-                  <div className="files flex overflow-x-auto no-scrollbar h-full items-end">
-                    {openFiles.map((file) => (
-                      <div
-                        key={file}
-                        onClick={() => setCurrentFile(file)}
-                        className={`group relative flex items-center min-w-fit px-4 h-full text-sm border-r border-gray-800 cursor-pointer ${currentFile === file ? "bg-[#0d1117] text-white border-t-2 border-t-blue-500" : "bg-[#010409] text-gray-500 hover:bg-[#0d1117]"}`}
-                      >
-                        <span className="mr-2">{file.split("/").pop()}</span>
-                        <button
-                          onClick={(e) => handleCloseFile(e, file)}
-                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white"
+              <div className="flex flex-col h-full w-full bg-[#141414]">
+                {/* Tab bar */}
+                <div className="top-bar flex justify-between items-center bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
+                  <div className="files flex overflow-x-auto no-scrollbar h-full items-end flex-grow">
+                    {openFiles.map((file) => {
+                      const isActive = currentFile === file;
+                      return (
+                        <div
+                          key={file}
+                          onClick={() => setCurrentFile(file)}
+                          className={`group relative flex items-center min-w-fit px-3 h-full text-[10px] font-mono border-r border-[#1e1e1e] cursor-pointer transition-all duration-150 gap-1.5 ${
+                            isActive
+                              ? "tab-active text-[#ddd]"
+                              : "bg-[#111] text-[#555] hover:text-[#aaa] hover:bg-[#161616]"
+                          }`}
                         >
-                          <i className="ri-close-line"></i>
-                        </button>
-                      </div>
-                    ))}
+                          <span className="flex-shrink-0">
+                            {getFileIcon(file.split("/").pop())}
+                          </span>
+                          <span className="mr-1.5 truncate max-w-[80px]">
+                            {file.split("/").pop()}
+                          </span>
+                          <button
+                            onClick={(e) => handleCloseFile(e, file)}
+                            className="opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] flex-shrink-0 p-0.5 hover:bg-[#222] rounded transition-all"
+                          >
+                            <X size={9} />
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {/* Show explorer when closed */}
+                    {!isExplorerOpen && (
+                      <button
+                        onClick={() => setIsExplorerOpen(true)}
+                        className="h-full px-3 text-[#444] hover:text-[#888] hover:bg-[#161616] transition-colors border-r border-[#1e1e1e]"
+                      >
+                        <ChevronRight size={12} />
+                      </button>
+                    )}
                   </div>
-                  <div className="actions px-3 flex-shrink-0">
+
+                  {/* Run / Stop button */}
+                  <div className="px-3 flex-shrink-0">
                     {!runProcess ? (
                       <button
                         onClick={handleRunClick}
                         disabled={isInstalling}
-                        className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-blue-600 text-white hover:bg-blue-500"
+                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#aaa] bg-[#1a1a1a] hover:bg-[#222] hover:text-[#ececec] hover:border-[#3a3a3a] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed rounded-md"
                       >
                         {isInstalling ? (
-                          <i className="ri-loader-4-line animate-spin"></i>
+                          <>
+                            <span className="w-2 h-2 border border-[#555] border-t-transparent rounded-full animate-spin" />
+                            <span className="animate-pulse">installing</span>
+                          </>
                         ) : (
-                          <i className="ri-play-fill"></i>
-                        )}{" "}
-                        Run
+                          <>
+                            <Play size={10} className="fill-[#aaa]" />
+                            Run
+                          </>
+                        )}
                       </button>
                     ) : (
                       <button
                         onClick={handleStopClick}
-                        className="flex items-center gap-2 py-1.5 px-4 text-xs font-bold rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#777] bg-[#181818] hover:bg-[#1e1e1e] hover:text-[#aaa] hover:border-[#333] transition-all duration-150 rounded-md"
                       >
-                        <i className="ri-stop-fill"></i> Stop
+                        <Square size={10} className="fill-[#777]" />
+                        Stop
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="bottom flex-grow overflow-hidden relative h-full w-full">
+
+                {/* Editor */}
+                <div className="flex-grow overflow-hidden relative h-full w-full">
                   {currentFile && fileTree[currentFile]?.file ? (
                     <div
                       key={currentFile}
-                      className="h-full w-full animate-fade-in"
+                      className="h-full w-full"
+                      style={{ animation: "fadeIn 0.15s ease-out" }}
                     >
                       <Editor
                         height="100%"
@@ -1128,14 +1376,37 @@ const Project = () => {
                         theme="vs-dark"
                         value={fileTree[currentFile].file.contents}
                         onChange={handleFileContentChange}
-                        options={{ fontSize: 14, minimap: { enabled: false } }}
+                        options={{
+                          fontSize: 12,
+                          fontFamily:
+                            "'JetBrains Mono', 'Fira Code', monospace",
+                          minimap: { enabled: false },
+                          lineNumbersMinChars: 3,
+                          padding: { top: 16 },
+                          scrollbar: {
+                            verticalScrollbarSize: 3,
+                            horizontalScrollbarSize: 3,
+                          },
+                          renderLineHighlight: "gutter",
+                          cursorBlinking: "smooth",
+                          smoothScrolling: true,
+                        }}
                       />
                     </div>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-600 bg-[#0d1117]">
-                      <div className="text-center">
-                        <i className="ri-code-s-slash-line text-4xl mb-2 opacity-50"></i>
-                        <p>Select a file to edit</p>
+                    <div className="w-full h-full flex items-center justify-center bg-[#141414]">
+                      <div className="text-center space-y-4">
+                        <div className="w-14 h-14 mx-auto border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                          <Code2 size={22} className="text-[#333]" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                            No file selected
+                          </p>
+                          <p className="text-[10px] font-mono text-[#333]">
+                            Choose a file from the explorer
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1145,55 +1416,126 @@ const Project = () => {
 
             <ResizeHandle />
 
+            {/* ════════════════════════════════════════
+                BROWSER / TERMINAL
+            ════════════════════════════════════════ */}
             <Panel defaultSize={40} minSize={20}>
-              <div className="flex flex-col h-full w-full border-l border-gray-800 bg-[#0d1117]">
-                <div className="tabs flex items-center justify-between bg-[#010409] border-b border-gray-800 px-4 h-14 min-h-[3.5rem]">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setActiveTab("browser")}
-                      className={`px-4 py-1.5 text-xs font-medium rounded ${activeTab === "browser" ? "bg-[#1f2937] text-blue-400" : "text-gray-500"}`}
-                    >
-                      Browser
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("terminal")}
-                      className={`px-4 py-1.5 text-xs font-medium rounded ${activeTab === "terminal" ? "bg-[#1f2937] text-green-400" : "text-gray-500"}`}
-                    >
-                      Terminal
-                    </button>
+              <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
+                {/* Tab bar */}
+                <div className="flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-11 min-h-[2.75rem]">
+                  <div className="flex gap-1">
+                    {[
+                      { id: "browser", icon: Globe, label: "Browser" },
+                      {
+                        id: "terminal",
+                        icon: Terminal,
+                        label: "Terminal",
+                      },
+                    ].map(({ id, icon: Icon, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => setActiveTab(id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide transition-all duration-150 rounded-md ${
+                          activeTab === id
+                            ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                            : "text-[#555] hover:text-[#aaa] hover:bg-[#181818]"
+                        }`}
+                      >
+                        <Icon size={11} />
+                        {label}
+                        {id === "terminal" && runProcess && (
+                          <StatusDot active pulse />
+                        )}
+                        {id === "browser" && iframeUrl && <StatusDot active />}
+                      </button>
+                    ))}
                   </div>
                   <button
                     onClick={handleClear}
-                    className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                    className="text-[#444] hover:text-[#ccc] transition-colors p-1.5 hover:bg-[#1a1a1a] rounded-md"
                     title="Clear"
                   >
-                    <i className="ri-delete-bin-line"></i>
+                    <X size={12} />
                   </button>
                 </div>
+
+                {/* Browser panel */}
                 {activeTab === "browser" && (
-                  <div className="flex-grow bg-[#1f2937] relative flex items-center justify-center overflow-hidden">
+                  <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
                     {iframeUrl ? (
-                      <iframe
-                        src={iframeUrl}
-                        className="w-full h-full border-none"
-                      ></iframe>
+                      <>
+                        {/* URL bar */}
+                        <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
+                          <StatusDot active pulse />
+                          <span className="text-[9px] font-mono text-[#555] truncate">
+                            {iframeUrl}
+                          </span>
+                        </div>
+                        <iframe
+                          src={iframeUrl}
+                          className="w-full h-full border-none pt-7"
+                        />
+                      </>
                     ) : (
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center animate-pulse">
-                          <i className="ri-rocket-2-fill text-3xl text-blue-500"></i>
+                      <div className="flex flex-col items-center gap-4 text-center">
+                        <div className="w-14 h-14 border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                          <Globe size={20} className="text-[#333]" />
                         </div>
-                        <div className="text-gray-400 text-sm font-medium animate-fade-in">
-                          Ready to Launch
+                        <div>
+                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                            No preview
+                          </p>
+                          <p className="text-[10px] font-mono text-[#333]">
+                            Run your project to see it here
+                          </p>
                         </div>
+                        <button
+                          onClick={handleRunClick}
+                          disabled={!webContainer}
+                          className="flex items-center gap-2 py-2 px-4 text-[10px] font-mono border border-[#2a2a2a] text-[#777] bg-[#1a1a1a] hover:bg-[#1e1e1e] hover:text-[#ccc] transition-all duration-150 disabled:opacity-30 rounded-md"
+                        >
+                          <Play size={10} className="fill-[#777]" />
+                          Run Project
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
+
+                {/* Terminal panel */}
                 {activeTab === "terminal" && (
-                  <div className="flex-grow bg-[#0d1117] p-4 font-mono text-sm text-green-500 overflow-y-auto whitespace-pre-wrap break-words w-full max-w-full">
-                    {cleanTerminalOutput(terminalOutput) ||
-                      "Waiting for output..."}
-                    <div ref={terminalEndRef} />
+                  <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
+                    {/* Terminal chrome */}
+                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                      <span className="ml-2 section-label">TERMINAL</span>
+                      {runProcess && (
+                        <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-[#555]">
+                          <StatusDot active pulse />
+                          running
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Output */}
+                    <div className="styled-scroll flex-grow p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
+                      {cleanTerminalOutput(terminalOutput) ? (
+                        <span className="text-[#aaa]">
+                          {cleanTerminalOutput(terminalOutput)}
+                        </span>
+                      ) : (
+                        <span className="text-[#333] flex items-center gap-2">
+                          <span className="text-[#3a3a3a]">$</span>
+                          <span className="terminal-cursor text-[#3a3a3a]">
+                            ▌
+                          </span>
+                          <span>Waiting for output...</span>
+                        </span>
+                      )}
+                      <div ref={terminalEndRef} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -1202,66 +1544,88 @@ const Project = () => {
         </Panel>
       </PanelGroup>
 
+      {/* ── Staggered nav menu ── */}
       {!isSidePanelOpen && (
         <div className="fixed top-2 left-4 z-50">
           <StaggeredMenu
             items={menuItems}
             socialItems={socialItems}
-            menuButtonColor="#9ca3af"
-            openMenuButtonColor="#22d3ee"
-            accentColor="#22d3ee"
+            menuButtonColor="#444"
+            openMenuButtonColor="#ffffff"
+            accentColor="#ffffff"
           />
         </div>
       )}
 
-      {/* MODALS */}
+      {/* ════════════════════════════════════════
+          INVITE MODAL
+      ════════════════════════════════════════ */}
       {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-          <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-              <h2 className="text-white font-bold">Invite Member</h2>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-[#1e1e1e]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg flex items-center justify-center">
+                  <Users size={12} className="text-[#888]" />
+                </div>
+                <span className="text-[12px] font-semibold tracking-wide text-[#ccc]">
+                  Invite Member
+                </span>
+              </div>
               <button
                 onClick={() => {
                   setAddUserModalOpen(false);
                   setSearchedUser(null);
                   setSearchEmail("");
                 }}
-                className="text-gray-400"
+                className="text-[#444] hover:text-[#ccc] p-1.5 hover:bg-[#1e1e1e] rounded-lg transition-all"
               >
-                <i className="ri-close-line text-xl"></i>
+                <X size={13} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+
+            <div className="p-5 flex flex-col gap-4">
               <div>
-                <label className="text-xs text-gray-400 font-bold uppercase">
+                <label className="text-[9px] font-semibold tracking-widest uppercase text-[#555] block mb-2">
                   Email Address
                 </label>
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-2">
                   <input
                     type="text"
                     value={searchEmail}
                     onChange={(e) => setSearchEmail(e.target.value)}
-                    className="flex-grow bg-[#0d1117] border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 outline-none"
+                    onKeyPress={(e) => e.key === "Enter" && handleSearchUser()}
+                    className="flex-grow bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[11px] text-[#ddd] font-mono focus:border-[#3a3a3a] focus:bg-[#1e1e1e] outline-none placeholder-[#333] transition-all"
                     placeholder="user@example.com"
                   />
                   <button
                     onClick={handleSearchUser}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 rounded"
+                    className="border border-[#2a2a2a] bg-[#1a1a1a] text-[#666] hover:text-[#ccc] hover:border-[#3a3a3a] hover:bg-[#1e1e1e] px-3 text-[11px] font-mono transition-all group rounded-lg"
                   >
-                    <i className="ri-search-line"></i>
+                    <ChevronRight
+                      size={13}
+                      className="group-hover:translate-x-0.5 transition-transform"
+                    />
                   </button>
                 </div>
               </div>
+
               {searchedUser && (
-                <div className="bg-[#0d1117] p-3 rounded border border-gray-700 flex justify-between items-center animate-fade-in">
-                  <span className="text-sm text-gray-200">
-                    {searchedUser.email}
-                  </span>
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-3 flex justify-between items-center animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[10px] font-bold text-[#888]">
+                      {searchedUser.email[0]?.toUpperCase()}
+                    </div>
+                    <span className="text-[11px] font-mono text-[#ccc]">
+                      {searchedUser.email}
+                    </span>
+                  </div>
                   <button
                     onClick={handleSendInvite}
-                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded font-bold"
+                    className="text-[9px] font-mono tracking-wide bg-[#ececec] text-[#111] px-3 py-1.5 hover:bg-white transition-colors flex items-center gap-1.5 font-semibold rounded-lg"
                   >
-                    Send Invite
+                    <Check size={10} />
+                    Invite
                   </button>
                 </div>
               )}
@@ -1270,39 +1634,43 @@ const Project = () => {
         </div>
       )}
 
+      {/* ════════════════════════════════════════
+          DELETE MODAL
+      ════════════════════════════════════════ */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
-          <div className="bg-[#161b22] border border-red-900/50 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-sm overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
             <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center">
-                <i className="ri-alarm-warning-line text-red-500 text-2xl"></i>
+              <div className="w-12 h-12 border border-[#2a2a2a] bg-[#1c1c1c] rounded-xl flex items-center justify-center">
+                <AlertTriangle size={18} className="text-[#666]" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">
-                  Delete Item?
+                <h3 className="text-[13px] font-semibold text-[#ddd] mb-2 tracking-tight">
+                  Delete this item?
                 </h3>
-                <p className="text-sm text-gray-400">
-                  Are you sure you want to delete{" "}
-                  <span className="text-white font-mono bg-gray-800 px-1 rounded">
+                <p className="text-[10px] font-mono text-[#555] leading-relaxed">
+                  This will permanently delete{" "}
+                  <code className="text-[#aaa] bg-[#1e1e1e] border border-[#2a2a2a] px-1.5 py-0.5 rounded">
                     {fileToDelete}
-                  </span>
-                  ?
+                  </code>
                   <br />
-                  This action cannot be undone.
+                  and cannot be undone.
                 </p>
               </div>
             </div>
-            <div className="flex border-t border-gray-800">
+
+            <div className="flex border-t border-[#1e1e1e]">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-3 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors border-r border-gray-800"
+                className="flex-1 py-3.5 text-[10px] font-mono text-[#555] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors border-r border-[#1e1e1e] tracking-wider"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteFile}
-                className="flex-1 py-3 text-sm font-bold text-red-500 hover:bg-red-900/20 transition-colors"
+                className="flex-1 py-3.5 text-[10px] font-mono text-[#666] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors tracking-wider flex items-center justify-center gap-1.5"
               >
+                <Trash2 size={10} />
                 Delete
               </button>
             </div>

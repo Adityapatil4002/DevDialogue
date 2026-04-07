@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useMemo } from "react";
+import React, { useContext, useState, useEffect, useMemo, useRef } from "react";
 import { UserContext } from "../Context/user.context";
 import axios from "../Config/axios";
 import { useNavigate } from "react-router-dom";
@@ -11,35 +11,73 @@ import {
 import Loader from "../components/Loader";
 import { authClient } from "../Config/auth-client.js";
 
-// --- ANIMATION VARIANTS ---
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-  },
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.08 } },
 };
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30, scale: 0.95 },
+const item = {
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 80, damping: 15 },
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
-const GlowCard = ({ children, className = "", onClick }) => (
+const PulseDot = () => (
+  <span className="relative inline-flex items-center justify-center">
+    <span className="absolute w-3 h-3 rounded-full bg-emerald-500 opacity-20 animate-ping" />
+    <span className="relative w-[6px] h-[6px] rounded-full bg-emerald-500" />
+  </span>
+);
+
+const CellLabel = ({ children, right }) => (
+  <div className="flex items-center justify-between mb-[14px] flex-shrink-0">
+    <span className="text-[9px] font-semibold tracking-[0.14em] uppercase text-[#444]">
+      {children}
+    </span>
+    {right}
+  </div>
+);
+
+const Mag = ({ children, onClick, className = "", type = "button" }) => {
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { damping: 15, stiffness: 150 });
+  const sy = useSpring(y, { damping: 15, stiffness: 150 });
+  return (
+    <motion.button
+      ref={ref}
+      type={type}
+      style={{ x: sx, y: sy }}
+      onMouseMove={(e) => {
+        const r = ref.current.getBoundingClientRect();
+        x.set((e.clientX - r.left - r.width / 2) * 0.28);
+        y.set((e.clientY - r.top - r.height / 2) * 0.28);
+      }}
+      onMouseLeave={() => {
+        x.set(0);
+        y.set(0);
+      }}
+      onClick={onClick}
+      className={className}
+    >
+      {children}
+    </motion.button>
+  );
+};
+
+const Cell = ({ children, className = "", onClick, span = "" }) => (
   <motion.div
-    variants={cardVariants}
-    whileHover={{ y: -5, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.5)" }}
+    variants={item}
     onClick={onClick}
-    className={`relative rounded-3xl border border-[#1a1f2e] bg-[#0b0f19]/60 backdrop-blur-2xl p-6 overflow-hidden cursor-pointer group z-20
-                hover:border-blue-500/30 transition-all duration-500 ease-out ${className}`}
+    whileHover={{ borderColor: "#2a2a2a" }}
+    transition={{ duration: 0.2 }}
+    className={`bg-[#0a0a0a] p-5 flex flex-col border border-[#1a1a1a] relative overflow-hidden
+                ${onClick ? "cursor-pointer" : ""} ${span} ${className}`}
   >
-    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-    <div className="relative h-full z-10 flex flex-col">{children}</div>
+    {children}
   </motion.div>
 );
 
@@ -49,165 +87,102 @@ const Home = () => {
 
   const [project, setProject] = useState([]);
   const [invites, setInvites] = useState([]);
-  const [activityData, setActivityData] = useState([]);
+  const [activityData, setActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState(null);
-  const [projectName, setProjectName] = useState("");
-  const [createError, setCreateError] = useState("");
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const smoothX = useSpring(mouseX, { damping: 50, stiffness: 400, mass: 0.8 });
-  const smoothY = useSpring(mouseY, { damping: 50, stiffness: 400, mass: 0.8 });
+  const [isModalOpen, setModal] = useState(false);
+  const [isDeleteOpen, setDelete] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
+  const [projName, setProjName] = useState("");
+  const [createErr, setCreateErr] = useState("");
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [mouseX, mouseY]);
-
-  // ✅ No getToken() needed — axios sends session cookie automatically
-  useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setIsLoading(true);
+    let live = true;
+    (async () => {
       try {
-        const [projectRes, dashboardRes] = await Promise.all([
+        const [pRes, dRes] = await Promise.all([
           axios.get("/project/all"),
           axios.get("/user/dashboard"),
         ]);
-
-        if (isMounted) {
-          setProject(projectRes.data.projects);
-          setInvites(projectRes.data.invites || []);
-          setActivityData(dashboardRes.data.activityChartData || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch data:", err);
+        if (!live) return;
+        setProject(pRes.data.projects);
+        setInvites(pRes.data.invites || []);
+        setActivity(dRes.data.activityChartData || []);
+      } catch (e) {
+        console.error(e);
       } finally {
-        if (isMounted) setTimeout(() => setIsLoading(false), 800);
+        if (live) setTimeout(() => setIsLoading(false), 350);
       }
-    };
-    fetchData();
+    })();
     return () => {
-      isMounted = false;
+      live = false;
     };
   }, []);
 
-  const activityLevel = useMemo(() => {
-    if (!activityData || activityData.length === 0)
-      return {
-        label: "Quiet",
-        color: "#64748b",
-        badgeBg: "bg-slate-800",
-        percent: "0%",
-      };
-    const total = activityData
-      .slice(-7)
-      .reduce((acc, curr) => acc + curr.count, 0);
-    if (total === 0)
-      return {
-        label: "Quiet",
-        color: "#64748b",
-        badgeBg: "bg-slate-800",
-        percent: "0%",
-      };
-    if (total < 5)
-      return {
-        label: "Low",
-        color: "#0ea5e9",
-        badgeBg: "bg-sky-900/50",
-        percent: "+12%",
-      };
-    if (total < 10)
-      return {
-        label: "Medium",
-        color: "#f59e0b",
-        badgeBg: "bg-amber-900/50",
-        percent: "+45%",
-      };
-    return {
-      label: "High",
-      color: "#ef4444",
-      badgeBg: "bg-red-900/50",
-      percent: "+88%",
-    };
-  }, [activityData]);
+  const week = useMemo(() => activityData.slice(-13), [activityData]);
+  const total = useMemo(
+    () => week.reduce((a, b) => a + (b.count ?? 0), 0),
+    [week],
+  );
+  const maxVal = useMemo(
+    () => Math.max(...week.map((d) => d.count ?? 0), 1),
+    [week],
+  );
 
-  // ✅ No getToken() — cookies handle auth
-async function createProject(e) {
-  e.preventDefault();
-  setCreateError(""); // ✅ Clear previous error
-  try {
-    const res = await axios.post("/project/create", { name: projectName });
-    setProject((prev) => [...prev, res.data]);
-    setIsModalOpen(false);
-    setProjectName("");
-    setCreateError("");
-  } catch (error) {
-    // ✅ Show specific error from backend
-    const msg = error.response?.data || error.message;
-    if (typeof msg === "string" && msg.toLowerCase().includes("unique")) {
-      setCreateError(
-        "This project name is already taken. Please choose another.",
+  async function createProject(e) {
+    e.preventDefault();
+    setCreateErr("");
+    try {
+      const res = await axios.post("/project/create", { name: projName });
+      setProject((p) => [...p, res.data]);
+      setModal(false);
+      setProjName("");
+    } catch (err) {
+      const m = err.response?.data || err.message;
+      setCreateErr(
+        typeof m === "string" && m.toLowerCase().includes("unique")
+          ? "Name already taken."
+          : m || "Failed to create project.",
       );
-    } else {
-      setCreateError(msg || "Failed to create project. Please try again.");
     }
   }
-}
 
-  const handleAccept = async (projectId) => {
+  const handleAccept = async (id) => {
     try {
-      await axios.put("/project/accept-invite", { projectId });
+      await axios.put("/project/accept-invite", { projectId: id });
       window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
-
-  const handleReject = async (projectId) => {
+  const handleReject = async (id) => {
     try {
-      await axios.put("/project/reject-invite", { projectId });
-      setInvites((prev) => prev.filter((i) => i._id !== projectId));
-    } catch (err) {
-      console.error(err);
+      await axios.put("/project/reject-invite", { projectId: id });
+      setInvites((p) => p.filter((i) => i._id !== id));
+    } catch (e) {
+      console.error(e);
     }
   };
-
-  const confirmDeleteProject = (e, proj) => {
+  const confirmDelete = (e, proj) => {
     e.stopPropagation();
-    setProjectToDelete(proj);
-    setIsDeleteModalOpen(true);
+    setToDelete(proj);
+    setDelete(true);
   };
-
-  const executeDeleteOrLeave = async () => {
-    if (!projectToDelete) return;
-    const isOwner = projectToDelete.owner?.toString() === user?._id?.toString();
-    setProject((prev) => prev.filter((p) => p._id !== projectToDelete._id));
-    setIsDeleteModalOpen(false);
-
+  const execDelete = async () => {
+    if (!toDelete) return;
+    const own = toDelete.owner?.toString() === user?._id?.toString();
+    setProject((p) => p.filter((x) => x._id !== toDelete._id));
+    setDelete(false);
     try {
-      if (isOwner) {
-        await axios.delete("/project/delete", {
-          data: { projectId: projectToDelete._id },
-        });
-      } else {
-        await axios.put("/project/leave", { projectId: projectToDelete._id });
-      }
-    } catch (error) {
-      alert("Failed to delete/leave project");
+      own
+        ? await axios.delete("/project/delete", {
+            data: { projectId: toDelete._id },
+          })
+        : await axios.put("/project/leave", { projectId: toDelete._id });
+    } catch {
+      alert("Failed");
       window.location.reload();
     }
   };
-
-  // ✅ Logout via Better Auth
   const handleLogout = async () => {
     await authClient.signOut();
     setUser(null);
@@ -217,561 +192,555 @@ async function createProject(e) {
   if (isLoading) return <Loader />;
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white p-4 md:p-8 font-sans selection:bg-blue-500/30 flex items-center justify-center overflow-hidden relative">
-      <motion.div
-        style={{
-          left: smoothX,
-          top: smoothY,
-          translateX: "-50%",
-          translateY: "-50%",
-        }}
-        className="fixed pointer-events-none w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-blue-600/10 via-purple-600/10 to-transparent blur-[80px] z-0 mix-blend-screen"
-      />
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="relative z-10 w-full max-w-[85rem] h-[85vh] grid grid-cols-1 md:grid-cols-4 grid-rows-6 gap-6"
+    <main className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/10 flex flex-col">
+      {/* NAV */}
+      <motion.nav
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="flex-shrink-0 flex items-center justify-between px-6 h-11 border-b border-[#1a1a1a] bg-[#050505] z-50"
       >
-        {/* 1. CREATE PROJECT */}
-        <GlowCard
-          className="col-span-1 row-span-2 group"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <div className="h-full flex flex-col justify-center items-center text-center relative">
-            <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-2 border-dashed border-blue-500/20 rounded-full"
-              />
-              <motion.div
-                animate={{ rotate: -360 }}
-                transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-2 border border-white/10 rounded-full"
-              />
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl rotate-45 shadow-[0_0_40px_rgba(59,130,246,0.4)] flex items-center justify-center group-hover:rotate-90 transition-transform duration-500">
-                <i className="ri-add-line text-3xl text-white -rotate-45 group-hover:-rotate-90 transition-transform duration-500"></i>
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
-              Initialize
-            </h2>
-            <p className="text-xs text-gray-500 mt-1 tracking-wider uppercase font-medium">
-              New Workspace
-            </p>
-          </div>
-        </GlowCard>
-
-        {/* 2. ACTIVITY LEVEL */}
-        <GlowCard className="col-span-1 row-span-2 relative overflow-hidden group">
-          <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
-                Activity
-              </h2>
-              <p className="text-xs text-gray-600 mt-1">Real-time intensity</p>
-            </div>
-            <div className="p-2 rounded-full bg-white/5 text-white/80">
-              <i className="ri-pulse-line text-lg"></i>
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-24 w-full pointer-events-none z-0">
-            <svg
-              className="w-full h-full"
-              viewBox="0 0 100 50"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={activityLevel.color}
-                    stopOpacity="0.5"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={activityLevel.color}
-                    stopOpacity="0"
-                  />
-                </linearGradient>
-              </defs>
-              <motion.path
-                d="M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z"
-                fill="url(#waveGradient)"
-                animate={{
-                  d: [
-                    "M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z",
-                    "M0,25 C30,40 70,10 100,25 L100,50 L0,50 Z",
-                    "M0,25 C30,10 70,40 100,25 L100,50 L0,50 Z",
-                  ],
-                }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              <motion.path
-                d="M0,25 C30,10 70,40 100,25"
-                fill="none"
-                stroke={activityLevel.color}
-                strokeWidth="0.5"
-                animate={{
-                  d: [
-                    "M0,25 C30,10 70,40 100,25",
-                    "M0,25 C30,40 70,10 100,25",
-                    "M0,25 C30,10 70,40 100,25",
-                  ],
-                }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-            </svg>
-          </div>
-          <div className="absolute bottom-6 left-6 z-20">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold text-white tracking-tighter">
-                {activityLevel.label}
-              </span>
-              <span
-                className={`text-[10px] font-bold px-2 py-1 rounded-md text-white ${activityLevel.badgeBg}`}
-              >
-                {activityLevel.percent}
-              </span>
-            </div>
-          </div>
-        </GlowCard>
-
-        {/* 3. INBOX */}
-        <GlowCard className="col-span-1 md:col-span-2 row-span-4 overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-8 z-10 relative">
-            <div className="flex items-center gap-4">
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-              >
-                <i className="ri-mail-send-line text-xl"></i>
-              </motion.div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Requests</h2>
-                <p className="text-xs text-gray-500 font-medium">
-                  Pending Invitations
-                </p>
-              </div>
-            </div>
-            {invites.length > 0 && (
-              <span className="w-6 h-6 flex items-center justify-center bg-white text-black text-[10px] font-bold rounded-full shadow-lg shadow-white/20">
-                {invites.length}
-              </span>
-            )}
-          </div>
-          <div className="relative flex-1 overflow-hidden h-full">
-            <div className="space-y-3 overflow-y-auto h-full custom-scrollbar pr-2">
-              {invites.length > 0 ? (
-                invites.map((invite, i) => (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.02, x: 5 }}
-                    transition={{
-                      delay: i * 0.1,
-                      type: "spring",
-                      stiffness: 100,
-                    }}
-                    key={invite._id}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-purple-500/30 transition-all group shadow-sm hover:shadow-purple-900/10"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold text-white shadow-lg">
-                        {invite.name?.[0] || "U"}
-                      </div>
-                      <div>
-                        <span className="block text-sm font-bold text-gray-200 group-hover:text-white transition-colors">
-                          {invite.name}
-                        </span>
-                        <span className="text-[10px] text-gray-500 uppercase tracking-wide">
-                          Collaboration Invite
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAccept(invite._id)}
-                        className="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black flex items-center justify-center transition-colors"
-                      >
-                        <i className="ri-check-line"></i>
-                      </button>
-                      <button
-                        onClick={() => handleReject(invite._id)}
-                        className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-black flex items-center justify-center transition-colors"
-                      >
-                        <i className="ri-close-line"></i>
-                      </button>
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center relative">
-                  <div className="relative w-32 h-32 flex items-center justify-center mb-6">
-                    {[...Array(3)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: [0, 0.3, 0], scale: [0.5, 1.8] }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          delay: i * 1,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute inset-0 rounded-full border border-purple-500/30"
-                      />
-                    ))}
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 10,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                      className="absolute inset-0 rounded-full border border-dashed border-gray-600/30"
-                    />
-                    <motion.div
-                      animate={{ rotate: -360 }}
-                      transition={{
-                        duration: 15,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                      className="absolute inset-4 rounded-full border border-dotted border-purple-500/20"
-                    />
-                    <div className="relative z-10 w-16 h-16 rounded-full bg-[#1a1f2e] flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-                      <i className="ri-radar-line text-2xl text-purple-400/80"></i>
-                    </div>
-                  </div>
-                  <p className="text-xs font-mono tracking-widest text-gray-500 animate-pulse">
-                    All caught up
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </GlowCard>
-
-        {/* 4. PROJECTS */}
-        <GlowCard className="col-span-1 md:col-span-2 row-span-4 relative overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
-                <i className="ri-folder-shield-2-line text-xl"></i>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Projects</h2>
-                <p className="text-xs text-gray-500 font-medium">
-                  Active Workspaces
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="relative flex-1 overflow-hidden h-full">
-            <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 h-full pb-4">
-              {project.map((proj, i) => (
-                <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={proj._id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/project/${proj._id}`);
-                  }}
-                  className="group relative p-4 rounded-2xl bg-[#13161c] border border-[#252a3d] hover:border-blue-500/50 hover:bg-[#1a1f2e] transition-all cursor-pointer flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#0b0f19] flex items-center justify-center text-gray-500 group-hover:text-white group-hover:bg-blue-600 transition-all shadow-inner">
-                      <i className="ri-code-box-line text-xl"></i>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">
-                        {proj.name}
-                      </h3>
-                      <p className="text-[10px] text-gray-500">
-                        Last edited just now
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex -space-x-2">
-                      {proj.users?.slice(0, 3).map((u, idx) => (
-                        <div
-                          key={idx}
-                          className="w-6 h-6 rounded-full bg-gray-700 border-2 border-[#13161c] flex items-center justify-center text-[8px] text-white font-bold"
-                        >
-                          {u.email?.[0]?.toUpperCase() || "U"}
-                        </div>
-                      ))}
-                      {proj.users?.length > 3 && (
-                        <div className="w-6 h-6 rounded-full bg-gray-800 border-2 border-[#13161c] flex items-center justify-center text-[8px] text-gray-400">
-                          +{proj.users.length - 3}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={(e) => confirmDeleteProject(e, proj)}
-                      className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-gray-600 hover:text-red-500 flex items-center justify-center transition-colors"
-                    >
-                      <i
-                        className={
-                          proj.owner?.toString() === user?._id?.toString()
-                            ? "ri-delete-bin-line"
-                            : "ri-logout-box-r-line"
-                        }
-                      ></i>
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-              {project.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-gray-600">
-                  <i className="ri-folder-add-line text-4xl opacity-20 mb-2"></i>
-                  <p className="text-xs font-mono">No repositories found</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </GlowCard>
-
-        {/* 5. DASHBOARD */}
-        <GlowCard className="col-span-1 row-span-2 relative overflow-hidden flex flex-col justify-between">
-          <div className="flex justify-between items-center relative z-10">
-            <div>
-              <h3 className="text-sm font-bold text-white">Dashboard</h3>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">
-                System Overview
-              </p>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/dashboard");
-              }}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <i className="ri-arrow-right-up-line"></i>
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mt-2 flex-1 relative z-10">
-            <div className="bg-[#13161c] border border-white/5 rounded-2xl p-3 flex flex-col justify-between group hover:border-blue-500/20 transition-colors">
-              <div className="flex justify-between items-start">
-                <i className="ri-folder-3-line text-blue-400"></i>
-                <span className="text-[10px] text-gray-500">PROJS</span>
-              </div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {project.length}
-              </div>
-            </div>
-            <div className="bg-[#13161c] border border-white/5 rounded-2xl p-3 flex flex-col justify-between group hover:border-purple-500/20 transition-colors">
-              <div className="flex justify-between items-start">
-                <i className="ri-mail-star-line text-purple-400"></i>
-                <span className="text-[10px] text-gray-500">REQS</span>
-              </div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {invites.length}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 relative z-10 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] text-emerald-500 font-mono tracking-wider">
-              SYSTEM ONLINE
+        <div className="flex items-center gap-2">
+          <div className="w-[26px] h-[26px] border border-[#222] flex items-center justify-center">
+            <span className="text-[9px] font-bold tracking-widest text-[#555]">
+              DD
             </span>
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/10 to-transparent opacity-20 pointer-events-none"></div>
-        </GlowCard>
+          <span className="text-[13px] font-semibold tracking-[0.06em]">
+            Dev<span className="text-[#555] font-normal">Dialogue</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-6">
+          {[
+            ["Dashboard", "/dashboard"],
+            ["Profile", "/profile"],
+          ].map(([label, path]) => (
+            <motion.button
+              key={path}
+              onClick={() => navigate(path)}
+              className="text-[11px] tracking-[0.08em] uppercase text-[#555] hover:text-white transition-colors relative group"
+            >
+              {label}
+              <span className="absolute -bottom-px left-0 w-0 h-px bg-white group-hover:w-full transition-all duration-250" />
+            </motion.button>
+          ))}
+        </div>
+      </motion.nav>
 
-        {/* 6. PROFILE */}
-        <GlowCard
-          className="col-span-1 row-span-2 text-center p-0 overflow-hidden group bg-gradient-to-b from-[#13161c] to-[#0b0f19]"
-          onClick={() => navigate("/profile")}
+      {/* GRID */}
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="flex-1 grid grid-cols-4 grid-rows-2 gap-px bg-[#1a1a1a] min-h-0"
+      >
+        {/* 1. CREATE */}
+        <Cell
+          onClick={() => setModal(true)}
+          className="!bg-[#050505] border-dashed hover:!bg-[#080808] items-center justify-center gap-3 group"
         >
-          <div className="h-full flex flex-col items-center justify-center p-6 relative z-10">
-            <div className="relative mb-4">
-              <div className="w-20 h-20 rounded-full bg-[#1a1f2e] border-2 border-gray-700/50 shadow-2xl flex items-center justify-center overflow-hidden group-hover:border-white/40 transition-all duration-300">
-                <span className="text-3xl font-black bg-gradient-to-br from-white to-gray-500 bg-clip-text text-transparent">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
+          <motion.div
+            className="w-10 h-10 border border-[#222] flex items-center justify-center text-[#555] text-xl font-light transition-colors group-hover:border-[#444]"
+            whileHover={{ rotate: 90 }}
+            transition={{ duration: 0.25 }}
+          >
+            +
+          </motion.div>
+          <span className="text-[10px] tracking-[0.12em] uppercase text-[#444] group-hover:text-[#777] transition-colors">
+            New project
+          </span>
+        </Cell>
+
+        {/* 2. ACTIVITY */}
+        <Cell>
+          <CellLabel right={<PulseDot />}>Activity</CellLabel>
+          <motion.div
+            key={total}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[52px] font-semibold leading-none tracking-[-0.04em] tabular-nums text-white mb-1"
+          >
+            {total}
+          </motion.div>
+          <div className="text-[10px] font-mono text-[#444] mb-3">
+            commits this week
+          </div>
+          <div className="relative flex items-end gap-[3px] h-[52px] mt-auto mb-3">
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-[#1a1a1a]" />
+            {week.map((d, i) => {
+              const h = Math.max(4, ((d.count ?? 0) / maxVal) * 52);
+              const hi = (d.count ?? 0) > maxVal * 0.6;
+              const mi = (d.count ?? 0) > maxVal * 0.3;
+              return (
+                <motion.div
+                  key={i}
+                  className={`flex-1 cursor-pointer group/b relative
+                    ${hi ? "bg-white" : mi ? "bg-[#555]" : "bg-[#222]"}`}
+                  style={{ height: 4 }}
+                  animate={{ height: h }}
+                  transition={{
+                    delay: 0.4 + i * 0.04,
+                    duration: 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  whileHover={{ filter: "brightness(1.5)", scaleY: 1.1 }}
+                >
+                  <div className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 bg-white text-black text-[8px] font-mono px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover/b:opacity-100 transition-opacity pointer-events-none">
+                    {d.count ?? 0}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+          <div className="relative h-px bg-[#1a1a1a] mb-3 overflow-hidden">
+            <motion.div
+              className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              animate={{ x: ["-2rem", "100%"] }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "linear",
+                repeatDelay: 1,
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[9px] font-mono text-[#444]">
+            <PulseDot />
+            <span className="tracking-wider">system online</span>
+          </div>
+        </Cell>
+
+        {/* 3. PROJECTS 2×2 */}
+        <Cell span="col-span-2 row-span-2">
+          <CellLabel
+            right={
+              <span className="text-[9px] font-mono text-[#444]">
+                {project.length} active
+              </span>
+            }
+          >
+            Projects
+          </CellLabel>
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
+            {project.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2">
+                {[100, 70, 90].map((w, i) => (
+                  <motion.div
+                    key={i}
+                    className="h-px bg-[#1a1a1a]"
+                    style={{ width: w }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                  />
+                ))}
+                <span className="text-[9px] tracking-[0.18em] uppercase text-[#333] font-mono mt-2">
+                  no repositories
                 </span>
               </div>
-              <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#0b0f19] rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              @{user?.email?.split("@")[0] || "User"}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1 font-medium">
-              Authorized Personnel
-            </p>
-            {/* ✅ Logout button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
-              className="mt-4 text-xs text-gray-600 hover:text-red-400 transition-colors flex items-center gap-1"
-            >
-              <i className="ri-logout-box-r-line"></i> Sign out
-            </button>
+            ) : (
+              <AnimatePresence>
+                {project.map((proj, idx) => (
+                  <motion.div
+                    key={proj._id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ delay: idx * 0.05 }}
+                    onClick={() => navigate(`/project/${proj._id}`)}
+                    className="flex items-center justify-between py-[18px] border-b border-[#111] last:border-b-0 cursor-pointer group relative hover:pl-2.5 transition-all duration-150 overflow-hidden"
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white scale-y-0 group-hover:scale-y-100 transition-transform duration-200 origin-bottom" />
+                    <div className="w-7 h-7 border border-[#1a1a1a] bg-[#050505] flex items-center justify-center text-[10px] font-bold font-mono text-[#555] flex-shrink-0 group-hover:border-[#333] group-hover:text-white transition-all">
+                      {proj.name?.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0 mx-2.5">
+                      <div className="text-[13px] text-[#ccc] font-medium truncate group-hover:text-white transition-colors">
+                        {proj.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-[#444] mt-0.5 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-[#333]" />
+                        {proj.users?.length ?? 0} members
+                        <span className="w-1 h-1 rounded-full bg-emerald-500/50" />
+                        active
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                      <div className="flex">
+                        {proj.users?.slice(0, 3).map((u, i) => (
+                          <div
+                            key={i}
+                            className="w-[18px] h-[18px] bg-[#1a1a1a] border border-[#111] text-[8px] text-[#666] flex items-center justify-center font-semibold -ml-1 first:ml-0"
+                          >
+                            {u.email?.[0]?.toUpperCase()}
+                          </div>
+                        ))}
+                        {proj.users?.length > 3 && (
+                          <div className="w-[18px] h-[18px] bg-[#1a1a1a] border border-[#111] text-[7px] font-mono text-[#555] flex items-center justify-center -ml-1">
+                            +{proj.users.length - 3}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => confirmDelete(e, proj)}
+                        className="text-[11px] text-[#333] hover:text-red-500 transition-colors w-5 h-5 flex items-center justify-center"
+                      >
+                        ⊘
+                      </button>
+                      <motion.span
+                        className="text-[#333] group-hover:text-white transition-colors text-[13px]"
+                        animate={{ x: [0, 3, 0] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1.8,
+                          ease: "easeInOut",
+                        }}
+                      >
+                        →
+                      </motion.span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
-        </GlowCard>
+        </Cell>
+
+        {/* 4. INBOX 2×2 */}
+        <Cell span="col-span-2 row-span-2">
+          <CellLabel
+            right={
+              invites.length > 0 && (
+                <motion.span
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 15,
+                    delay: 0.2,
+                  }}
+                  className="bg-white text-black text-[9px] font-bold font-mono px-[6px] py-[1px] min-w-[18px] text-center"
+                >
+                  {invites.length}
+                </motion.span>
+              )
+            }
+          >
+            Inbox
+          </CellLabel>
+          <div className="flex flex-col gap-[6px] flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
+            {invites.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="flex-1 flex flex-col items-center justify-center gap-2 opacity-30"
+              >
+                {[120, 80, 100].map((w, i) => (
+                  <motion.div
+                    key={i}
+                    className="h-px bg-[#1f1f1f]"
+                    style={{ width: w }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                  />
+                ))}
+                <span className="text-[9px] tracking-[0.18em] uppercase text-[#444] font-mono mt-2">
+                  all clear
+                </span>
+              </motion.div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {invites.map((invite, idx) => (
+                  <motion.div
+                    key={invite._id}
+                    layout
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16, transition: { duration: 0.2 } }}
+                    transition={{
+                      delay: idx * 0.07,
+                      duration: 0.35,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="flex items-center justify-between p-2.5 border border-[#1a1a1a] hover:border-[#2a2a2a] hover:-translate-x-1 transition-all duration-150 group relative overflow-hidden"
+                  >
+                    <motion.div
+                      className="absolute left-0 top-0 bottom-0 w-[2px] bg-white/20"
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      transition={{ delay: idx * 0.07 + 0.15, duration: 0.3 }}
+                      style={{ transformOrigin: "top" }}
+                    />
+                    <div className="flex items-center gap-3 flex-1 min-w-0 relative z-10">
+                      <motion.div
+                        className="w-[26px] h-[26px] bg-[#111] border border-[#222] flex items-center justify-center text-[10px] font-semibold text-[#888] flex-shrink-0"
+                        whileHover={{ scale: 1.08 }}
+                      >
+                        {invite.name?.[0]?.toUpperCase()}
+                      </motion.div>
+                      <div>
+                        <div className="text-[13px] text-[#ccc] font-medium group-hover:text-white transition-colors">
+                          {invite.name}
+                        </div>
+                        <div className="text-[9px] tracking-[0.1em] uppercase text-[#444] mt-0.5 flex items-center gap-1.5">
+                          <motion.span
+                            className="w-1 h-1 rounded-full bg-white/40"
+                            animate={{ opacity: [1, 0.3, 1] }}
+                            transition={{ repeat: Infinity, duration: 1.8 }}
+                          />
+                          Collaboration invite
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 relative z-10">
+                      <Mag
+                        onClick={() => handleAccept(invite._id)}
+                        className="w-7 h-7 flex items-center justify-center text-[13px] text-[#444] hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 transition-all"
+                      >
+                        ✓
+                      </Mag>
+                      <Mag
+                        onClick={() => handleReject(invite._id)}
+                        className="w-7 h-7 flex items-center justify-center text-[13px] text-[#444] hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+                      >
+                        ✕
+                      </Mag>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+        </Cell>
+
+        {/* 5. PROFILE */}
+        <Cell onClick={() => navigate("/profile")} className="group">
+          <CellLabel>Profile</CellLabel>
+          <motion.div
+            className="w-10 h- bg-[#111] border border-[#222] text-[16px] font-semibold text-[#ccc] flex items-center justify-center mb-3.5 group-hover:border-[#333] transition-all"
+            whileHover={{ scale: 1.04, rotate: 3 }}
+          >
+            {user?.email?.charAt(0).toUpperCase()}
+          </motion.div>
+          <div className="text-[15px] font-semibold text-white mb-1">
+            {user?.email?.split("@")[0]}
+          </div>
+          <div className="text-[10px] font-mono text-[#444]">{user?.email}</div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLogout();
+            }}
+            className="mt-auto pt-3 border-t border-[#1a1a1a] text-[9px] tracking-[0.12em] uppercase text-[#444] hover:text-red-400 transition-colors flex items-center gap-1.5 w-full text-left bg-transparent"
+          >
+            → Sign out
+          </button>
+        </Cell>
+
+        {/* 6. OVERVIEW */}
+        <Cell>
+          <CellLabel>Overview</CellLabel>
+          <div className="grid grid-cols-2 gap-1.5 mt-auto">
+            {[
+              { k: "Projects", v: project.length, icon: "▣" },
+              { k: "Requests", v: invites.length, icon: "◈" },
+              {
+                k: "Members",
+                v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0),
+                icon: "◉",
+              },
+              { k: "Active", v: project.length, icon: "◎" },
+            ].map(({ k, v, icon }, i) => (
+              <motion.div
+                key={k}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.3 + i * 0.07,
+                  duration: 0.35,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                whileHover={{ y: -2, borderColor: "#2a2a2a" }}
+                className="bg-[#050505] border border-[#1a1a1a] px-3 py-2.5 transition-colors"
+              >
+                <div className="text-[9px] tracking-[0.12em] uppercase text-[#444] font-mono mb-1.5 flex items-center gap-1.5">
+                  <span className="text-[10px]">{icon}</span>
+                  {k}
+                </div>
+                <motion.div
+                  className="text-[26px] font-semibold text-white leading-none tracking-[-0.03em]"
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{
+                    delay: 0.45 + i * 0.07,
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 18,
+                  }}
+                >
+                  {v}
+                </motion.div>
+              </motion.div>
+            ))}
+          </div>
+        </Cell>
       </motion.div>
 
-      {/* MODALS */}
+      {/* CREATE MODAL */}
       <AnimatePresence>
         {isModalOpen && (
           <div
-            className="fixed inset-0 z-50 flex justify-center items-center p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
             onClick={() => {
-              setIsModalOpen(false);
-              setCreateError(""); // ✅ Clear error when closing
-              setProjectName("");
+              setModal(false);
+              setCreateErr("");
+              setProjName("");
             }}
           >
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0f131a] border border-[#1f2533] w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative overflow-hidden z-10"
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 bg-[#0a0a0a] border border-[#222] w-full max-w-md p-8"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-white mb-8">
-                New Project
-              </h2>
-
+              {[
+                "top-0 left-0 border-l border-t",
+                "top-0 right-0 border-r border-t",
+                "bottom-0 left-0 border-l border-b",
+                "bottom-0 right-0 border-r border-b",
+              ].map((c, i) => (
+                <div
+                  key={i}
+                  className={`absolute w-4 h-4 border-white/20 ${c}`}
+                />
+              ))}
+              <div className="text-[9px] tracking-[0.18em] uppercase text-[#555] mb-7 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-white/20" />
+                Initialize project
+              </div>
               <form onSubmit={createProject}>
-                <div className="mb-6">
-                  <label className="block text-sm font-bold text-neutral-300 mb-3">
-                    Project Name
-                  </label>
+                <div className="relative mb-7">
                   <input
                     type="text"
-                    value={projectName}
+                    value={projName}
                     onChange={(e) => {
-                      setProjectName(e.target.value);
-                      if (createError) setCreateError(""); // ✅ Clear error on typing
+                      setProjName(e.target.value);
+                      setCreateErr("");
                     }}
-                    className={`w-full bg-[#141820] border text-white rounded-xl py-4 px-4 focus:outline-none transition-all placeholder-neutral-600
-              ${
-                createError
-                  ? "border-red-500 focus:border-red-500" // ✅ Red border on error
-                  : "border-[#1f2533] focus:border-cyan-500"
-              }`}
-                    placeholder="e.g. Quantum Dashboard"
+                    className={`w-full bg-transparent border-b py-3 text-white text-[15px] font-medium focus:outline-none placeholder-[#2a2a2a] transition-colors ${createErr ? "border-red-500/40" : "border-[#222] focus:border-[#555]"}`}
+                    placeholder="project-name"
                     required
                     autoFocus
                   />
-
-                  {/* ✅ Error message shown below input */}
-                  {createError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20"
-                    >
-                      <i className="ri-error-warning-line text-red-400 text-lg flex-shrink-0"></i>
-                      <p className="text-red-400 text-sm font-medium">
-                        {createError}
-                      </p>
-                    </motion.div>
-                  )}
+                  <motion.div
+                    className="absolute bottom-0 left-0 h-px bg-white"
+                    animate={{ width: projName ? "100%" : "0%" }}
+                    transition={{ duration: 0.25 }}
+                  />
                 </div>
-
-                <div className="flex justify-end gap-3">
+                <AnimatePresence>
+                  {createErr && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="text-[11px] text-red-400 font-mono mb-5 flex items-center gap-1.5"
+                    >
+                      ⚠ {createErr}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                <div className="flex justify-end items-center gap-5">
                   <button
                     type="button"
                     onClick={() => {
-                      setIsModalOpen(false);
-                      setCreateError(""); // ✅ Clear error on cancel
-                      setProjectName("");
+                      setModal(false);
+                      setCreateErr("");
+                      setProjName("");
                     }}
-                    className="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+                    className="text-[11px] tracking-[0.1em] uppercase text-[#555] hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
-                  <button
+                  <Mag
                     type="submit"
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm hover:opacity-90 transition-opacity"
+                    className="text-[11px] tracking-[0.08em] uppercase font-semibold text-black bg-white px-6 py-2.5 hover:bg-[#e0e0e0] transition-colors relative overflow-hidden"
                   >
-                    Create Project
-                  </button>
+                    Create
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "linear",
+                      }}
+                    />
+                  </Mag>
                 </div>
               </form>
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {isDeleteModalOpen && (
+      {/* DELETE MODAL */}
+      <AnimatePresence>
+        {isDeleteOpen && (
           <div
-            className="fixed inset-0 z-[60] flex justify-center items-center p-4"
-            onClick={() => setIsDeleteModalOpen(false)}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+            onClick={() => setDelete(false)}
           >
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.94 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[#0f131a] border border-red-900/50 w-full max-w-sm p-6 rounded-2xl shadow-2xl relative overflow-hidden z-20"
+              exit={{ opacity: 0, scale: 0.94 }}
+              transition={{ duration: 0.2 }}
+              className="relative z-10 bg-[#0a0a0a] border border-red-500/20 w-full max-w-sm p-7"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                  <i
-                    className={`text-3xl text-red-500 ${projectToDelete?.owner?.toString() === user?._id?.toString() ? "ri-delete-bin-line" : "ri-logout-box-r-line"}`}
-                  ></i>
-                </div>
-                <h2 className="text-xl font-bold text-white mb-2">
-                  {projectToDelete?.owner?.toString() === user?._id?.toString()
-                    ? "Delete Project?"
-                    : "Leave Project?"}
-                </h2>
-                <div className="flex gap-3 w-full mt-6">
-                  <button
-                    onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 py-3 rounded-xl bg-[#1a1f2e] text-white text-sm font-bold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={executeDeleteOrLeave}
-                    className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-900/20"
-                  >
-                    {projectToDelete?.owner?.toString() ===
-                    user?._id?.toString()
-                      ? "Delete"
-                      : "Leave"}
-                  </button>
-                </div>
+              <div className="text-[9px] tracking-[0.18em] uppercase text-red-400 mb-3 font-semibold">
+                {toDelete?.owner?.toString() === user?._id?.toString()
+                  ? "Delete project"
+                  : "Leave project"}
+              </div>
+              <p className="text-[12px] text-[#666] font-mono mb-7 leading-relaxed">
+                {toDelete?.owner?.toString() === user?._id?.toString()
+                  ? `Permanently delete "${toDelete?.name}"?`
+                  : `Leave "${toDelete?.name}"?`}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDelete(false)}
+                  className="flex-1 py-2.5 border border-[#222] text-[11px] uppercase tracking-[0.08em] text-[#555] hover:text-white hover:border-[#333] transition-all"
+                >
+                  Cancel
+                </button>
+                <Mag
+                  onClick={execDelete}
+                  className="flex-1 py-2.5 bg-red-500/10 border border-red-500/30 text-[11px] uppercase tracking-[0.08em] text-red-400 hover:bg-red-500/20 transition-all"
+                >
+                  {toDelete?.owner?.toString() === user?._id?.toString()
+                    ? "Delete"
+                    : "Leave"}
+                </Mag>
               </div>
             </motion.div>
           </div>

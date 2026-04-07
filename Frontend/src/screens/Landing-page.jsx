@@ -16,8 +16,8 @@ import {
   Cpu,
   Sparkles,
   CheckCircle2,
-  LayoutTemplate,
-  FolderTree,
+  Layout,
+  Folder,
   FileCode,
   Users,
   PlayCircle,
@@ -49,7 +49,6 @@ import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 import logo from "../assets/logo.png";
 
-// ✅ REPLACED: Clerk import → Better Auth user context
 import { useUser } from "../Context/user.context.jsx";
 
 function cn(...inputs) {
@@ -160,7 +159,6 @@ const ParticleField = React.memo(() => {
 
 // ─── NAVBAR ─────────────────────────────────────────────────
 const Navbar = () => {
-  // ✅ REPLACED: useAuth() → useUser()
   const { user, loading } = useUser();
   const authed = !loading && !!user;
 
@@ -234,7 +232,6 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-4">
-          {/* ✅ REPLACED: !isLoaded → loading */}
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
           ) : (
@@ -281,7 +278,6 @@ const Navbar = () => {
                 </a>
               ))}
               <hr className="border-white/10" />
-              {/* ✅ REPLACED: !isLoaded → loading */}
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-gray-600 mx-auto" />
               ) : !authed ? (
@@ -312,7 +308,6 @@ const Navbar = () => {
 
 // ─── HERO SECTION ───────────────────────────────────────────
 const HeroSection = () => {
-  // ✅ REPLACED: useAuth() → useUser()
   const { user, loading } = useUser();
   const authed = !loading && !!user;
 
@@ -446,209 +441,422 @@ const HeroSection = () => {
   );
 };
 
-// ─── ANIMATED CHAT DEMO (for Feature 1 center) ─────────────
+// ─── ANIMATED GROUP CHAT DEMO (Proportional Size & Continuous) ─────────────
 const ChatFlowAnimation = () => {
-  const nodes = [
-    { id: "A", x: 15, y: 30, label: "Elena" },
-    { id: "B", x: 50, y: 15, label: "You" },
-    { id: "C", x: 85, y: 30, label: "David" },
-    { id: "D", x: 30, y: 70, label: "Sarah" },
-    { id: "E", x: 70, y: 70, label: "Mike" },
-  ];
-  const edges = [
-    [0, 1],
-    [1, 2],
-    [0, 3],
-    [2, 4],
-    [3, 4],
-    [1, 3],
-    [1, 4],
+  const [messages, setMessages] = useState([]);
+  const scrollRef = useRef(null);
+
+  const messageSequence = [
+    {
+      user: "Elena",
+      avatar: "E",
+      text: "Just pushed the new API endpoints to dev. Ready for testing! 🚀",
+      color: "from-blue-500 to-blue-600",
+      delay: 0,
+    },
+    {
+      user: "David",
+      avatar: "D",
+      text: "Perfect timing! I'll test the frontend integration now.",
+      color: "from-purple-500 to-purple-600",
+      delay: 1400,
+    },
+    {
+      user: "Sarah",
+      avatar: "S",
+      text: "Should we add rate limiting to prevent abuse?",
+      color: "from-pink-500 to-pink-600",
+      delay: 2800,
+    },
+    {
+      user: "You",
+      avatar: "ME",
+      text: "@ai create a rate limiting middleware with Redis",
+      color: "from-white to-gray-200",
+      isMe: true,
+      hasAI: true,
+      delay: 4200,
+    },
+    {
+      user: "AI",
+      avatar: "✦",
+      text: "Analyzing your project structure...",
+      color: "from-white to-gray-300",
+      isAI: true,
+      isTyping: true,
+      delay: 5800,
+    },
+    {
+      user: "AI",
+      avatar: "✦",
+      text: "✓ Created middleware/rateLimiter.js with Redis integration\n✓ Added express-rate-limit configuration\n✓ Updated server.js with middleware",
+      color: "from-white to-gray-300",
+      isAI: true,
+      hasCode: true,
+      delay: 8000,
+    },
+    {
+      user: "Mike",
+      avatar: "M",
+      text: "Wow, that's exactly what we needed!",
+      color: "from-green-500 to-green-600",
+      delay: 10500,
+    },
+    {
+      user: "Elena",
+      avatar: "E",
+      text: "This AI integration saves us hours every day 💯",
+      color: "from-blue-500 to-blue-600",
+      delay: 12000,
+    },
   ];
 
-  const [activeEdge, setActiveEdge] = useState(0);
   useEffect(() => {
-    const iv = setInterval(
-      () => setActiveEdge((p) => (p + 1) % edges.length),
-      1200,
-    );
-    return () => clearInterval(iv);
+    let timeouts = [];
+    const runSequence = () => {
+      setMessages([]);
+      messageSequence.forEach((msg, index) => {
+        const t = setTimeout(() => {
+          setMessages((prev) => {
+            const filtered = prev.filter((m) => !m.isTyping);
+            return [...filtered, { ...msg, id: Date.now() + index }];
+          });
+        }, msg.delay);
+        timeouts.push(t);
+      });
+
+      const reset = setTimeout(
+        runSequence,
+        messageSequence[messageSequence.length - 1].delay + 4000,
+      );
+      timeouts.push(reset);
+    };
+
+    runSequence();
+
+    return () => timeouts.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages]);
+
   return (
-    <div className="relative w-full h-[280px] bg-[#0a0a0a] rounded-2xl border border-white/[0.06] overflow-hidden">
-      <svg className="w-full h-full" viewBox="0 0 100 100">
-        {edges.map(([a, b], i) => (
-          <motion.line
-            key={i}
-            x1={nodes[a].x}
-            y1={nodes[a].y}
-            x2={nodes[b].x}
-            y2={nodes[b].y}
-            stroke="white"
-            strokeWidth="0.3"
-            initial={{ opacity: 0.08 }}
-            animate={{
-              opacity: activeEdge === i ? 0.5 : 0.08,
-              strokeWidth: activeEdge === i ? 0.6 : 0.3,
-            }}
-            transition={{ duration: 0.5 }}
-          />
-        ))}
-        {edges.map(([a, b], i) => {
-          if (activeEdge !== i) return null;
-          return (
-            <motion.circle
-              key={`msg-${i}`}
-              r="1.2"
-              fill="white"
-              initial={{ cx: nodes[a].x, cy: nodes[a].y, opacity: 0 }}
-              animate={{
-                cx: [nodes[a].x, nodes[b].x],
-                cy: [nodes[a].y, nodes[b].y],
-                opacity: [0, 1, 1, 0],
-              }}
-              transition={{ duration: 1, ease: "easeInOut" }}
-            />
-          );
-        })}
-        {nodes.map((n, i) => (
-          <g key={i}>
-            <motion.circle
-              cx={n.x}
-              cy={n.y}
-              r="4"
-              fill="#1a1a1a"
-              stroke="white"
-              strokeWidth="0.5"
-              animate={{ scale: [1, 1.08, 1] }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                delay: i * 0.4,
-              }}
-            />
-            <text
-              x={n.x}
-              y={n.y + 9}
-              textAnchor="middle"
-              fill="white"
-              fontSize="2.8"
-              opacity="0.4"
-            >
-              {n.label}
-            </text>
-          </g>
-        ))}
-      </svg>
+    <div className="relative w-full max-w-5xl mx-auto h-[450px] lg:h-[520px] bg-[#070707] rounded-[2rem] border border-white/[0.08] overflow-hidden shadow-2xl flex flex-col">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.03)_0%,transparent_50%)] pointer-events-none" />
+
+      <div className="h-16 border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl flex items-center justify-between px-6 z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <motion.div
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+          >
+            <Users className="w-5 h-5 text-white" />
+          </motion.div>
+          <div>
+            <div className="text-sm font-bold text-white flex items-center gap-2">
+              # dev-team
+              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400">
+                5 online
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-500 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+              Real-time sync
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 relative overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="absolute inset-0 overflow-y-auto px-6 py-6 space-y-5 scrollbar-hide"
+        >
+          <AnimatePresence mode="popLayout">
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                layout
+                initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className={cn("flex gap-3.5", msg.isMe && "flex-row-reverse")}
+              >
+                <motion.div
+                  className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 shadow-lg",
+                    msg.isAI
+                      ? "bg-gradient-to-br from-white to-gray-200 text-black border border-white/20"
+                      : msg.isMe
+                        ? "bg-gradient-to-br from-white/15 to-white/5 text-white border border-white/20"
+                        : `bg-gradient-to-br ${msg.color} text-white`,
+                  )}
+                >
+                  {msg.avatar}
+                </motion.div>
+
+                <div
+                  className={cn(
+                    "flex flex-col max-w-[75%]",
+                    msg.isMe && "items-end",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "text-[13px] font-semibold mb-1.5 px-1 flex items-center gap-2",
+                      msg.isMe
+                        ? "text-gray-400"
+                        : msg.isAI
+                          ? "text-gray-300"
+                          : "text-gray-500",
+                    )}
+                  >
+                    {msg.user}
+                    {msg.isAI && (
+                      <span className="text-[9px] bg-white/15 text-white px-1.5 py-0.5 rounded-md">
+                        AI Assistant
+                      </span>
+                    )}
+                  </div>
+
+                  <motion.div
+                    className={cn(
+                      "px-5 py-3.5 rounded-2xl text-[14px] leading-relaxed backdrop-blur-md",
+                      msg.isMe
+                        ? "bg-gradient-to-br from-white/10 to-white/5 text-white border border-white/10 rounded-tr-sm"
+                        : msg.isAI
+                          ? "bg-gradient-to-br from-white/10 to-white/5 text-gray-100 border border-white/10 rounded-tl-sm"
+                          : "bg-gradient-to-br from-[#141414] to-[#0a0a0a] text-gray-300 border border-white/5 rounded-tl-sm shadow-md",
+                    )}
+                  >
+                    {msg.hasAI && (
+                      <span className="inline-flex items-center gap-1 bg-white/15 px-2 py-1 rounded text-[12px] font-bold mr-2 mb-1.5 border border-white/20">
+                        <Zap className="w-3.5 h-3.5 text-yellow-300" /> @ai
+                      </span>
+                    )}
+
+                    {msg.hasCode ? (
+                      <div className="space-y-2 font-mono text-[13px] mt-1">
+                        {msg.text.split("\n").map((line, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.15 }}
+                            className="flex items-center gap-2.5"
+                          >
+                            {line.startsWith("✓") && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                            )}
+                            <span
+                              className={
+                                line.startsWith("✓")
+                                  ? "text-gray-200"
+                                  : "text-gray-300"
+                              }
+                            >
+                              {line}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span>{msg.text}</span>
+                    )}
+
+                    {msg.isTyping && (
+                      <div className="flex gap-1 mt-1.5 h-3 items-center">
+                        {[0, 0.2, 0.4].map((d) => (
+                          <motion.div
+                            key={d}
+                            animate={{ y: [-2, 2, -2], opacity: [0.3, 1, 0.3] }}
+                            transition={{
+                              duration: 0.8,
+                              repeat: Infinity,
+                              delay: d,
+                            }}
+                            className="w-1.5 h-1.5 bg-white/60 rounded-full"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <div className="h-20 border-t border-white/[0.06] bg-white/[0.02] backdrop-blur-xl flex items-center px-6 shrink-0">
+        <div className="flex-1 flex items-center gap-3 bg-[#0a0a0a] rounded-xl px-4 py-3 border border-white/[0.08]">
+          <MessageCircle className="w-5 h-5 text-gray-500" />
+          <div className="flex-1 text-sm text-gray-500">
+            Message or mention @ai...
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <Code2 className="w-4 h-4 text-gray-400" />
+            </button>
+            <button className="p-2 bg-white text-black hover:bg-gray-200 rounded-lg transition-colors shadow-lg">
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-// ─── FEATURE 1 — CHAT (Design A) ──────────────────────────
+// ─── FEATURE 1 — CHAT (Intact Layout Design) ──────────────────────────
 const ChatFeatureSection = () => {
-  const threeCards = [
+  const topThreeCards = [
     {
       icon: MessageCircle,
-      title: "Threaded Conversations",
-      desc: "Organize discussions into threads. Keep the main channel clean while diving deep into technical topics.",
+      title: "Instant Messaging",
+      desc: "Lightning-fast real-time communication. Messages sync across all devices in under 50ms with WebSockets.",
+      iconColor: "text-blue-400 group-hover:text-blue-300",
+      bgGradient: "from-blue-500/10 to-transparent",
+    },
+    {
+      icon: Users,
+      title: "Smart Mentions",
+      desc: "Tag teammates with @ for instant notifications. Mention @ai to summon the assistant directly.",
+      iconColor: "text-purple-400 group-hover:text-purple-300",
+      bgGradient: "from-purple-500/10 to-transparent",
     },
     {
       icon: Code2,
-      title: "Code Syntax Highlighting",
-      desc: "Share code snippets with automatic language detection and beautiful syntax highlighting.",
-    },
-    {
-      icon: Send,
-      title: "File Sharing",
-      desc: "Drag and drop files directly into chat. Preview images, PDFs, and code files inline.",
+      title: "Rich Formatting",
+      desc: "Share code with syntax highlighting, markdown support, and previews. Supports 150+ languages.",
+      iconColor: "text-pink-400 group-hover:text-pink-300",
+      bgGradient: "from-pink-500/10 to-transparent",
     },
   ];
 
-  const twoCards = [
+  const bottomTwoCards = [
     {
       icon: Layers,
-      title: "Smart Channels",
-      desc: "Create channels for projects, teams, or topics. Pin important messages and set notification preferences. Integrated with your project workflow.",
-      wide: true,
+      title: "Organized Threads",
+      desc: "Keep conversations structured with nested threads and replies. Create focused discussions without cluttering the main channel. Perfect for code reviews, bug tracking, and feature planning.",
+      iconColor: "text-green-400 group-hover:text-green-300",
+      bgGradient: "from-green-500/10 to-transparent",
     },
     {
-      icon: Lock,
-      title: "Secure DMs",
-      desc: "End-to-end encrypted direct messages for sensitive discussions and one-on-one code reviews.",
+      icon: Shield,
+      title: "Enterprise Security",
+      desc: "Bank-grade encryption for all messages. SOC 2 Type II certified with end-to-end encryption, SSO integration, and granular access controls. Your code discussions stay perfectly secure.",
+      iconColor: "text-orange-400 group-hover:text-orange-300",
+      bgGradient: "from-orange-500/10 to-transparent",
     },
   ];
 
   return (
-    <section id="chat" className="py-32 bg-black relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.02)_0%,transparent_60%)]" />
+    <section id="chat" className="py-24 bg-black relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.03)_0%,transparent_60%)] pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <Reveal className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-gray-500 text-xs font-bold uppercase tracking-widest mb-6">
-            <MessageCircle className="w-3.5 h-3.5" /> Real-time Collaboration
-          </div>
-          <h2 className="text-4xl lg:text-6xl font-extrabold tracking-tight">
-            Built for Teams,{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
-              Ready for Code.
+        <Reveal className="text-center mb-16">
+          <motion.div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/10 bg-white/[0.03] text-gray-300 text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-sm">
+            <MessageCircle className="w-4 h-4" />
+            Real-time Collaboration
+          </motion.div>
+          <h2 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-6">
+            Code Together.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600">
+              Ship Faster.
             </span>
           </h2>
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            A chat platform built exclusively for developers. Discuss
+            architecture, debug issues together, and deploy code—all without
+            leaving your conversation.
+          </p>
         </Reveal>
 
-        <Reveal delay={0.1} className="mb-12 max-w-3xl mx-auto">
+        {/* Proportional Chat Demo */}
+        <Reveal delay={0.1} className="mb-16 relative z-20">
           <ChatFlowAnimation />
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-          {threeCards.map((c, i) => (
-            <Reveal key={i} delay={0.08 * i}>
-              <motion.div
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(255,255,255,0.15)",
-                }}
-                className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6 h-full transition-colors group"
+        {/* 3 Intact Sections */}
+        <Reveal delay={0.15}>
+          <div className="flex flex-col lg:flex-row w-full border border-white/[0.08] rounded-[2rem] overflow-hidden bg-[#070707] mb-8 shadow-2xl">
+            {topThreeCards.map((card, i) => (
+              <div
+                key={i}
+                className="flex-1 p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-white/[0.08] last:border-0 relative group transition-all duration-500 overflow-hidden cursor-pointer"
               >
-                <div className="w-11 h-11 bg-white/[0.04] rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/[0.08] transition-colors">
-                  <c.icon className="w-5 h-5 text-gray-400" />
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                    card.bgGradient,
+                  )}
+                />
+                <div className="relative z-10 flex flex-col items-start transition-transform duration-500 group-hover:-translate-y-1">
+                  <div className="w-12 h-12 bg-white/[0.03] rounded-xl flex items-center justify-center mb-6 border border-white/[0.05] shadow-inner group-hover:bg-white/[0.06] transition-colors">
+                    <card.icon
+                      className={cn(
+                        "w-6 h-6 transition-colors duration-500",
+                        card.iconColor,
+                      )}
+                    />
+                  </div>
+                  <h3 className="text-white font-bold text-xl mb-3 group-hover:text-white transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-300 transition-colors">
+                    {card.desc}
+                  </p>
                 </div>
-                <h3 className="text-white font-bold text-base mb-2">
-                  {c.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {c.desc}
-                </p>
-              </motion.div>
-            </Reveal>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-          {twoCards.map((c, i) => (
-            <Reveal
-              key={i}
-              delay={0.08 * i}
-              className={i === 0 ? "md:col-span-3" : "md:col-span-2"}
-            >
-              <motion.div
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(255,255,255,0.15)",
-                }}
-                className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6 h-full transition-colors group"
+        {/* 2 Intact Sections */}
+        <Reveal delay={0.25}>
+          <div className="flex flex-col lg:flex-row w-full border border-white/[0.08] rounded-[2rem] overflow-hidden bg-[#070707] shadow-2xl">
+            {bottomTwoCards.map((card, i) => (
+              <div
+                key={i}
+                className="flex-1 p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-white/[0.08] last:border-0 relative group transition-all duration-500 overflow-hidden cursor-pointer"
               >
-                <div className="w-11 h-11 bg-white/[0.04] rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/[0.08] transition-colors">
-                  <c.icon className="w-5 h-5 text-gray-400" />
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                    card.bgGradient,
+                  )}
+                />
+                <div className="relative z-10 flex flex-col md:flex-row gap-6 lg:gap-8 items-start transition-transform duration-500 group-hover:-translate-y-1">
+                  <div className="w-16 h-16 bg-white/[0.03] rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.05] shadow-inner group-hover:bg-white/[0.06] transition-colors">
+                    <card.icon
+                      className={cn(
+                        "w-8 h-8 transition-colors duration-500",
+                        card.iconColor,
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-2xl mb-3 group-hover:text-white transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-gray-500 text-base leading-relaxed group-hover:text-gray-300 transition-colors">
+                      {card.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-white font-bold text-base mb-2">
-                  {c.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {c.desc}
-                </p>
-              </motion.div>
-            </Reveal>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -801,7 +1009,7 @@ const AIChatPanel = () => {
   );
 };
 
-// ─── FEATURE 2 — AI ENGINE (Design B) ─────────────────────
+// ─── FEATURE 2 — AI ENGINE ─────────────────────
 const AIFeatureSection = () => {
   const [activeFaq, setActiveFaq] = useState(0);
 
@@ -929,7 +1137,7 @@ const AIFeatureSection = () => {
   };
 
   return (
-    <section id="ai" className="py-32 bg-black relative overflow-hidden">
+    <section id="ai" className="py-24 bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.02)_0%,transparent_60%)]" />
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <Reveal className="text-center mb-12">
@@ -1078,225 +1286,391 @@ const AIFeatureSection = () => {
   );
 };
 
-// ─── FILE TREE ANIMATION (for Feature 3 center) ────────────
+// ─── FILE TREE ANIMATION (Proportional Size & Continuous) ────────────
 const FileTreeAnimation = () => {
-  const items = [
-    { name: "src", type: "folder", depth: 0 },
-    { name: "components", type: "folder", depth: 1 },
-    { name: "Button.tsx", type: "file", depth: 2 },
-    { name: "Header.tsx", type: "file", depth: 2 },
-    { name: "lib", type: "folder", depth: 1 },
-    { name: "utils.ts", type: "file", depth: 2 },
-    { name: "app", type: "folder", depth: 0 },
-    { name: "page.tsx", type: "file", depth: 1 },
-    { name: "layout.tsx", type: "file", depth: 1 },
+  const allItems = [
+    { name: "project-root", type: "folder", depth: 0, icon: Folder },
+    { name: "src", type: "folder", depth: 1, icon: Folder },
+    { name: "components", type: "folder", depth: 2, icon: Folder },
+    { name: "Button.tsx", type: "file", depth: 3, icon: FileCode, lang: "tsx" },
+    { name: "Input.tsx", type: "file", depth: 3, icon: FileCode, lang: "tsx" },
+    { name: "Navbar.tsx", type: "file", depth: 3, icon: FileCode, lang: "tsx" },
+    { name: "lib", type: "folder", depth: 2, icon: Folder },
+    { name: "utils.ts", type: "file", depth: 3, icon: FileCode, lang: "ts" },
+    { name: "api.ts", type: "file", depth: 3, icon: FileCode, lang: "ts" },
+    { name: "app", type: "folder", depth: 1, icon: Folder },
+    { name: "page.tsx", type: "file", depth: 2, icon: FileCode, lang: "tsx" },
+    { name: "layout.tsx", type: "file", depth: 2, icon: FileCode, lang: "tsx" },
+    {
+      name: "package.json",
+      type: "file",
+      depth: 1,
+      icon: FileCode,
+      lang: "json",
+    },
   ];
 
-  const [count, setCount] = useState(0);
+  const [visibleItems, setVisibleItems] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
-    const iv = setInterval(() => {
-      setCount((p) => {
-        if (p >= items.length) {
-          setTimeout(() => setCount(0), 2500);
-          return p;
+    let intervalId;
+    let timeoutId;
+
+    const animate = () => {
+      setVisibleItems([]);
+      setProgress(0);
+      let index = 0;
+
+      intervalId = setInterval(() => {
+        if (index < allItems.length) {
+          setVisibleItems((prev) => [
+            ...prev,
+            { ...allItems[index], id: Date.now() + index },
+          ]);
+          setProgress(((index + 1) / allItems.length) * 100);
+          index++;
+        } else {
+          clearInterval(intervalId);
+          timeoutId = setTimeout(() => {
+            animate();
+          }, 3500);
         }
-        return p + 1;
+      }, 300);
+    };
+
+    animate();
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
       });
-    }, 300);
-    return () => clearInterval(iv);
-  }, [items.length]);
+    }
+  }, [visibleItems]);
 
   return (
-    <div className="relative w-full bg-[#0a0a0a] rounded-2xl border border-white/[0.06] overflow-hidden p-6">
-      <div className="flex items-center gap-2 text-gray-600 mb-4 border-b border-white/[0.04] pb-3">
-        <FolderTree className="w-4 h-4" />
-        <span className="text-xs font-mono">/project-root</span>
-        {count < items.length && (
-          <span className="ml-auto flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white/30" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white/50" />
-          </span>
-        )}
-      </div>
+    <div className="relative w-full max-w-5xl mx-auto h-[450px] lg:h-[520px] bg-[#070707] rounded-[2rem] border border-white/[0.08] overflow-hidden shadow-2xl flex flex-col">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.03)_0%,transparent_50%)] pointer-events-none" />
 
-      <div className="space-y-1 font-mono text-sm min-h-[200px]">
-        <AnimatePresence mode="popLayout">
-          {items.slice(0, count).map((item, i) => (
-            <motion.div
-              key={item.name + i}
-              layout
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.35 }}
-              className="flex items-center gap-2 py-1 hover:bg-white/[0.03] rounded px-1 transition-colors"
-              style={{ paddingLeft: `${item.depth * 20 + 4}px` }}
-            >
-              {item.type === "folder" ? (
-                <FolderTree className="w-3.5 h-3.5 text-gray-500" />
-              ) : (
-                <FileCode className="w-3.5 h-3.5 text-gray-600" />
-              )}
-              <span
-                className={
-                  item.type === "folder" ? "text-gray-300" : "text-gray-500"
-                }
-              >
-                {item.name}
-              </span>
-              <motion.span
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 0 }}
-                transition={{ delay: 0.6, duration: 0.4 }}
-                className="ml-auto text-[9px] text-gray-500 bg-white/[0.04] px-1.5 py-0.5 rounded font-bold"
-              >
-                NEW
-              </motion.span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {count === 0 && (
-          <div className="h-full flex items-center justify-center text-gray-700 italic text-xs py-20">
-            <span className="w-2 h-2 bg-gray-700 rounded-full animate-pulse mr-2" />
-            Initializing generator…
+      <div className="h-16 border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl flex items-center justify-between px-6 z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <motion.div
+            className="w-10 h-10 bg-gradient-to-br from-white/10 to-white/5 rounded-xl flex items-center justify-center border border-white/10"
+            whileHover={{ scale: 1.05, rotate: -5 }}
+          >
+            <Layout className="w-5 h-5 text-white" />
+          </motion.div>
+          <div>
+            <div className="text-sm font-bold text-white font-mono flex items-center gap-2">
+              Architecture Generator
+            </div>
+            <div className="text-[11px] text-gray-500">
+              {visibleItems.length} of {allItems.length} generated
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {visibleItems.length < allItems.length ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg border border-white/20"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 className="w-3.5 h-3.5 text-blue-400" />
+              </motion.div>
+              <span className="text-[11px] text-gray-300 font-bold">
+                Scaffolding...
+              </span>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-1.5 bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-[11px] text-green-400 font-bold">
+                Complete
+              </span>
+            </motion.div>
+          )}
+        </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-white/[0.04] text-xs font-mono text-gray-600 flex items-center gap-2">
-        <span className="text-gray-400">{">"}</span>
-        {count < items.length ? (
-          <span>
-            creating{" "}
-            <span className="text-gray-400">{items[count]?.name || "..."}</span>
-          </span>
-        ) : (
-          <span className="text-gray-400">
-            Generation complete. {items.length} items created.
-          </span>
-        )}
+      <div className="h-1 bg-white/[0.03] relative shrink-0">
         <motion.div
-          animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.8, repeat: Infinity }}
-          className="w-1.5 h-3 bg-white/30"
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+          initial={{ width: "0%" }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         />
+      </div>
+
+      <div className="flex-1 relative overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="absolute inset-0 p-6 overflow-y-auto scrollbar-hide font-mono text-[14px]"
+        >
+          <div className="space-y-1">
+            <AnimatePresence mode="popLayout">
+              {visibleItems.map((item, index) => {
+                const Icon = item.icon;
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    transition={{
+                      duration: 0.4,
+                      ease: "easeOut",
+                    }}
+                    className="flex items-center gap-3 py-2 px-3 hover:bg-white/[0.06] rounded-xl transition-all group cursor-pointer border border-transparent hover:border-white/10"
+                    style={{ paddingLeft: `${item.depth * 24 + 12}px` }}
+                  >
+                    <motion.div
+                      whileHover={{
+                        scale: 1.2,
+                        rotate: item.type === "folder" ? 15 : 0,
+                      }}
+                      transition={{ type: "spring", stiffness: 400 }}
+                    >
+                      {Icon && (
+                        <Icon
+                          className={cn(
+                            "w-4 h-4 transition-colors",
+                            item.type === "folder"
+                              ? "text-blue-400"
+                              : "text-gray-500 group-hover:text-gray-300",
+                          )}
+                        />
+                      )}
+                    </motion.div>
+
+                    <span
+                      className={cn(
+                        "flex-1 transition-colors",
+                        item.type === "folder"
+                          ? "text-white font-semibold"
+                          : "text-gray-400 group-hover:text-white",
+                      )}
+                    >
+                      {item.name}
+                    </span>
+
+                    {item.lang && (
+                      <motion.span
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-[10px] bg-white/[0.06] border border-white/[0.1] px-2 py-0.5 rounded font-bold text-gray-400 uppercase tracking-wider group-hover:bg-white/10 group-hover:text-white transition-colors"
+                      >
+                        {item.lang}
+                      </motion.span>
+                    )}
+
+                    {index === visibleItems.length - 1 &&
+                      visibleItems.length < allItems.length && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          exit={{ opacity: 0, scale: 0.5 }}
+                          className="text-[10px] bg-gradient-to-r from-emerald-500 to-teal-400 text-white px-2 py-1 rounded-md font-bold"
+                        >
+                          ADDED
+                        </motion.span>
+                      )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-14 border-t border-white/[0.06] bg-white/[0.02] backdrop-blur-xl flex items-center px-6 shrink-0">
+        <span className="text-gray-600 text-[13px] font-mono mr-3 font-bold">
+          {">"}
+        </span>
+        <span className="text-gray-400 text-[13px] font-mono flex-1">
+          {visibleItems.length < allItems.length
+            ? `Generating ${allItems[visibleItems.length]?.name || "..."}`
+            : `✓ Successfully bootstrapped complete architecture.`}
+        </span>
+        {visibleItems.length < allItems.length && (
+          <motion.div
+            animate={{ opacity: [1, 0.2, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            className="w-2 h-4 bg-blue-400/80 rounded-sm"
+          />
+        )}
       </div>
     </div>
   );
 };
 
-// ─── FEATURE 3 — FILE TREE (Design A) ─────────────────────
+// ─── FEATURE 3 — FILE TREE (Intact Layout Design) ─────────────────────
 const FileTreeFeatureSection = () => {
-  const threeCards = [
+  const topThreeCards = [
     {
-      icon: LayoutTemplate,
-      title: "Auto Scaffolding",
-      desc: "Describe your project and the AI generates a complete file structure with proper separation of concerns.",
+      icon: Layout,
+      title: "AI Scaffolding",
+      desc: "Describe your project in English and watch the AI generate a complete, production-ready structure.",
+      iconColor: "text-sky-400 group-hover:text-sky-300",
+      bgGradient: "from-sky-500/10 to-transparent",
     },
     {
       icon: GitBranch,
-      title: "Smart Architecture",
-      desc: "AI understands frontend and backend patterns, creating modular, scalable architectures automatically.",
+      title: "Best Practices",
+      desc: "Every structure follows industry standards with proper modular architecture and scalable patterns.",
+      iconColor: "text-purple-400 group-hover:text-purple-300",
+      bgGradient: "from-purple-500/10 to-transparent",
     },
     {
-      icon: Box,
-      title: "Framework Aware",
-      desc: "Supports React, Next.js, Express, and more. Each scaffold follows framework-specific best practices.",
+      icon: Zap,
+      title: "Smart Imports",
+      desc: "AI automatically sets up imports, exports, and relationships. No manual linking required.",
+      iconColor: "text-rose-400 group-hover:text-rose-300",
+      bgGradient: "from-rose-500/10 to-transparent",
     },
   ];
 
-  const twoCards = [
+  const bottomTwoCards = [
     {
-      icon: FolderTree,
-      title: "Complete Project Generation",
-      desc: "Go from a text description to a fully scaffolded project with routing, components, API layers, and config files — all in seconds. The AI links files together and sets up imports automatically.",
-      wide: true,
+      icon: Box,
+      title: "Framework Intelligence",
+      desc: "Supports React, Next.js, Vue, Express, NestJS, and more. Each scaffold follows framework-specific conventions, deeply understanding routing patterns and configurations.",
+      iconColor: "text-emerald-400 group-hover:text-emerald-300",
+      bgGradient: "from-emerald-500/10 to-transparent",
     },
     {
       icon: Database,
       title: "Template Library",
-      desc: "Start from proven templates or let the AI create custom structures tailored to your exact needs.",
+      desc: "Start from battle-tested templates or custom architectures. Includes monorepos, microservices, and boilerplates pre-configured with databases and CI/CD.",
+      iconColor: "text-amber-400 group-hover:text-amber-300",
+      bgGradient: "from-amber-500/10 to-transparent",
     },
   ];
 
   return (
-    <section className="py-32 bg-black relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.02)_0%,transparent_60%)]" />
+    <section className="py-24 bg-black relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.03)_0%,transparent_60%)] pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <Reveal className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-gray-500 text-xs font-bold uppercase tracking-widest mb-6">
-            <LayoutTemplate className="w-3.5 h-3.5" /> Full Scaffolding
-          </div>
-          <h2 className="text-4xl lg:text-6xl font-extrabold tracking-tight">
-            Don't Write Snippets.{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
-              Generate Architectures.
+        <Reveal className="text-center mb-16">
+          <motion.div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/10 bg-white/[0.03] text-gray-300 text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-sm">
+            <Layout className="w-4 h-4" />
+            Intelligent Scaffolding
+          </motion.div>
+          <h2 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-6">
+            From Idea to{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600">
+              Full Architecture.
             </span>
           </h2>
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            Stop writing boilerplate. Describe your app, and let the AI generate
+            complete, interconnected codebases instantly.
+          </p>
         </Reveal>
 
-        <Reveal delay={0.1} className="mb-12 max-w-3xl mx-auto">
+        {/* Proportional File Tree Demo */}
+        <Reveal delay={0.1} className="mb-16 relative z-20">
           <FileTreeAnimation />
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-          {threeCards.map((c, i) => (
-            <Reveal key={i} delay={0.08 * i}>
-              <motion.div
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(255,255,255,0.15)",
-                }}
-                className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6 h-full transition-colors group"
+        {/* 3 Intact Sections */}
+        <Reveal delay={0.15}>
+          <div className="flex flex-col lg:flex-row w-full border border-white/[0.08] rounded-[2rem] overflow-hidden bg-[#070707] mb-8 shadow-2xl">
+            {topThreeCards.map((card, i) => (
+              <div
+                key={i}
+                className="flex-1 p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-white/[0.08] last:border-0 relative group transition-all duration-500 overflow-hidden cursor-pointer"
               >
-                <div className="w-11 h-11 bg-white/[0.04] rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/[0.08] transition-colors">
-                  <c.icon className="w-5 h-5 text-gray-400" />
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                    card.bgGradient,
+                  )}
+                />
+                <div className="relative z-10 flex flex-col items-start transition-transform duration-500 group-hover:-translate-y-1">
+                  <div className="w-12 h-12 bg-white/[0.03] rounded-xl flex items-center justify-center mb-6 border border-white/[0.05] shadow-inner group-hover:bg-white/[0.06] transition-colors">
+                    <card.icon
+                      className={cn(
+                        "w-6 h-6 transition-colors duration-500",
+                        card.iconColor,
+                      )}
+                    />
+                  </div>
+                  <h3 className="text-white font-bold text-xl mb-3 group-hover:text-white transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-300 transition-colors">
+                    {card.desc}
+                  </p>
                 </div>
-                <h3 className="text-white font-bold text-base mb-2">
-                  {c.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {c.desc}
-                </p>
-              </motion.div>
-            </Reveal>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-          {twoCards.map((c, i) => (
-            <Reveal
-              key={i}
-              delay={0.08 * i}
-              className={i === 0 ? "md:col-span-3" : "md:col-span-2"}
-            >
-              <motion.div
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(255,255,255,0.15)",
-                }}
-                className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6 h-full transition-colors group"
+        {/* 2 Intact Sections */}
+        <Reveal delay={0.25}>
+          <div className="flex flex-col lg:flex-row w-full border border-white/[0.08] rounded-[2rem] overflow-hidden bg-[#070707] shadow-2xl">
+            {bottomTwoCards.map((card, i) => (
+              <div
+                key={i}
+                className="flex-1 p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-white/[0.08] last:border-0 relative group transition-all duration-500 overflow-hidden cursor-pointer"
               >
-                <div className="w-11 h-11 bg-white/[0.04] rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/[0.08] transition-colors">
-                  <c.icon className="w-5 h-5 text-gray-400" />
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                    card.bgGradient,
+                  )}
+                />
+                <div className="relative z-10 flex flex-col md:flex-row gap-6 lg:gap-8 items-start transition-transform duration-500 group-hover:-translate-y-1">
+                  <div className="w-16 h-16 bg-white/[0.03] rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.05] shadow-inner group-hover:bg-white/[0.06] transition-colors">
+                    <card.icon
+                      className={cn(
+                        "w-8 h-8 transition-colors duration-500",
+                        card.iconColor,
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-2xl mb-3 group-hover:text-white transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-gray-500 text-base leading-relaxed group-hover:text-gray-300 transition-colors">
+                      {card.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-white font-bold text-base mb-2">
-                  {c.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {c.desc}
-                </p>
-              </motion.div>
-            </Reveal>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 };
 
-// ─── TERMINAL PANEL (for Design B left) ────────────────────
+// ─── TERMINAL PANEL ────────────────────
 const TerminalPanel = () => {
   const [tab, setTab] = useState("code");
   const [logs, setLogs] = useState([]);
@@ -1486,7 +1860,7 @@ const TerminalPanel = () => {
   );
 };
 
-// ─── FEATURE 4 — EXECUTION (Design B) ─────────────────────
+// ─── FEATURE 4 — EXECUTION ─────────────────────
 const ExecutionFeatureSection = () => {
   const [activeFaq, setActiveFaq] = useState(0);
 
@@ -1603,7 +1977,7 @@ const ExecutionFeatureSection = () => {
   };
 
   return (
-    <section id="runtime" className="py-32 bg-black relative overflow-hidden">
+    <section id="runtime" className="py-24 bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_right,rgba(255,255,255,0.02)_0%,transparent_60%)]" />
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <Reveal className="text-center mb-12">
@@ -1814,7 +2188,7 @@ const DashboardSection = () => {
   ];
 
   return (
-    <section id="insights" className="py-32 bg-black relative overflow-hidden">
+    <section id="insights" className="py-24 bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.015)_0%,transparent_60%)]" />
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <Reveal className="text-center mb-16">
@@ -1956,7 +2330,6 @@ const DashboardSection = () => {
 
 // ─── CTA SECTION ────────────────────────────────────────────
 const CTASection = () => {
-  // ✅ REPLACED: useAuth() → useUser()
   const { user, loading } = useUser();
   const authed = !loading && !!user;
 
