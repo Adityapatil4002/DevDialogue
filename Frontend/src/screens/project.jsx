@@ -41,7 +41,9 @@ import {
 } from "lucide-react";
 import Loader from "../components/Loader";
 
-// --- UTILITY ---
+// ─────────────────────────────────────────────────────────────
+//  UTILITY HELPERS
+// ─────────────────────────────────────────────────────────────
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return "plaintext";
   const ext = fileName.split(".").pop();
@@ -88,7 +90,9 @@ const socialItems = [
   { label: "LinkedIn", link: "https://linkedin.com" },
 ];
 
-// --- FILE TREE NODE ---
+// ─────────────────────────────────────────────────────────────
+//  FILE TREE NODE
+// ─────────────────────────────────────────────────────────────
 const FileTreeNode = ({
   fileName,
   nodes,
@@ -192,7 +196,9 @@ const FileTreeNode = ({
   );
 };
 
-// --- FILE TREE SKELETON ---
+// ─────────────────────────────────────────────────────────────
+//  FILE TREE SKELETON  (shown while AI is thinking)
+// ─────────────────────────────────────────────────────────────
 const FileTreeSkeleton = () => (
   <div className="p-3 space-y-1.5">
     {[
@@ -224,14 +230,15 @@ const FileTreeSkeleton = () => (
   </div>
 );
 
-// --- RESIZE HANDLE ---
+// ─────────────────────────────────────────────────────────────
+//  SHARED UI ATOMS
+// ─────────────────────────────────────────────────────────────
 const ResizeHandle = () => (
   <PanelResizeHandle className="group w-[3px] bg-transparent hover:bg-[#333] transition-all duration-200 cursor-col-resize z-50 flex items-center justify-center">
     <div className="w-px h-8 bg-[#2a2a2a] group-hover:bg-[#444] group-hover:h-12 transition-all duration-200" />
   </PanelResizeHandle>
 );
 
-// --- STATUS DOT ---
 const StatusDot = ({ active = false, pulse = false }) => (
   <span className="relative flex h-1.5 w-1.5">
     {pulse && active && (
@@ -245,22 +252,29 @@ const StatusDot = ({ active = false, pulse = false }) => (
   </span>
 );
 
+// ─────────────────────────────────────────────────────────────
+//  PROJECT SCREEN
+// ─────────────────────────────────────────────────────────────
 const Project = () => {
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
+  // ── File / editor state ──────────────────────────────────
   const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
+  const [newFilePaths, setNewFilePaths] = useState(new Set());
+
+  // ── WebContainer / runtime state ─────────────────────────
   const [webContainer, setWebContainer] = useState(null);
   const [iframeUrl, setIframeUrl] = useState(null);
   const [runProcess, setRunProcess] = useState(null);
   const [activeTab, setActiveTab] = useState("terminal");
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isInstalling, setIsInstalling] = useState(false);
-  const [newFilePaths, setNewFilePaths] = useState(new Set());
 
+  // ── UI panel state ───────────────────────────────────────
   const [isSidePanelOpen, setisSidePanelOpen] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
@@ -268,14 +282,17 @@ const Project = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
 
+  // ── Invite / project state ───────────────────────────────
   const [searchEmail, setSearchEmail] = useState("");
   const [searchedUser, setSearchedUser] = useState(null);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [project, setProject] = useState(null);
 
+  // ── Boot state ───────────────────────────────────────────
   const [isBooting, setIsBooting] = useState(true);
   const [error, setError] = useState(null);
 
+  // ── Chat / messaging state ───────────────────────────────
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -284,11 +301,19 @@ const Project = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
+  // ── AI rate limit error state ────────────────────────────
+  // Holds the error string when the server rejects an @ai message.
+  // Cleared automatically after retryAfterSeconds (max 10 s for UX).
+  const [aiRateLimitError, setAiRateLimitError] = useState(null);
+  const aiRateLimitTimerRef = useRef(null);
+
+  // ── Refs ─────────────────────────────────────────────────
   const messageEndRef = useRef(null);
   const terminalEndRef = useRef(null);
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  // ── Close message context-menu on outside click ──────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeMenuMsgId && !event.target.closest(".message-menu-container")) {
@@ -299,6 +324,7 @@ const Project = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMenuMsgId]);
 
+  // ── Build folder structure from flat file tree ───────────
   const buildStructure = (files) => {
     if (!files || Object.keys(files).length === 0) return {};
     const root = {};
@@ -318,6 +344,7 @@ const Project = () => {
 
   const folderStructure = buildStructure(fileTree);
 
+  // ── Main boot effect ─────────────────────────────────────
   useEffect(() => {
     let isMounted = true;
     let cleanupMessageListener = null;
@@ -330,11 +357,13 @@ const Project = () => {
       }
       setIsBooting(true);
       setError(null);
+
       try {
         const [projectRes, allProjectsRes] = await Promise.all([
           axios.get(`/project/get-project/${projectId}`),
           axios.get("/project/all"),
         ]);
+
         if (isMounted) {
           setProject(projectRes.data.project);
           setFileTree(projectRes.data.project.fileTree || {});
@@ -348,19 +377,50 @@ const Project = () => {
           }
 
           const socket = initializeSocket(projectId);
+
+          // ── Typing indicators ──────────────────────────
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
+
+          // ── Message deleted by another user ───────────
           socket.on("message-deleted", ({ messageId }) => {
             setMessages((prev) => prev.filter((m) => m._id !== messageId));
           });
 
+          // ── AI rate limit error ────────────────────────
+          // The server emits this ONLY to the sender when
+          // their @ai message exceeds the 20/hr bucket.
+          socket.on("ai-rate-limit-error", (data) => {
+            if (!isMounted) return;
+
+            setAiRateLimitError(data.message);
+
+            // Cancel the AI thinking spinner immediately —
+            // no AI response is coming.
+            setIsAiThinking(false);
+
+            // Auto-dismiss after the retry window (cap at 10 s)
+            if (aiRateLimitTimerRef.current) {
+              clearTimeout(aiRateLimitTimerRef.current);
+            }
+            aiRateLimitTimerRef.current = setTimeout(
+              () => {
+                setAiRateLimitError(null);
+              },
+              Math.min((data.retryAfterSeconds ?? 10) * 1000, 10000),
+            );
+          });
+
+          // ── Incoming messages ──────────────────────────
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
               if (data.isAi) setIsAiThinking(false);
+
               setMessages((prev) => {
                 const incomingSenderId = data.sender?._id || data.senderId;
                 const isMyMessage =
                   incomingSenderId?.toString() === user?._id?.toString();
+
                 if (isMyMessage) {
                   let replaced = false;
                   const updated = prev.map((m) => {
@@ -384,6 +444,8 @@ const Project = () => {
                 }
                 return prev;
               });
+
+              // Sync file tree if AI returned one
               if (
                 data.isAi &&
                 data.filetree &&
@@ -412,22 +474,33 @@ const Project = () => {
     };
 
     fetchProjectAndData();
+
     return () => {
       isMounted = false;
       if (cleanupMessageListener) cleanupMessageListener();
       disconnectSocket();
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      // Clean up rate limit dismiss timer on unmount
+      if (aiRateLimitTimerRef.current) {
+        clearTimeout(aiRateLimitTimerRef.current);
+      }
     };
   }, [projectId, user?._id, webContainer]);
 
+  // ── Scroll to latest message ─────────────────────────────
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAiThinking]);
 
+  // ── Scroll terminal to bottom ────────────────────────────
   useEffect(() => {
     if (activeTab === "terminal")
       terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [terminalOutput, activeTab]);
+
+  // ─────────────────────────────────────────────────────────
+  //  HANDLERS
+  // ─────────────────────────────────────────────────────────
 
   const handleTyping = (e) => {
     setMessage(e.target.value);
@@ -552,33 +625,46 @@ const Project = () => {
     setFileToDelete(null);
   };
 
+  // ── Send chat message ──────────────────────────────────────
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
+
     let messageToSend = message;
+
     if (message.trim().toLowerCase().includes("@ai")) {
       setIsAiThinking(true);
+      // Clear any previous rate limit error when user tries again
+      setAiRateLimitError(null);
+
       if (currentFile && fileTree[currentFile]?.file) {
-        messageToSend += `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n\`\`\`javascript\n${fileTree[currentFile].file.contents}\n\`\`\`\n***`;
+        messageToSend +=
+          `\n\n***\nCONTEXT FOR AI (Current Open File: ${currentFile}):\n` +
+          `\`\`\`javascript\n${fileTree[currentFile].file.contents}\n\`\`\`\n***`;
       }
     }
+
     sendMessage("project-message", {
       projectId,
       message: messageToSend,
       sender: { _id: user._id, email: user.email },
       replyTo: replyingTo,
     });
+
     setMessage("");
     setReplyingTo(null);
     setIsTyping(false);
     initializeSocket(projectId).emit("stop-typing");
   };
 
+  // ── WebContainer run ───────────────────────────────────────
   const handleRunClick = async () => {
     if (!webContainer) return;
     setTerminalOutput("");
     setActiveTab("terminal");
+
     try {
       setTerminalOutput("[System] Syncing files...\n");
+
       const mountStructure = {};
       Object.keys(fileTree).forEach((filePath) => {
         const parts = filePath.split("/");
@@ -594,11 +680,15 @@ const Project = () => {
           }
         });
       });
+
       await webContainer.mount(mountStructure);
+
       const hasPackageJson = !!fileTree["package.json"];
+
       if (hasPackageJson) {
         setTerminalOutput("[System] Installing dependencies...\n");
         setIsInstalling(true);
+
         const installProcess = await webContainer.spawn("npm", ["install"]);
         installProcess.output.pipeTo(
           new WritableStream({
@@ -607,10 +697,13 @@ const Project = () => {
             },
           }),
         );
+
         if ((await installProcess.exit) !== 0)
           throw new Error("Installation failed.");
+
         setIsInstalling(false);
         setTerminalOutput("\n[System] Starting server...\n");
+
         if (runProcess) runProcess.kill();
         const startProcess = await webContainer.spawn("npm", ["start"]);
         startProcess.output.pipeTo(
@@ -621,6 +714,7 @@ const Project = () => {
           }),
         );
         setRunProcess(startProcess);
+
         webContainer.on("server-ready", (port, url) => {
           setTerminalOutput(`\n[System] Server ready at ${url}\n`);
           setIframeUrl(url);
@@ -632,6 +726,7 @@ const Project = () => {
         let entryFile = entryFiles.find((f) => fileTree[f]);
         if (!entryFile && currentFile?.endsWith(".js")) entryFile = currentFile;
         if (!entryFile) throw new Error("No runnable entry point found.");
+
         setTerminalOutput(`[System] Executing 'node ${entryFile}'...\n`);
         if (runProcess) runProcess.kill();
         const nodeProcess = await webContainer.spawn("node", [entryFile]);
@@ -683,6 +778,9 @@ const Project = () => {
     else setTerminalOutput("");
   };
 
+  // ─────────────────────────────────────────────────────────
+  //  AI MESSAGE RENDERER
+  // ─────────────────────────────────────────────────────────
   const AiMessage = ({ raw }) => {
     try {
       const msgObj = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -709,6 +807,9 @@ const Project = () => {
     }
   };
 
+  // ─────────────────────────────────────────────────────────
+  //  EARLY RETURNS
+  // ─────────────────────────────────────────────────────────
   if (isBooting) return <Loader />;
   if (error)
     return (
@@ -718,17 +819,18 @@ const Project = () => {
       </div>
     );
 
+  // ─────────────────────────────────────────────────────────
+  //  RENDER
+  // ─────────────────────────────────────────────────────────
   return (
     <main className="h-screen w-screen flex flex-col bg-[#111] text-[#ececec] overflow-hidden font-sans selection:bg-[#333]">
       <style>{`
-        /* ── Scrollbars ── */
         .styled-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
         .styled-scroll::-webkit-scrollbar-track { background: transparent; }
         .styled-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 99px; }
         .styled-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* ── Keyframes ── */
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -754,48 +856,38 @@ const Project = () => {
           50%       { opacity: 0; }
         }
 
-        /* ── Utility classes ── */
         .animate-fade-in    { animation: fadeIn   0.2s  ease-out forwards; }
         .animate-fade-in-up { animation: fadeInUp 0.18s ease-out forwards; }
         .animate-scale-in   { animation: scaleIn  0.2s  ease-out forwards; }
 
-        /* Typing dots */
         .typing-dot { animation: dotBounce 1.4s ease-in-out infinite both; }
         .typing-dot:nth-child(1) { animation-delay: 0s; }
         .typing-dot:nth-child(2) { animation-delay: 0.16s; }
         .typing-dot:nth-child(3) { animation-delay: 0.32s; }
 
-        /* Terminal cursor blink */
         .terminal-cursor { animation: blink 1s step-end infinite; }
 
-        /* Active file-tab indicator */
         .tab-active {
           background: #161616 !important;
           border-bottom: 1.5px solid #555 !important;
         }
 
-        /* Own message bubble — clean white */
         .bubble-own {
           background: #ececec;
           color: #111;
           border-radius: 12px 12px 3px 12px;
         }
-
-        /* AI message bubble */
         .bubble-ai {
           background: #1a1a1a;
           border: 1px solid #2a2a2a;
           border-radius: 12px 12px 12px 3px;
         }
-
-        /* Other user bubble */
         .bubble-other {
           background: #1a1a1a;
           border: 1px solid #252525;
           border-radius: 12px 12px 12px 3px;
         }
 
-        /* Divider line for section headers */
         .section-label {
           font-size: 9px;
           font-family: monospace;
@@ -806,9 +898,9 @@ const Project = () => {
       `}</style>
 
       <PanelGroup direction="horizontal">
-        {/* ════════════════════════════════════════
+        {/* ══════════════════════════════════════
             LEFT PANEL — CHAT
-        ════════════════════════════════════════ */}
+        ══════════════════════════════════════ */}
         <Panel defaultSize={20} minSize={15} maxSize={30}>
           <section className="relative flex flex-col h-full w-full border-r border-[#1e1e1e] bg-[#131313] z-10 overflow-hidden">
             {/* ── Chat header ── */}
@@ -889,7 +981,9 @@ const Project = () => {
                       className={`flex w-full group relative ${
                         isOwnMessage ? "justify-end" : "justify-start"
                       } ${isSameSender ? "mt-0.5" : "mt-4"}`}
-                      style={{ animation: "fadeIn 0.18s ease-out forwards" }}
+                      style={{
+                        animation: "fadeIn 0.18s ease-out forwards",
+                      }}
                     >
                       <div
                         className={`max-w-[87%] flex flex-col relative ${
@@ -1071,6 +1165,36 @@ const Project = () => {
 
               {/* ── Message input ── */}
               <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
+                {/* ── AI Rate Limit Error Banner ──────────────────
+                    Shown when the server rejects an @ai message
+                    because the user has hit their hourly limit.
+                    Auto-dismisses after retryAfterSeconds (≤ 10 s).
+                ─────────────────────────────────────────────────── */}
+                {aiRateLimitError && (
+                  <div className="mx-2 mt-2 px-3 py-2.5 rounded-lg border border-[#3a2a1a] bg-[#1e1510] text-[#cc8844] text-[10px] font-mono flex items-start gap-2 animate-fade-in">
+                    {/* Warning triangle */}
+                    <AlertTriangle
+                      size={12}
+                      className="flex-shrink-0 mt-0.5 text-[#dd9955]"
+                    />
+                    <div className="flex-grow min-w-0">
+                      <span className="block font-semibold text-[#dd9955] mb-0.5">
+                        AI Limit Reached
+                      </span>
+                      <span className="text-[#996633] leading-relaxed break-words">
+                        {aiRateLimitError}
+                      </span>
+                    </div>
+                    {/* Dismiss */}
+                    <button
+                      onClick={() => setAiRateLimitError(null)}
+                      className="flex-shrink-0 text-[#664422] hover:text-[#cc8844] transition-colors p-0.5"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                )}
+
                 {/* Reply preview strip */}
                 {replyingTo && (
                   <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
@@ -1223,14 +1347,13 @@ const Project = () => {
 
         <Panel>
           <PanelGroup direction="horizontal">
-            {/* ════════════════════════════════════════
+            {/* ══════════════════════════════════════
                 FILE EXPLORER
-            ════════════════════════════════════════ */}
+            ══════════════════════════════════════ */}
             {isExplorerOpen && (
               <>
                 <Panel defaultSize={18} minSize={10} maxSize={25}>
                   <div className="h-full w-full bg-[#111] flex flex-col border-r border-[#1e1e1e]">
-                    {/* Explorer header */}
                     <div
                       onClick={() => setIsExplorerOpen(!isExplorerOpen)}
                       className="flex items-center justify-between border-b border-[#1e1e1e] px-3 cursor-pointer hover:bg-[#161616] h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
@@ -1254,7 +1377,6 @@ const Project = () => {
                       </button>
                     </div>
 
-                    {/* File tree */}
                     <div className="styled-scroll w-full flex-grow overflow-y-auto py-2">
                       {isAiThinking ? (
                         <FileTreeSkeleton />
@@ -1281,9 +1403,9 @@ const Project = () => {
               </>
             )}
 
-            {/* ════════════════════════════════════════
+            {/* ══════════════════════════════════════
                 CODE EDITOR
-            ════════════════════════════════════════ */}
+            ══════════════════════════════════════ */}
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
               <div className="flex flex-col h-full w-full bg-[#141414]">
                 {/* Tab bar */}
@@ -1317,7 +1439,6 @@ const Project = () => {
                       );
                     })}
 
-                    {/* Show explorer when closed */}
                     {!isExplorerOpen && (
                       <button
                         onClick={() => setIsExplorerOpen(true)}
@@ -1360,7 +1481,7 @@ const Project = () => {
                   </div>
                 </div>
 
-                {/* Editor */}
+                {/* Editor area */}
                 <div className="flex-grow overflow-hidden relative h-full w-full">
                   {currentFile && fileTree[currentFile]?.file ? (
                     <div
@@ -1416,9 +1537,9 @@ const Project = () => {
 
             <ResizeHandle />
 
-            {/* ════════════════════════════════════════
+            {/* ══════════════════════════════════════
                 BROWSER / TERMINAL
-            ════════════════════════════════════════ */}
+            ══════════════════════════════════════ */}
             <Panel defaultSize={40} minSize={20}>
               <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
                 {/* Tab bar */}
@@ -1426,11 +1547,7 @@ const Project = () => {
                   <div className="flex gap-1">
                     {[
                       { id: "browser", icon: Globe, label: "Browser" },
-                      {
-                        id: "terminal",
-                        icon: Terminal,
-                        label: "Terminal",
-                      },
+                      { id: "terminal", icon: Terminal, label: "Terminal" },
                     ].map(({ id, icon: Icon, label }) => (
                       <button
                         key={id}
@@ -1464,7 +1581,6 @@ const Project = () => {
                   <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
                     {iframeUrl ? (
                       <>
-                        {/* URL bar */}
                         <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
                           <StatusDot active pulse />
                           <span className="text-[9px] font-mono text-[#555] truncate">
@@ -1505,7 +1621,6 @@ const Project = () => {
                 {/* Terminal panel */}
                 {activeTab === "terminal" && (
                   <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
-                    {/* Terminal chrome */}
                     <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">
                       <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
                       <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
@@ -1519,7 +1634,6 @@ const Project = () => {
                       )}
                     </div>
 
-                    {/* Output */}
                     <div className="styled-scroll flex-grow p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
                       {cleanTerminalOutput(terminalOutput) ? (
                         <span className="text-[#aaa]">
@@ -1557,9 +1671,9 @@ const Project = () => {
         </div>
       )}
 
-      {/* ════════════════════════════════════════
+      {/* ══════════════════════════════════════
           INVITE MODAL
-      ════════════════════════════════════════ */}
+      ══════════════════════════════════════ */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
@@ -1634,9 +1748,9 @@ const Project = () => {
         </div>
       )}
 
-      {/* ════════════════════════════════════════
-          DELETE MODAL
-      ════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════
+          DELETE FILE MODAL
+      ══════════════════════════════════════ */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-sm overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">

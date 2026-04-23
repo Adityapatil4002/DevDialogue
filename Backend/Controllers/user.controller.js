@@ -1,6 +1,23 @@
 import userModel from "../Models/user.model.js";
 import * as userService from "../Services/user.service.js";
 import { validationResult } from "express-validator";
+import getRedisClient from "../Services/redis.service.js";
+
+// AI usage config
+const AI_LIMIT = 20;
+const AI_WINDOW_SECONDS = 60 * 60; // 1 hour
+
+const formatSeconds = (seconds) => {
+  const total = Math.max(0, Number(seconds) || 0);
+
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+  if (minutes > 0) return `${minutes}m ${secs}s`;
+  return `${secs}s`;
+};
 
 // --- Get Profile ---
 export const profileController = async (req, res) => {
@@ -97,5 +114,54 @@ export const deleteAvatarController = async (req, res) => {
       .json({ message: "Avatar removed successfully", user: updatedUser });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// --- AI Usage Status ---
+export const getAiUsageController = async (req, res) => {
+  try {
+    const redis = getRedisClient();
+
+    // Same key pattern used in socket rate limiter
+    const key = `ai_socket_rl:${req.user._id.toString()}`;
+
+    if (!redis) {
+      return res.status(200).json({
+        limit: AI_LIMIT,
+        used: 0,
+        remaining: AI_LIMIT,
+        resetInSeconds: 0,
+        resetInHuman: "Unavailable",
+        windowSeconds: AI_WINDOW_SECONDS,
+        percentageUsed: 0,
+        message: "Redis unavailable. Usage tracking temporarily unavailable.",
+      });
+    }
+
+    const [usedRaw, ttlRaw] = await Promise.all([
+      redis.get(key),
+      redis.ttl(key),
+    ]);
+
+    const used = Math.max(0, parseInt(usedRaw || "0", 10));
+    const remaining = Math.max(0, AI_LIMIT - used);
+    const resetInSeconds = ttlRaw > 0 ? ttlRaw : 0;
+    const percentageUsed = Math.min(100, Math.round((used / AI_LIMIT) * 100));
+
+    return res.status(200).json({
+      limit: AI_LIMIT,
+      used,
+      remaining,
+      resetInSeconds,
+      resetInHuman: resetInSeconds > 0 ? formatSeconds(resetInSeconds) : "Now",
+      windowSeconds: AI_WINDOW_SECONDS,
+      percentageUsed,
+      isLimited: remaining <= 0,
+    });
+  } catch (error) {
+    console.error("AI Usage Controller Error:", error.message);
+    return res.status(500).json({
+      error: "Failed to fetch AI usage",
+    });
   }
 };

@@ -9,6 +9,7 @@ const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.04, delayChildren: 0.04 } },
 };
+
 const item = {
   hidden: { opacity: 0, y: 8 },
   show: {
@@ -141,7 +142,7 @@ const Toggle = ({ label, description, checked, onChange }) => (
 );
 
 const UserProfile = () => {
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, aiUsage, refreshAiUsage } = useContext(UserContext);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -203,6 +204,18 @@ const UserProfile = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!refreshAiUsage) return;
+
+    refreshAiUsage();
+
+    const interval = setInterval(() => {
+      refreshAiUsage();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [refreshAiUsage]);
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -244,12 +257,14 @@ const UserProfile = () => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
   };
+
   const handleSocialChange = (platform, value) => {
     setFormData((p) => ({
       ...p,
       socials: { ...p.socials, [platform]: value },
     }));
   };
+
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData((p) => ({ ...p, [name]: value }));
@@ -682,50 +697,89 @@ const UserProfile = () => {
                       </motion.div>
                     </div>
 
-                    {/* Socials cell */}
+                    {/* AI Usage cell */}
                     <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
                       <Corners />
-                      <CellLabel>Socials</CellLabel>
+                      <CellLabel>AI Usage</CellLabel>
+
+                      <div className="flex items-end justify-between mb-3">
+                        <div>
+                          <div className="text-[22px] font-semibold leading-none tracking-[-0.03em] text-white tabular-nums">
+                            {aiUsage?.remaining ?? 0}
+                          </div>
+                          <div className="text-[8px] tracking-[0.16em] uppercase text-[#444] font-mono mt-1">
+                            Requests left
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] font-mono text-[#666]">
+                            {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 20} used
+                          </div>
+                          <div className="text-[9px] font-mono text-[#333] mt-1">
+                            resets in {aiUsage?.resetInHuman || "Now"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="w-full h-2 border border-[#1a1a1a] bg-[#080808] overflow-hidden mb-4">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{
+                            width: `${aiUsage?.percentageUsed ?? 0}%`,
+                          }}
+                          transition={{
+                            duration: 0.5,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          className={`h-full ${
+                            aiUsage?.isLimited
+                              ? "bg-red-400/70"
+                              : aiUsage?.percentageUsed >= 80
+                                ? "bg-yellow-300/70"
+                                : "bg-white/70"
+                          }`}
+                        />
+                      </div>
+
                       <div className="flex flex-col gap-[3px]">
                         {[
+                          { label: "Plan", value: "Free" },
                           {
-                            key: "github",
-                            label: "GitHub",
-                            prefix: "github.com/",
+                            label: "Hourly limit",
+                            value: aiUsage?.limit ?? 20,
                           },
-                          { key: "twitter", label: "Twitter", prefix: "@" },
                           {
-                            key: "linkedin",
-                            label: "LinkedIn",
-                            prefix: "linkedin.com/in/",
+                            label: "Status",
+                            value: aiUsage?.isLimited
+                              ? "Limit reached"
+                              : "Available",
                           },
-                          { key: "discord", label: "Discord", prefix: "" },
-                        ].map(({ key, label, prefix }) => (
+                        ].map(({ label, value }) => (
                           <div
-                            key={key}
-                            className={`flex items-center gap-3 px-3 py-2 border border-[#111] ${formData.socials?.[key] ? "opacity-100" : "opacity-30"}`}
+                            key={label}
+                            className="flex items-center justify-between py-2 border-b border-[#0f0f0f]"
                           >
-                            <span className="text-[9px] tracking-[0.14em] uppercase text-[#444] font-mono w-14 flex-shrink-0">
+                            <span className="text-[9px] tracking-[0.14em] uppercase text-[#333] font-mono">
                               {label}
                             </span>
-                            <span className="text-[10px] font-mono text-[#666] truncate">
-                              {formData.socials?.[key]
-                                ? `${prefix}${formData.socials[key]}`
-                                : "—"}
+                            <span
+                              className={`text-[10px] font-mono ${
+                                label === "Status" && aiUsage?.isLimited
+                                  ? "text-red-400"
+                                  : "text-[#666]"
+                              }`}
+                            >
+                              {value}
                             </span>
                           </div>
                         ))}
                       </div>
-                      {formData.website && (
-                        <div className="mt-3 flex items-center gap-2 px-3 py-2 border border-[#111]">
-                          <span className="text-[9px] tracking-[0.14em] uppercase text-[#444] font-mono w-14 flex-shrink-0">
-                            Web
-                          </span>
-                          <span className="text-[10px] font-mono text-[#666] truncate">
-                            {formData.website}
-                          </span>
-                        </div>
-                      )}
+
+                      <div className="mt-auto pt-3 text-[9px] font-mono text-[#444] leading-relaxed">
+                        {aiUsage?.isLimited
+                          ? `You have reached your AI limit. Come back in ${aiUsage?.resetInHuman}.`
+                          : `${aiUsage?.remaining ?? 0} AI request(s) remaining in the current window.`}
+                      </div>
                     </div>
 
                     {/* Account info cell */}
@@ -1092,7 +1146,11 @@ const UserProfile = () => {
                                   onClick={() =>
                                     setFeedback({ ...feedback, rating: star })
                                   }
-                                  className={`w-7 h-7 border text-[11px] transition-all ${star <= feedback.rating ? "border-white bg-white text-black" : "border-[#2a2a2a] text-[#444] hover:border-[#444]"}`}
+                                  className={`w-7 h-7 border text-[11px] transition-all ${
+                                    star <= feedback.rating
+                                      ? "border-white bg-white text-black"
+                                      : "border-[#2a2a2a] text-[#444] hover:border-[#444]"
+                                  }`}
                                 >
                                   ★
                                 </button>
@@ -1123,7 +1181,11 @@ const UserProfile = () => {
                                         category: cat.toLowerCase(),
                                       })
                                     }
-                                    className={`px-3 py-2 text-[9px] tracking-[0.1em] uppercase font-semibold transition-all ${feedback.category === cat.toLowerCase() ? "bg-white text-black" : "bg-[#0a0a0a] border border-[#1a1a1a] text-[#444] hover:text-white hover:border-[#2a2a2a]"}`}
+                                    className={`px-3 py-2 text-[9px] tracking-[0.1em] uppercase font-semibold transition-all ${
+                                      feedback.category === cat.toLowerCase()
+                                        ? "bg-white text-black"
+                                        : "bg-[#0a0a0a] border border-[#1a1a1a] text-[#444] hover:text-white hover:border-[#2a2a2a]"
+                                    }`}
                                   >
                                     {cat}
                                   </button>

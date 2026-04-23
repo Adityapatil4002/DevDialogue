@@ -15,6 +15,7 @@ const storage = multer.diskStorage({
     );
   },
 });
+
 const upload = multer({ storage });
 
 // All routes protected by Better Auth session
@@ -24,15 +25,20 @@ router.post(
   upload.single("image"),
   userController.uploadAvatarController,
 );
+
 router.delete(
   "/delete-avatar",
   authUser,
   userController.deleteAvatarController,
 );
+
 router.get("/profile", authUser, userController.profileController);
 router.put("/update", authUser, userController.updateProfileController);
 router.get("/dashboard", authUser, userController.getDashboardStats);
 router.get("/all", authUser, userController.getAllUsersController);
 router.delete("/delete", authUser, userController.deleteAccountController);
+
+// NEW: AI usage info for profile page
+router.get("/ai-usage", authUser, userController.getAiUsageController);
 
 export default router;

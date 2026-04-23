@@ -12,6 +12,7 @@ import { generateResult } from "./Services/ai.service.js";
 import * as projectService from "./Services/project.service.js";
 import { auth } from "./auth.js";
 import { fromNodeHeaders } from "better-auth/node";
+import { checkAiSocketRateLimit } from "./Middleware/rateLimit.middleware.js";
 
 connect();
 
@@ -26,7 +27,11 @@ const io = new Server(server, {
   },
 });
 
-// ✅ Socket Auth — uses Better Auth session + finds user by email
+// ─────────────────────────────────────────────────────────────
+//  Socket Auth Middleware
+//  Verifies Better Auth session from cookie,
+//  finds user in MongoDB, confirms project membership.
+// ─────────────────────────────────────────────────────────────
 io.use(async (socket, next) => {
   try {
     const projectId = socket.handshake.query.projectId;
@@ -52,10 +57,10 @@ io.use(async (socket, next) => {
       return next(new Error("Authentication error: No active session"));
     }
 
-    // ✅ FIX: Find by EMAIL instead of ID
+    // Find by EMAIL — Better Auth ID !== Mongoose _id
     let dbUser = await userModel.findOne({ email: session.user.email });
 
-    // ✅ Auto-create if user doesn't exist in your DB yet
+    // Auto-create if not found
     if (!dbUser) {
       dbUser = await userModel.create({
         email: session.user.email,
@@ -82,6 +87,9 @@ io.use(async (socket, next) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+//  Socket Connection Handler
+// ─────────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   socket.roomId = socket.projectIdString;
   console.log(
@@ -90,6 +98,7 @@ io.on("connection", (socket) => {
 
   socket.join(socket.roomId);
 
+  // ── Typing indicators ──────────────────────────────────────
   socket.on("typing", () => {
     socket.to(socket.roomId).emit("typing", { email: socket.user.email });
   });
@@ -98,20 +107,50 @@ io.on("connection", (socket) => {
     socket.to(socket.roomId).emit("stop-typing", { email: socket.user.email });
   });
 
+  // ── Main message handler ───────────────────────────────────
   socket.on("project-message", async (data) => {
     const { message, replyTo } = data;
 
     if (!message || typeof message !== "string") return;
 
+    // Strip AI context block before saving to DB
+    // The frontend appends file contents after "***\nCONTEXT FOR AI"
     const contextDelimiter = "***\nCONTEXT FOR AI";
     const messageForDb = message.includes(contextDelimiter)
       ? message.split(contextDelimiter)[0].trim()
       : message;
 
-    const aiIsPresentInMessage = messageForDb.includes("@ai");
+    const aiIsPresentInMessage = messageForDb.toLowerCase().includes("@ai");
+
     const projectId = socket.projectIdString;
 
     try {
+      // ── AI Rate Limit Check ──────────────────────────────
+      // Only runs when the message actually targets the AI.
+      // Checked BEFORE saving the message so a blocked request
+      // leaves zero trace in the database.
+      if (aiIsPresentInMessage) {
+        const userId = socket.user._id.toString();
+        const { allowed, ttl, current } = await checkAiSocketRateLimit(userId);
+
+        if (!allowed) {
+          // Emit error ONLY back to the sender — never broadcast
+          socket.emit("ai-rate-limit-error", {
+            message:
+              `You've reached the AI usage limit (20 messages/hour). ` +
+              `Please wait ${ttl} second${ttl === 1 ? "" : "s"} ` +
+              `before sending another @ai message.`,
+            retryAfterSeconds: ttl,
+            current,
+            limit: 20,
+          });
+
+          // Return early — don't save, don't broadcast, don't call Gemini
+          return;
+        }
+      }
+
+      // ── Save user message to DB ──────────────────────────
       const savedMsg = await projectService.addMessage({
         projectId,
         sender: socket.user.email,
@@ -121,6 +160,7 @@ io.on("connection", (socket) => {
         replyTo,
       });
 
+      // Broadcast user message to everyone in the room
       io.to(socket.roomId).emit("project-message", {
         _id: savedMsg._id,
         message: messageForDb,
@@ -130,8 +170,9 @@ io.on("connection", (socket) => {
         replyTo,
       });
 
+      // ── Call Gemini + broadcast AI response ─────────────
       if (aiIsPresentInMessage) {
-        const prompt = message.replace("@ai", "").trim();
+        const prompt = message.replace(/@ai/i, "").trim();
         const result = await generateResult(prompt);
 
         const savedAiMsg = await projectService.addMessage({
@@ -155,20 +196,24 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ── Delete message ─────────────────────────────────────────
   socket.on("delete-message", async (data) => {
     const { messageId } = data;
     if (!messageId) return;
+
     try {
       await projectService.deleteMessage({
         projectId: socket.projectIdString,
         messageId,
       });
+
       io.to(socket.roomId).emit("message-deleted", { messageId });
     } catch (err) {
       console.error("❌ Delete Message Error:", err.message);
     }
   });
 
+  // ── Disconnect ─────────────────────────────────────────────
   socket.on("disconnect", (reason) => {
     console.log(`❌ User disconnected: ${socket.user.email} (${reason})`);
   });
