@@ -47,7 +47,7 @@ app.use(
 );
 
 // ✅ FIXED: Better Auth handler syntax for Express
-app.all("/api/auth/*", toNodeHandler(auth));
+app.use("/api/auth", toNodeHandler(auth));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
