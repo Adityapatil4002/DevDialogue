@@ -38,6 +38,7 @@ import {
   Check,
   AlertTriangle,
   Code2,
+  Clock,
 } from "lucide-react";
 import Loader from "../components/Loader";
 
@@ -75,6 +76,17 @@ const cleanTerminalOutput = (text) => {
     /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
     "",
   );
+};
+
+// Formats raw seconds into "Xh Xm Xs" or "Xm Xs" or "Xs"
+const formatCountdown = (totalSeconds) => {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 };
 
 const menuItems = [
@@ -197,7 +209,7 @@ const FileTreeNode = ({
 };
 
 // ─────────────────────────────────────────────────────────────
-//  FILE TREE SKELETON  (shown while AI is thinking)
+//  FILE TREE SKELETON
 // ─────────────────────────────────────────────────────────────
 const FileTreeSkeleton = () => (
   <div className="p-3 space-y-1.5">
@@ -253,11 +265,178 @@ const StatusDot = ({ active = false, pulse = false }) => (
 );
 
 // ─────────────────────────────────────────────────────────────
+//  AI RATE LIMIT POPUP MODAL
+//  Shown as a centred overlay when the server rejects an @ai
+//  message. Includes a live countdown and auto-closes when
+//  the timer reaches zero.
+// ─────────────────────────────────────────────────────────────
+const AiRateLimitModal = ({ data, onClose }) => {
+  // secondsLeft ticks down every second from data.retryAfterSeconds
+  const [secondsLeft, setSecondsLeft] = useState(
+    Math.max(0, data?.retryAfterSeconds ?? 0),
+  );
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      // Limit has expired — close the modal automatically
+      onClose();
+      return;
+    }
+    const tick = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(tick);
+          onClose();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, []);
+
+  // Progress 0 → 1 as time runs down
+  const progress =
+    data?.retryAfterSeconds > 0 ? secondsLeft / data.retryAfterSeconds : 0;
+
+  return (
+    // Backdrop
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+    >
+      {/* Blurred dark overlay — click to dismiss */}
+      <div
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal card */}
+      <div
+        className="relative z-10 w-full max-w-sm bg-[#141414] border border-[#2a2a2a] rounded-2xl overflow-hidden shadow-2xl shadow-black/90"
+        style={{ animation: "scaleIn 0.2s ease-out forwards" }}
+      >
+        {/* Progress bar — drains from full to empty as countdown ticks */}
+        <div className="h-[2px] w-full bg-[#222]">
+          <div
+            className="h-full bg-[#cc8844] transition-all duration-1000 ease-linear"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+
+        {/* Body */}
+        <div className="p-6 flex flex-col items-center text-center gap-5">
+          {/* Icon ring */}
+          <div className="relative">
+            <div className="w-14 h-14 rounded-full bg-[#1e1510] border border-[#3a2a1a] flex items-center justify-center">
+              <Bot size={22} className="text-[#cc8844]" />
+            </div>
+            {/* Small clock badge */}
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#1e1510] border border-[#3a2a1a] flex items-center justify-center">
+              <Clock size={11} className="text-[#cc8844]" />
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div>
+            <h3 className="text-[14px] font-semibold text-[#ececec] tracking-tight mb-1">
+              AI Limit Reached
+            </h3>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+              You have used all{" "}
+              <span className="text-[#999]">{data?.limit ?? 20}</span> AI
+              requests for this hour.
+            </p>
+          </div>
+
+          {/* Countdown ring / number */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="text-[32px] font-bold text-[#cc8844] tabular-nums leading-none tracking-tight">
+              {formatCountdown(secondsLeft)}
+            </div>
+            <p className="text-[9px] font-mono text-[#555] tracking-wider uppercase">
+              until your limit resets
+            </p>
+          </div>
+
+          {/* Info row */}
+          <div className="w-full bg-[#1a1a1a] border border-[#252525] rounded-xl px-4 py-3 flex items-center justify-between">
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[8px] font-mono text-[#444] tracking-widest uppercase">
+                Used
+              </span>
+              <span className="text-[13px] font-semibold text-[#ececec] tabular-nums">
+                {data?.current ?? data?.limit ?? 20}
+                <span className="text-[10px] font-mono text-[#555]">
+                  /{data?.limit ?? 20}
+                </span>
+              </span>
+            </div>
+
+            {/* Mini progress arc */}
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-[8px] font-mono text-[#444] tracking-widest uppercase">
+                Remaining
+              </span>
+              <span className="text-[13px] font-semibold text-[#cc8844] tabular-nums">
+                0
+              </span>
+            </div>
+          </div>
+
+          {/* Usage bar */}
+          <div className="w-full">
+            <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
+              <div className="h-full w-full bg-red-400/60 rounded-full" />
+            </div>
+            <div className="flex justify-between mt-1.5">
+              <span className="text-[8px] font-mono text-[#444]">
+                0 remaining
+              </span>
+              <span className="text-[8px] font-mono text-[#444]">
+                Resets in {formatCountdown(secondsLeft)}
+              </span>
+            </div>
+          </div>
+
+          {/* CTA buttons */}
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 text-[10px] font-mono tracking-wide text-[#555] bg-[#1a1a1a] border border-[#252525] rounded-xl hover:bg-[#222] hover:text-[#aaa] transition-all"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                window.open("/profile", "_blank");
+              }}
+              className="flex-1 py-2.5 text-[10px] font-mono tracking-wide text-[#cc8844] bg-[#1e1510] border border-[#3a2a1a] rounded-xl hover:bg-[#251a10] transition-all flex items-center justify-center gap-1.5"
+            >
+              <Clock size={10} />
+              View Usage
+            </button>
+          </div>
+
+          <p className="text-[9px] font-mono text-[#333] leading-relaxed">
+            This modal closes automatically when your limit resets.
+            <br />
+            You can still send normal messages in the meantime.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
 //  PROJECT SCREEN
 // ─────────────────────────────────────────────────────────────
 const Project = () => {
   const { projectId } = useParams();
-  const { user } = useContext(UserContext);
+  const { user, refreshAiUsage } = useContext(UserContext);
   const navigate = useNavigate();
 
   // ── File / editor state ──────────────────────────────────
@@ -301,11 +480,11 @@ const Project = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
-  // ── AI rate limit error state ────────────────────────────
-  // Holds the error string when the server rejects an @ai message.
-  // Cleared automatically after retryAfterSeconds (max 10 s for UX).
-  const [aiRateLimitError, setAiRateLimitError] = useState(null);
-  const aiRateLimitTimerRef = useRef(null);
+  // ── AI rate limit state ──────────────────────────────────
+  // rateLimitData holds the full payload from the server so
+  // the modal can show used/limit/retryAfterSeconds.
+  // When null the modal is hidden.
+  const [rateLimitData, setRateLimitData] = useState(null);
 
   // ── Refs ─────────────────────────────────────────────────
   const messageEndRef = useRef(null);
@@ -378,43 +557,42 @@ const Project = () => {
 
           const socket = initializeSocket(projectId);
 
-          // ── Typing indicators ──────────────────────────
+          // ── Typing indicators ────────────────────────────
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
 
-          // ── Message deleted by another user ───────────
+          // ── Message deleted ──────────────────────────────
           socket.on("message-deleted", ({ messageId }) => {
             setMessages((prev) => prev.filter((m) => m._id !== messageId));
           });
 
-          // ── AI rate limit error ────────────────────────
-          // The server emits this ONLY to the sender when
-          // their @ai message exceeds the 20/hr bucket.
+          // ── AI rate limit error ──────────────────────────
+          // Server emits this ONLY to the sender whose @ai
+          // message was blocked by the hourly bucket.
+          // We store the full payload so the modal can render
+          // the used/limit numbers and start its countdown.
           socket.on("ai-rate-limit-error", (data) => {
             if (!isMounted) return;
 
-            setAiRateLimitError(data.message);
-
-            // Cancel the AI thinking spinner immediately —
-            // no AI response is coming.
+            // Stop the thinking spinner — no response is coming
             setIsAiThinking(false);
 
-            // Auto-dismiss after the retry window (cap at 10 s)
-            if (aiRateLimitTimerRef.current) {
-              clearTimeout(aiRateLimitTimerRef.current);
-            }
-            aiRateLimitTimerRef.current = setTimeout(
-              () => {
-                setAiRateLimitError(null);
-              },
-              Math.min((data.retryAfterSeconds ?? 10) * 1000, 10000),
-            );
+            // Show the modal with the server payload
+            setRateLimitData(data);
+
+            // Also refresh the global usage counter in context
+            // so UserProfile reflects the hit immediately
+            if (refreshAiUsage) refreshAiUsage();
           });
 
-          // ── Incoming messages ──────────────────────────
+          // ── Incoming messages ────────────────────────────
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
-              if (data.isAi) setIsAiThinking(false);
+              if (data.isAi) {
+                setIsAiThinking(false);
+                // Refresh usage after a successful AI response
+                if (refreshAiUsage) refreshAiUsage();
+              }
 
               setMessages((prev) => {
                 const incomingSenderId = data.sender?._id || data.senderId;
@@ -480,10 +658,6 @@ const Project = () => {
       if (cleanupMessageListener) cleanupMessageListener();
       disconnectSocket();
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      // Clean up rate limit dismiss timer on unmount
-      if (aiRateLimitTimerRef.current) {
-        clearTimeout(aiRateLimitTimerRef.current);
-      }
     };
   }, [projectId, user?._id, webContainer]);
 
@@ -625,7 +799,7 @@ const Project = () => {
     setFileToDelete(null);
   };
 
-  // ── Send chat message ──────────────────────────────────────
+  // ── Send chat message ────────────────────────────────────
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
 
@@ -633,8 +807,8 @@ const Project = () => {
 
     if (message.trim().toLowerCase().includes("@ai")) {
       setIsAiThinking(true);
-      // Clear any previous rate limit error when user tries again
-      setAiRateLimitError(null);
+      // Clear any stale rate limit modal when user tries again
+      setRateLimitData(null);
 
       if (currentFile && fileTree[currentFile]?.file) {
         messageToSend +=
@@ -656,7 +830,7 @@ const Project = () => {
     initializeSocket(projectId).emit("stop-typing");
   };
 
-  // ── WebContainer run ───────────────────────────────────────
+  // ── WebContainer run ─────────────────────────────────────
   const handleRunClick = async () => {
     if (!webContainer) return;
     setTerminalOutput("");
@@ -896,6 +1070,18 @@ const Project = () => {
           text-transform: uppercase;
         }
       `}</style>
+
+      {/* ══════════════════════════════════════════════════════
+          AI RATE LIMIT MODAL
+          Rendered at root level so it overlays everything.
+          Only visible when rateLimitData is not null.
+      ══════════════════════════════════════════════════════ */}
+      {rateLimitData && (
+        <AiRateLimitModal
+          data={rateLimitData}
+          onClose={() => setRateLimitData(null)}
+        />
+      )}
 
       <PanelGroup direction="horizontal">
         {/* ══════════════════════════════════════
@@ -1165,36 +1351,6 @@ const Project = () => {
 
               {/* ── Message input ── */}
               <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
-                {/* ── AI Rate Limit Error Banner ──────────────────
-                    Shown when the server rejects an @ai message
-                    because the user has hit their hourly limit.
-                    Auto-dismisses after retryAfterSeconds (≤ 10 s).
-                ─────────────────────────────────────────────────── */}
-                {aiRateLimitError && (
-                  <div className="mx-2 mt-2 px-3 py-2.5 rounded-lg border border-[#3a2a1a] bg-[#1e1510] text-[#cc8844] text-[10px] font-mono flex items-start gap-2 animate-fade-in">
-                    {/* Warning triangle */}
-                    <AlertTriangle
-                      size={12}
-                      className="flex-shrink-0 mt-0.5 text-[#dd9955]"
-                    />
-                    <div className="flex-grow min-w-0">
-                      <span className="block font-semibold text-[#dd9955] mb-0.5">
-                        AI Limit Reached
-                      </span>
-                      <span className="text-[#996633] leading-relaxed break-words">
-                        {aiRateLimitError}
-                      </span>
-                    </div>
-                    {/* Dismiss */}
-                    <button
-                      onClick={() => setAiRateLimitError(null)}
-                      className="flex-shrink-0 text-[#664422] hover:text-[#cc8844] transition-colors p-0.5"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                )}
-
                 {/* Reply preview strip */}
                 {replyingTo && (
                   <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
@@ -1408,7 +1564,6 @@ const Project = () => {
             ══════════════════════════════════════ */}
             <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
               <div className="flex flex-col h-full w-full bg-[#141414]">
-                {/* Tab bar */}
                 <div className="top-bar flex justify-between items-center bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
                   <div className="files flex overflow-x-auto no-scrollbar h-full items-end flex-grow">
                     {openFiles.map((file) => {
@@ -1449,7 +1604,6 @@ const Project = () => {
                     )}
                   </div>
 
-                  {/* Run / Stop button */}
                   <div className="px-3 flex-shrink-0">
                     {!runProcess ? (
                       <button
@@ -1481,7 +1635,6 @@ const Project = () => {
                   </div>
                 </div>
 
-                {/* Editor area */}
                 <div className="flex-grow overflow-hidden relative h-full w-full">
                   {currentFile && fileTree[currentFile]?.file ? (
                     <div
@@ -1542,12 +1695,15 @@ const Project = () => {
             ══════════════════════════════════════ */}
             <Panel defaultSize={40} minSize={20}>
               <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
-                {/* Tab bar */}
                 <div className="flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-11 min-h-[2.75rem]">
                   <div className="flex gap-1">
                     {[
                       { id: "browser", icon: Globe, label: "Browser" },
-                      { id: "terminal", icon: Terminal, label: "Terminal" },
+                      {
+                        id: "terminal",
+                        icon: Terminal,
+                        label: "Terminal",
+                      },
                     ].map(({ id, icon: Icon, label }) => (
                       <button
                         key={id}
@@ -1576,7 +1732,6 @@ const Project = () => {
                   </button>
                 </div>
 
-                {/* Browser panel */}
                 {activeTab === "browser" && (
                   <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
                     {iframeUrl ? (
@@ -1618,7 +1773,6 @@ const Project = () => {
                   </div>
                 )}
 
-                {/* Terminal panel */}
                 {activeTab === "terminal" && (
                   <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
                     <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">

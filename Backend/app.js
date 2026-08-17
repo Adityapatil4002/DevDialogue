@@ -19,23 +19,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// 🔍 DEBUG ROUTE — remove after fixing
-app.get("/debug-session", async (req, res) => {
-  try {
-    const { fromNodeHeaders } = await import("better-auth/node");
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-    res.json({
-      session: session,
-      cookies: req.headers.cookie,
-      headers: req.headers,
-    });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
-
 // ✅ Updated CORS — explicit origin function + all required headers
 app.use(
   cors({
@@ -43,6 +26,7 @@ app.use(
       const allowed = [
         "http://localhost:5173",
         "https://dev-dialogue.vercel.app",
+        "https://devdialogue.vercel.app", // Added without dash as a safety net
       ];
       // Allow requests with no origin (curl, mobile, server-to-server)
       if (!origin || allowed.includes(origin)) {
@@ -62,13 +46,14 @@ app.use(
   }),
 );
 
-// ✅ Better Auth handler — must be before express.json()
-app.all("/api/auth/{*splat}", toNodeHandler(auth));
+// ✅ FIXED: Better Auth handler syntax for Express
+app.all("/api/auth/*", toNodeHandler(auth));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// Add this RIGHT AFTER app.use(cookieParser()) in app.js
+
+// 🔍 DEBUG ROUTE — remove after fixing
 app.get("/debug-session", async (req, res) => {
   try {
     const { fromNodeHeaders } = await import("better-auth/node");
@@ -83,6 +68,7 @@ app.get("/debug-session", async (req, res) => {
     res.json({ error: err.message });
   }
 });
+
 app.use(morgan("dev"));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
