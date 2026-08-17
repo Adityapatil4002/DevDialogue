@@ -43,7 +43,8 @@ export const auth = betterAuth({
   trustedOrigins: [
     "http://localhost:5173",
     "http://localhost:4000",
-    "https://dev-dialogue.vercel.app",
+    "https://dev-dialogue.vercel.app", // Original with dash
+    "https://devdialogue.vercel.app", // ✅ ADDED: The one without the dash
     "https://devdialogue.onrender.com",
   ],
 });
