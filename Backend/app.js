@@ -19,6 +19,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// ✅ Tell Express to trust Render's reverse proxy for secure cookies
+app.set("trust proxy", 1);
+
 // ✅ Updated CORS — explicit origin function + all required headers
 app.use(
   cors({
