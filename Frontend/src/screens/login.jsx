@@ -372,11 +372,20 @@ const Login = () => {
     }
   };
 
-await authClient.signIn.social({
-  provider: "google",
-  callbackURL: "https://dev-dialogue.vercel.app" // ✅ Ensure the hyphen is here
-});
-
+const handleGoogleLogin = async () => {
+  setGoogleLoading(true);
+  setError("");
+  try {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "https://dev-dialogue.vercel.app",
+    });
+  } catch (err) {
+    console.error(err);
+    setError("Google sign-in failed. Please try again.");
+    setGoogleLoading(false);
+  }
+};
   return (
     <>
       <style>{`
