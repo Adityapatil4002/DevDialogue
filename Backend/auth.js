@@ -10,7 +10,8 @@ await client.connect();
 
 export const auth = betterAuth({
   database: mongodbAdapter(client.db()),
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:4000",
+  baseURL:
+    process.env.BETTER_AUTH_URL || "https://devdialogue.vercel.app/api/auth",
 
   emailAndPassword: {
     enabled: true,

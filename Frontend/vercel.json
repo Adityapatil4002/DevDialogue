@@ -16,6 +16,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/auth/:path*",
+      "destination": "https://devdialogue.onrender.com/api/auth/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

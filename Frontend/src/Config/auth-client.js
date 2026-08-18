@@ -1,19 +1,16 @@
-import { createAuthClient } from "better-auth/client"; // (or "better-auth/react" if you are using the React specific import)
+import { createAuthClient } from "better-auth/client";
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_API_URL || "https://devdialogue.onrender.com",
-
-  // ✅ Add this entire fetchOptions block
+  // ✅ Update the baseURL to use the Vercel proxy route
+  baseURL: "/api/auth",
   fetchOptions: {
     auth: {
       type: "Bearer",
       token: () => localStorage.getItem("devdialogue_token") || "",
     },
     onSuccess: (ctx) => {
-      // Get the token from the response headers
       const authToken = ctx.response.headers.get("set-auth-token");
       if (authToken) {
-        // Store the token securely in localStorage
         localStorage.setItem("devdialogue_token", authToken);
       }
     },
