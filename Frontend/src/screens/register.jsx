@@ -335,17 +335,12 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: `${window.location.origin}/home`,
-      });
-    } catch {
-      setError("Google login failed. Please try again.");
-      setGoogleLoading(false);
-    }
+  // Inside your Register file
+  const handleGoogleRegister = async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "https://devdialogue.vercel.app", // ✅ Forces return to Vercel
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -868,6 +863,6 @@ const Register = () => {
       </main>
     </>
   );
-};
+};;
 
 export default Register;

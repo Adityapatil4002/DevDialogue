@@ -372,17 +372,12 @@ const Login = () => {
     }
   };
 
+  // Inside your Login file
   const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: `${window.location.origin}/home`,
-      });
-    } catch {
-      setError("Google login failed. Please try again.");
-      setGoogleLoading(false);
-    }
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "https://devdialogue.vercel.app", // ✅ Forces return to Vercel
+    });
   };
 
   return (
@@ -845,6 +840,6 @@ const Login = () => {
       </main>
     </>
   );
-};
+};;
 
 export default Login;
