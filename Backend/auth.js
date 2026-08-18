@@ -2,6 +2,8 @@ import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
+import { bearer } from "better-auth/plugins";
+
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
@@ -47,4 +49,5 @@ export const auth = betterAuth({
     "https://devdialogue.vercel.app", // ✅ ADDED: The one without the dash
     "https://devdialogue.onrender.com",
   ],
+  plugins: [bearer()],
 });

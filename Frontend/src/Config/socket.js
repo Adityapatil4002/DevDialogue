@@ -5,12 +5,16 @@ let socketInstance = null;
 export const initializeSocket = (projectId) => {
   if (socketInstance) return socketInstance;
 
-  // Better Auth uses cookies — withCredentials sends them automatically
-  // No manual token needed in the auth handshake
-  socketInstance = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
-    withCredentials: true, // ✅ Sends the session cookie to the socket server
-    query: { projectId },
-  });
+  // Fetch the token from localStorage and send it via the auth payload
+  socketInstance = io(
+    import.meta.env.VITE_API_URL || "https://devdialogue.onrender.com",
+    {
+      auth: {
+        token: localStorage.getItem("devdialogue_token") || "",
+      },
+      query: { projectId },
+    },
+  );
 
   socketInstance.on("connect", () => {
     console.log("✅ Socket connected:", socketInstance.id);

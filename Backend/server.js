@@ -21,7 +21,11 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "https://dev-dialogue.vercel.app","https://devdialogue.vercel.app"],
+    origin: [
+      "http://localhost:5173",
+      "https://dev-dialogue.vercel.app",
+      "https://devdialogue.vercel.app",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -29,7 +33,7 @@ const io = new Server(server, {
 
 // ─────────────────────────────────────────────────────────────
 //  Socket Auth Middleware
-//  Verifies Better Auth session from cookie,
+//  Verifies Better Auth session from Bearer token,
 //  finds user in MongoDB, confirms project membership.
 // ─────────────────────────────────────────────────────────────
 io.use(async (socket, next) => {
@@ -47,10 +51,16 @@ io.use(async (socket, next) => {
       return next(new Error("Project not found"));
     }
 
-    // Better Auth: read session from cookie sent in socket handshake
-    const cookieHeader = socket.handshake.headers.cookie || "";
+    // ✅ Extract the Bearer token sent from the frontend socket auth payload
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+      return next(new Error("Authentication error: No token provided"));
+    }
+
+    // ✅ Read session using the authorization header instead of cookies
     const session = await auth.api.getSession({
-      headers: fromNodeHeaders({ cookie: cookieHeader }),
+      headers: fromNodeHeaders({ authorization: `Bearer ${token}` }),
     });
 
     if (!session || !session.user) {
@@ -126,15 +136,11 @@ io.on("connection", (socket) => {
 
     try {
       // ── AI Rate Limit Check ──────────────────────────────
-      // Only runs when the message actually targets the AI.
-      // Checked BEFORE saving the message so a blocked request
-      // leaves zero trace in the database.
       if (aiIsPresentInMessage) {
         const userId = socket.user._id.toString();
         const { allowed, ttl, current } = await checkAiSocketRateLimit(userId);
 
         if (!allowed) {
-          // Emit error ONLY back to the sender — never broadcast
           socket.emit("ai-rate-limit-error", {
             message:
               `You've reached the AI usage limit (20 messages/hour). ` +
@@ -145,7 +151,6 @@ io.on("connection", (socket) => {
             limit: 20,
           });
 
-          // Return early — don't save, don't broadcast, don't call Gemini
           return;
         }
       }
