@@ -16,7 +16,7 @@
   ],
   "rewrites": [
     {
-      "source": "/api/auth/:path*",
+      "source": "/auth-proxy/:path*",
       "destination": "https://devdialogue.onrender.com/api/auth/:path*"
     },
     {

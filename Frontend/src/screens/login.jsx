@@ -372,13 +372,10 @@ const Login = () => {
     }
   };
 
-  // Inside your Login file
-  const handleGoogleLogin = async () => {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "https://devdialogue.vercel.app", // ✅ Forces return to Vercel
-    });
-  };
+await authClient.signIn.social({
+  provider: "google",
+  callbackURL: "https://dev-dialogue.vercel.app" // ✅ Ensure the hyphen is here
+});
 
   return (
     <>

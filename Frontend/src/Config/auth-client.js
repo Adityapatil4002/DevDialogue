@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/client";
 
 export const authClient = createAuthClient({
-  // ✅ Dynamically construct the absolute URL to prevent the crash
-  baseURL: `${window.location.origin}/api/auth`,
+  // ✅ Bypass Vercel's internal /api blocks
+  baseURL: `${window.location.origin}/auth-proxy`,
   fetchOptions: {
     auth: {
       type: "Bearer",
