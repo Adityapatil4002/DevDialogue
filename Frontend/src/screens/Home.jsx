@@ -47,11 +47,7 @@ const Tooltip = ({ label, children, position = "top" }) => {
       <AnimatePresence>
         {show && (
           <motion.span
-            initial={{
-              opacity: 0,
-              scale: 0.85,
-              y: position === "top" ? 4 : -4,
-            }}
+            initial={{ opacity: 0, scale: 0.85, y: position === "top" ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
@@ -101,10 +97,7 @@ const Mag = ({ children, onClick, className = "", type = "button" }) => {
         x.set((e.clientX - r.left - r.width / 2) * 0.25);
         y.set((e.clientY - r.top - r.height / 2) * 0.25);
       }}
-      onMouseLeave={() => {
-        x.set(0);
-        y.set(0);
-      }}
+      onMouseLeave={() => { x.set(0); y.set(0); }}
       onClick={onClick}
       className={className}
     >
@@ -120,8 +113,7 @@ const Cell = ({ children, className = "", onClick, style }) => {
   const my = useMotionValue(-100);
   const bg = useTransform(
     [mx, my],
-    ([x, y]) =>
-      `radial-gradient(300px circle at ${x}px ${y}px, rgba(255,255,255,0.04), transparent 70%)`,
+    ([x, y]) => `radial-gradient(300px circle at ${x}px ${y}px, rgba(255,255,255,0.04), transparent 70%)`
   );
 
   return (
@@ -136,19 +128,13 @@ const Cell = ({ children, className = "", onClick, style }) => {
         mx.set(e.clientX - r.left);
         my.set(e.clientY - r.top);
       }}
-      onMouseLeave={() => {
-        mx.set(-100);
-        my.set(-100);
-      }}
+      onMouseLeave={() => { mx.set(-100); my.set(-100); }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className={`relative bg-[#0a0a0a] rounded-xl border border-white/[0.07] hover:border-white/[0.15] flex flex-col overflow-hidden min-h-0 transition-colors duration-300
                   ${onClick ? "cursor-pointer" : ""} ${className}`}
     >
-      <motion.div
-        className="pointer-events-none absolute inset-0 rounded-xl"
-        style={{ background: bg }}
-      />
+      <motion.div className="pointer-events-none absolute inset-0 rounded-xl" style={{ background: bg }} />
       <div className="relative z-10 flex flex-col flex-1 min-h-0 p-4">
         {children}
       </div>
@@ -190,20 +176,12 @@ const Home = () => {
         if (live) setTimeout(() => setIsLoading(false), 350);
       }
     })();
-    return () => {
-      live = false;
-    };
+    return () => { live = false; };
   }, []);
 
   const week = useMemo(() => activityData.slice(-13), [activityData]);
-  const total = useMemo(
-    () => week.reduce((a, b) => a + (b.count ?? 0), 0),
-    [week],
-  );
-  const maxVal = useMemo(
-    () => Math.max(...week.map((d) => d.count ?? 0), 1),
-    [week],
-  );
+  const total = useMemo(() => week.reduce((a, b) => a + (b.count ?? 0), 0), [week]);
+  const maxVal = useMemo(() => Math.max(...week.map((d) => d.count ?? 0), 1), [week]);
 
   async function createProject(e) {
     e.preventDefault();
@@ -215,56 +193,27 @@ const Home = () => {
       setProjName("");
     } catch (err) {
       const m = err.response?.data || err.message;
-      setCreateErr(
-        typeof m === "string" && m.toLowerCase().includes("unique")
-          ? "Name already taken."
-          : m || "Failed to create project.",
-      );
+      setCreateErr(typeof m === "string" && m.toLowerCase().includes("unique") ? "Name already taken." : m || "Failed to create project.");
     }
   }
 
   const handleAccept = async (id) => {
-    try {
-      await axios.put("/project/accept-invite", { projectId: id });
-      window.location.reload();
-    } catch (e) {
-      console.error(e);
-    }
+    try { await axios.put("/project/accept-invite", { projectId: id }); window.location.reload(); } catch (e) { console.error(e); }
   };
   const handleReject = async (id) => {
-    try {
-      await axios.put("/project/reject-invite", { projectId: id });
-      setInvites((p) => p.filter((i) => i._id !== id));
-    } catch (e) {
-      console.error(e);
-    }
+    try { await axios.put("/project/reject-invite", { projectId: id }); setInvites((p) => p.filter((i) => i._id !== id)); } catch (e) { console.error(e); }
   };
-  const confirmDelete = (e, proj) => {
-    e.stopPropagation();
-    setToDelete(proj);
-    setDelete(true);
-  };
+  const confirmDelete = (e, proj) => { e.stopPropagation(); setToDelete(proj); setDelete(true); };
   const execDelete = async () => {
     if (!toDelete) return;
     const own = toDelete.owner?.toString() === user?._id?.toString();
     setProject((p) => p.filter((x) => x._id !== toDelete._id));
     setDelete(false);
     try {
-      own
-        ? await axios.delete("/project/delete", {
-            data: { projectId: toDelete._id },
-          })
-        : await axios.put("/project/leave", { projectId: toDelete._id });
-    } catch {
-      alert("Failed");
-      window.location.reload();
-    }
+      own ? await axios.delete("/project/delete", { data: { projectId: toDelete._id } }) : await axios.put("/project/leave", { projectId: toDelete._id });
+    } catch { alert("Failed"); window.location.reload(); }
   };
-  const handleLogout = async () => {
-    await authClient.signOut();
-    setUser(null);
-    navigate("/login");
-  };
+  const handleLogout = async () => { await authClient.signOut(); setUser(null); navigate("/login"); };
 
   if (isLoading) return <Loader />;
 
@@ -283,9 +232,7 @@ const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="w-7 h-7 rounded-lg bg-white flex items-center justify-center"
           >
-            <span className="text-[9px] font-black tracking-wider text-black">
-              DD
-            </span>
+            <span className="text-[9px] font-black tracking-wider text-black">DD</span>
           </motion.div>
           <span className="text-[13px] font-semibold tracking-tight">
             Dev<span className="text-white/50 font-normal">Dialogue</span>
@@ -327,13 +274,7 @@ const Home = () => {
           style={{ gridColumn: "span 3", gridRow: "span 2" }}
           className="group"
         >
-          <CellLabel
-            right={
-              <Tooltip label="Online">
-                <PulseDot />
-              </Tooltip>
-            }
-          >
+          <CellLabel right={<Tooltip label="Online"><PulseDot /></Tooltip>}>
             Profile
           </CellLabel>
           <div className="flex items-center gap-3 flex-1 min-h-0">
@@ -355,19 +296,12 @@ const Home = () => {
           </div>
           <Tooltip label="End session" position="top">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleLogout(); }}
               className="mt-2 pt-2 border-t border-white/[0.08] text-[10px] tracking-[0.1em] uppercase text-white/50 hover:text-white transition-colors flex items-center gap-2 w-full text-left bg-transparent flex-shrink-0"
             >
               <motion.span
                 animate={{ x: [0, 3, 0] }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.6,
-                  ease: "easeInOut",
-                }}
+                transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
               >
                 →
               </motion.span>
@@ -404,12 +338,8 @@ const Home = () => {
           <CellLabel
             right={
               <div className="flex items-center gap-2">
-                <Tooltip label="Live">
-                  <PulseDot />
-                </Tooltip>
-                <span className="text-[9px] font-mono text-white/50 tracking-wider">
-                  LIVE
-                </span>
+                <Tooltip label="Live"><PulseDot /></Tooltip>
+                <span className="text-[9px] font-mono text-white/50 tracking-wider">LIVE</span>
               </div>
             }
           >
@@ -439,11 +369,9 @@ const Home = () => {
                       className="flex-1 rounded-sm cursor-pointer"
                       style={{
                         background:
-                          intensity > 0.6
-                            ? "white"
-                            : intensity > 0.3
-                              ? "rgba(255,255,255,0.55)"
-                              : "rgba(255,255,255,0.15)",
+                          intensity > 0.6 ? "white"
+                          : intensity > 0.3 ? "rgba(255,255,255,0.55)"
+                          : "rgba(255,255,255,0.15)",
                       }}
                       initial={{ height: 6 }}
                       animate={{ height: `${h}%` }}
@@ -497,11 +425,7 @@ const Home = () => {
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    transition={{
-                      delay: idx * 0.04,
-                      duration: 0.4,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
+                    transition={{ delay: idx * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     onClick={() => navigate(`/project/${proj._id}`)}
                     whileHover={{ x: 4 }}
                     className="flex items-center gap-3 p-2.5 mb-1 rounded-xl border border-transparent hover:border-white/[0.08] hover:bg-white/[0.03] cursor-pointer group"
@@ -548,11 +472,7 @@ const Home = () => {
                       <motion.span
                         className="text-white/30 group-hover:text-white transition-colors text-[13px]"
                         animate={{ x: [0, 3, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 1.8,
-                          ease: "easeInOut",
-                        }}
+                        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
                       >
                         →
                       </motion.span>
@@ -571,23 +491,14 @@ const Home = () => {
             {[
               { k: "Proj", v: project.length, tip: "Total projects" },
               { k: "Inv", v: invites.length, tip: "Pending invites" },
-              {
-                k: "Mem",
-                v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0),
-                tip: "Team members",
-              },
+              { k: "Mem", v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0), tip: "Team members" },
               { k: "Act", v: project.length, tip: "Active workspaces" },
             ].map(({ k, v, tip }, i) => (
               <Tooltip key={k} label={tip}>
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    delay: 0.3 + i * 0.07,
-                    type: "spring",
-                    stiffness: 240,
-                    damping: 18,
-                  }}
+                  transition={{ delay: 0.3 + i * 0.07, type: "spring", stiffness: 240, damping: 18 }}
                   whileHover={{ y: -2, scale: 1.04 }}
                   className="w-full h-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-2 py-1.5 hover:border-white/[0.15] transition-colors flex flex-col justify-between cursor-default"
                 >
@@ -649,11 +560,7 @@ const Home = () => {
                     initial={{ opacity: 0, x: 16 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -16 }}
-                    transition={{
-                      delay: idx * 0.05,
-                      duration: 0.35,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
+                    transition={{ delay: idx * 0.05, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="flex items-center justify-between p-2 rounded-lg border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.03] transition-colors group"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -703,11 +610,7 @@ const Home = () => {
         {isModalOpen && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-            onClick={() => {
-              setModal(false);
-              setCreateErr("");
-              setProjName("");
-            }}
+            onClick={() => { setModal(false); setCreateErr(""); setProjName(""); }}
           >
             <motion.div
               initial={{ opacity: 0 }}
@@ -727,11 +630,7 @@ const Home = () => {
                 <motion.span
                   className="w-2 h-2 rounded-sm bg-white/50"
                   animate={{ rotate: [0, 90] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
                 Initialize project
               </div>
@@ -740,10 +639,7 @@ const Home = () => {
                   <input
                     type="text"
                     value={projName}
-                    onChange={(e) => {
-                      setProjName(e.target.value);
-                      setCreateErr("");
-                    }}
+                    onChange={(e) => { setProjName(e.target.value); setCreateErr(""); }}
                     className={`w-full bg-transparent border-b-2 py-3 text-white text-[15px] font-medium focus:outline-none placeholder-white/20 transition-colors ${createErr ? "border-white/40" : "border-white/[0.1] focus:border-white/60"}`}
                     placeholder="project-name"
                     required
@@ -772,11 +668,7 @@ const Home = () => {
                     type="button"
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      setModal(false);
-                      setCreateErr("");
-                      setProjName("");
-                    }}
+                    onClick={() => { setModal(false); setCreateErr(""); setProjName(""); }}
                     className="text-[11px] tracking-[0.1em] uppercase text-white/60 hover:text-white transition-colors px-4 py-2.5 rounded-lg hover:bg-white/[0.05]"
                   >
                     Cancel
@@ -817,28 +709,12 @@ const Home = () => {
             >
               <div className="text-[10px] tracking-[0.18em] uppercase text-white mb-3 font-bold flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                {toDelete?.owner?.toString() === user?._id?.toString()
-                  ? "Delete project"
-                  : "Leave project"}
+                {toDelete?.owner?.toString() === user?._id?.toString() ? "Delete project" : "Leave project"}
               </div>
               <p className="text-[12px] text-white/60 font-mono mb-7 leading-relaxed">
-                {toDelete?.owner?.toString() === user?._id?.toString() ? (
-                  <>
-                    Permanently delete{" "}
-                    <span className="text-white font-semibold">
-                      "{toDelete?.name}"
-                    </span>
-                    ?
-                  </>
-                ) : (
-                  <>
-                    Leave{" "}
-                    <span className="text-white font-semibold">
-                      "{toDelete?.name}"
-                    </span>
-                    ?
-                  </>
-                )}
+                {toDelete?.owner?.toString() === user?._id?.toString()
+                  ? <>Permanently delete <span className="text-white font-semibold">"{toDelete?.name}"</span>?</>
+                  : <>Leave <span className="text-white font-semibold">"{toDelete?.name}"</span>?</>}
               </p>
               <div className="flex gap-2.5">
                 <motion.button
@@ -853,9 +729,7 @@ const Home = () => {
                   onClick={execDelete}
                   className="flex-1 py-2.5 rounded-lg bg-white text-black text-[11px] uppercase tracking-[0.08em] font-bold hover:bg-white/90 transition-colors"
                 >
-                  {toDelete?.owner?.toString() === user?._id?.toString()
-                    ? "Delete"
-                    : "Leave"}
+                  {toDelete?.owner?.toString() === user?._id?.toString() ? "Delete" : "Leave"}
                 </Mag>
               </div>
             </motion.div>
