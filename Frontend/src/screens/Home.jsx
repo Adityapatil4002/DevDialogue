@@ -17,12 +17,7 @@ import { authClient } from "../Config/auth-client.js";
 const NoiseBG = () => (
   <svg className="pointer-events-none fixed inset-0 z-0 w-full h-full opacity-[0.03]">
     <filter id="noiseFilter">
-      <feTurbulence
-        type="fractalNoise"
-        baseFrequency="0.9"
-        numOctaves="4"
-        stitchTiles="stitch"
-      />
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" />
     </filter>
     <rect width="100%" height="100%" filter="url(#noiseFilter)" />
   </svg>
@@ -78,19 +73,13 @@ const Tooltip = ({ label, children, position = "top" }) => {
       <AnimatePresence>
         {show && (
           <motion.span
-            initial={{
-              opacity: 0,
-              scale: 0.85,
-              y: position === "top" ? 6 : -6,
-            }}
+            initial={{ opacity: 0, scale: 0.85, y: position === "top" ? 6 : -6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: position === "top" ? 6 : -6 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
             className={`absolute ${pos[position]} z-[200] pointer-events-none whitespace-nowrap bg-white text-black text-[9px] font-medium tracking-wider uppercase px-2.5 py-1 rounded-md shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5)]`}
           >
-            <span
-              className={`absolute w-1.5 h-1.5 bg-white rotate-45 ${position === "top" ? "-bottom-[3px] left-1/2 -translate-x-1/2" : position === "bottom" ? "-top-[3px] left-1/2 -translate-x-1/2" : ""}`}
-            />
+            <span className={`absolute w-1.5 h-1.5 bg-white rotate-45 ${position === "top" ? "-bottom-[3px] left-1/2 -translate-x-1/2" : position === "bottom" ? "-top-[3px] left-1/2 -translate-x-1/2" : ""}`} />
             {label}
           </motion.span>
         )}
@@ -140,10 +129,7 @@ const Mag = ({ children, onClick, className = "", type = "button" }) => {
         x.set((e.clientX - r.left - r.width / 2) * 0.3);
         y.set((e.clientY - r.top - r.height / 2) * 0.3);
       }}
-      onMouseLeave={() => {
-        x.set(0);
-        y.set(0);
-      }}
+      onMouseLeave={() => { x.set(0); y.set(0); }}
       onClick={onClick}
       className={className}
     >
@@ -183,8 +169,7 @@ const Cell = ({ children, className = "", onClick, span = "" }) => {
         style={{
           background: useTransform(
             [mouseX, mouseY],
-            ([x, y]) =>
-              `radial-gradient(350px circle at ${x}px ${y}px, rgba(255,255,255,0.03), transparent 60%)`,
+            ([x, y]) => `radial-gradient(350px circle at ${x}px ${y}px, rgba(255,255,255,0.03), transparent 60%)`
           ),
         }}
       />
@@ -255,20 +240,12 @@ const Home = () => {
         if (live) setTimeout(() => setIsLoading(false), 350);
       }
     })();
-    return () => {
-      live = false;
-    };
+    return () => { live = false; };
   }, []);
 
   const week = useMemo(() => activityData.slice(-13), [activityData]);
-  const total = useMemo(
-    () => week.reduce((a, b) => a + (b.count ?? 0), 0),
-    [week],
-  );
-  const maxVal = useMemo(
-    () => Math.max(...week.map((d) => d.count ?? 0), 1),
-    [week],
-  );
+  const total = useMemo(() => week.reduce((a, b) => a + (b.count ?? 0), 0), [week]);
+  const maxVal = useMemo(() => Math.max(...week.map((d) => d.count ?? 0), 1), [week]);
 
   async function createProject(e) {
     e.preventDefault();
@@ -280,56 +257,27 @@ const Home = () => {
       setProjName("");
     } catch (err) {
       const m = err.response?.data || err.message;
-      setCreateErr(
-        typeof m === "string" && m.toLowerCase().includes("unique")
-          ? "Name already taken."
-          : m || "Failed to create project.",
-      );
+      setCreateErr(typeof m === "string" && m.toLowerCase().includes("unique") ? "Name already taken." : m || "Failed to create project.");
     }
   }
 
   const handleAccept = async (id) => {
-    try {
-      await axios.put("/project/accept-invite", { projectId: id });
-      window.location.reload();
-    } catch (e) {
-      console.error(e);
-    }
+    try { await axios.put("/project/accept-invite", { projectId: id }); window.location.reload(); } catch (e) { console.error(e); }
   };
   const handleReject = async (id) => {
-    try {
-      await axios.put("/project/reject-invite", { projectId: id });
-      setInvites((p) => p.filter((i) => i._id !== id));
-    } catch (e) {
-      console.error(e);
-    }
+    try { await axios.put("/project/reject-invite", { projectId: id }); setInvites((p) => p.filter((i) => i._id !== id)); } catch (e) { console.error(e); }
   };
-  const confirmDelete = (e, proj) => {
-    e.stopPropagation();
-    setToDelete(proj);
-    setDelete(true);
-  };
+  const confirmDelete = (e, proj) => { e.stopPropagation(); setToDelete(proj); setDelete(true); };
   const execDelete = async () => {
     if (!toDelete) return;
     const own = toDelete.owner?.toString() === user?._id?.toString();
     setProject((p) => p.filter((x) => x._id !== toDelete._id));
     setDelete(false);
     try {
-      own
-        ? await axios.delete("/project/delete", {
-            data: { projectId: toDelete._id },
-          })
-        : await axios.put("/project/leave", { projectId: toDelete._id });
-    } catch {
-      alert("Failed");
-      window.location.reload();
-    }
+      own ? await axios.delete("/project/delete", { data: { projectId: toDelete._id } }) : await axios.put("/project/leave", { projectId: toDelete._id });
+    } catch { alert("Failed"); window.location.reload(); }
   };
-  const handleLogout = async () => {
-    await authClient.signOut();
-    setUser(null);
-    navigate("/login");
-  };
+  const handleLogout = async () => { await authClient.signOut(); setUser(null); navigate("/login"); };
 
   if (isLoading) return <Loader />;
 
@@ -354,9 +302,7 @@ const Home = () => {
             whileHover={{ rotate: 180 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="text-[9px] font-black tracking-wider text-black">
-              DD
-            </span>
+            <span className="text-[9px] font-black tracking-wider text-black">DD</span>
           </motion.div>
           <span className="text-[14px] font-semibold tracking-tight">
             Dev<span className="text-white/40 font-normal">Dialogue</span>
@@ -389,6 +335,7 @@ const Home = () => {
         animate="show"
         className="relative z-10 flex-1 grid grid-cols-12 grid-rows-6 gap-2.5 p-2.5 min-h-0"
       >
+
         {/* ┌─ 1. PROFILE ─┐ */}
         <Cell
           onClick={() => navigate("/profile")}
@@ -423,20 +370,13 @@ const Home = () => {
           </div>
           <Tooltip label="End your session" position="top">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleLogout(); }}
               className="mt-3 pt-2.5 border-t border-white/[0.06] text-[10px] tracking-[0.1em] uppercase text-white/40 hover:text-white transition-colors flex items-center gap-2 w-full text-left bg-transparent group/lo"
             >
               <motion.span
                 className="inline-block"
                 animate={{ x: [0, 4, 0] }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.5,
-                  ease: "easeInOut",
-                }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
               >
                 →
               </motion.span>
@@ -482,9 +422,7 @@ const Home = () => {
                 <Tooltip label="Live data feed">
                   <PulseDot />
                 </Tooltip>
-                <span className="text-[9px] font-mono text-white/30 tracking-wider">
-                  LIVE
-                </span>
+                <span className="text-[9px] font-mono text-white/30 tracking-wider">LIVE</span>
               </div>
             }
           >
@@ -510,12 +448,11 @@ const Home = () => {
                       className="flex-1 rounded-sm cursor-pointer relative"
                       style={{
                         height: 6,
-                        background:
-                          intensity > 0.6
-                            ? "white"
-                            : intensity > 0.3
-                              ? "rgba(255,255,255,0.5)"
-                              : "rgba(255,255,255,0.1)",
+                        background: intensity > 0.6
+                          ? "white"
+                          : intensity > 0.3
+                            ? "rgba(255,255,255,0.5)"
+                            : "rgba(255,255,255,0.1)",
                       }}
                       animate={{ height: `${h}%` }}
                       transition={{
@@ -539,12 +476,7 @@ const Home = () => {
             <motion.div
               className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/30 to-transparent"
               animate={{ x: ["-4rem", "calc(100% + 4rem)"] }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "linear",
-                repeatDelay: 2,
-              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
             />
           </div>
         </Cell>
@@ -585,16 +517,9 @@ const Home = () => {
                     initial={{ opacity: 0, x: -16, filter: "blur(4px)" }}
                     animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
                     exit={{ opacity: 0, x: 30, filter: "blur(4px)" }}
-                    transition={{
-                      delay: idx * 0.04,
-                      duration: 0.45,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
+                    transition={{ delay: idx * 0.04, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                     onClick={() => navigate(`/project/${proj._id}`)}
-                    whileHover={{
-                      x: 6,
-                      backgroundColor: "rgba(255,255,255,0.02)",
-                    }}
+                    whileHover={{ x: 6, backgroundColor: "rgba(255,255,255,0.02)" }}
                     className="flex items-center gap-3 p-3 mb-1 rounded-xl border border-transparent hover:border-white/[0.06] cursor-pointer group relative"
                   >
                     {/* Left accent bar */}
@@ -639,14 +564,7 @@ const Home = () => {
                           </Tooltip>
                         ))}
                       </div>
-                      <Tooltip
-                        label={
-                          proj.owner?.toString() === user?._id?.toString()
-                            ? "Delete project"
-                            : "Leave project"
-                        }
-                        position="left"
-                      >
+                      <Tooltip label={proj.owner?.toString() === user?._id?.toString() ? "Delete project" : "Leave project"} position="left">
                         <motion.button
                           onClick={(e) => confirmDelete(e, proj)}
                           whileHover={{ scale: 1.15 }}
@@ -659,11 +577,7 @@ const Home = () => {
                       <motion.span
                         className="text-white/15 group-hover:text-white/60 transition-colors text-[13px]"
                         animate={{ x: [0, 3, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 1.8,
-                          ease: "easeInOut",
-                        }}
+                        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
                       >
                         →
                       </motion.span>
@@ -680,41 +594,16 @@ const Home = () => {
           <CellLabel>Overview</CellLabel>
           <div className="grid grid-cols-2 gap-1.5 flex-1 content-start">
             {[
-              {
-                k: "Projects",
-                v: project.length,
-                icon: "▣",
-                tip: "Total projects",
-              },
-              {
-                k: "Requests",
-                v: invites.length,
-                icon: "◈",
-                tip: "Pending invites",
-              },
-              {
-                k: "Members",
-                v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0),
-                icon: "◉",
-                tip: "Across all projects",
-              },
-              {
-                k: "Active",
-                v: project.length,
-                icon: "◎",
-                tip: "Active workspaces",
-              },
+              { k: "Projects", v: project.length, icon: "▣", tip: "Total projects" },
+              { k: "Requests", v: invites.length, icon: "◈", tip: "Pending invites" },
+              { k: "Members", v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0), icon: "◉", tip: "Across all projects" },
+              { k: "Active", v: project.length, icon: "◎", tip: "Active workspaces" },
             ].map(({ k, v, icon, tip }, i) => (
               <Tooltip key={k} label={tip}>
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    delay: 0.4 + i * 0.08,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 16,
-                  }}
+                  transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 200, damping: 16 }}
                   whileHover={{ y: -3, scale: 1.03 }}
                   className="w-full bg-white/[0.02] border border-white/[0.04] rounded-xl px-2.5 py-2 hover:border-white/[0.1] transition-colors cursor-default"
                 >
@@ -776,17 +665,8 @@ const Home = () => {
                     layout
                     initial={{ opacity: 0, x: 20, filter: "blur(4px)" }}
                     animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                    exit={{
-                      opacity: 0,
-                      x: -20,
-                      filter: "blur(4px)",
-                      transition: { duration: 0.2 },
-                    }}
-                    transition={{
-                      delay: idx * 0.06,
-                      duration: 0.4,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
+                    exit={{ opacity: 0, x: -20, filter: "blur(4px)", transition: { duration: 0.2 } }}
+                    transition={{ delay: idx * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     className="flex items-center justify-between p-2.5 rounded-xl border border-white/[0.04] hover:border-white/[0.1] hover:bg-white/[0.02] transition-all group"
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -841,11 +721,7 @@ const Home = () => {
         {isModalOpen && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-            onClick={() => {
-              setModal(false);
-              setCreateErr("");
-              setProjName("");
-            }}
+            onClick={() => { setModal(false); setCreateErr(""); setProjName(""); }}
           >
             <motion.div
               initial={{ opacity: 0 }}
@@ -863,12 +739,7 @@ const Home = () => {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Corner accents */}
-              {[
-                "top-2 left-2",
-                "top-2 right-2",
-                "bottom-2 left-2",
-                "bottom-2 right-2",
-              ].map((c, i) => (
+              {["top-2 left-2", "top-2 right-2", "bottom-2 left-2", "bottom-2 right-2"].map((c, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, scale: 0 }}
@@ -882,11 +753,7 @@ const Home = () => {
                 <motion.span
                   className="w-2 h-2 rounded-sm bg-white/30"
                   animate={{ rotate: [0, 90] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
                 Initialize project
               </div>
@@ -895,10 +762,7 @@ const Home = () => {
                   <input
                     type="text"
                     value={projName}
-                    onChange={(e) => {
-                      setProjName(e.target.value);
-                      setCreateErr("");
-                    }}
+                    onChange={(e) => { setProjName(e.target.value); setCreateErr(""); }}
                     className={`w-full bg-transparent border-b-2 py-3 text-white text-[16px] font-medium focus:outline-none placeholder-white/15 transition-colors duration-300 ${createErr ? "border-white/30" : "border-white/[0.08] focus:border-white/50"}`}
                     placeholder="project-name"
                     required
@@ -927,11 +791,7 @@ const Home = () => {
                     type="button"
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      setModal(false);
-                      setCreateErr("");
-                      setProjName("");
-                    }}
+                    onClick={() => { setModal(false); setCreateErr(""); setProjName(""); }}
                     className="text-[11px] tracking-[0.1em] uppercase text-white/50 hover:text-white transition-colors px-4 py-2.5 rounded-xl hover:bg-white/[0.04]"
                   >
                     Cancel
@@ -944,12 +804,7 @@ const Home = () => {
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-black/[0.06] to-transparent"
                       animate={{ x: ["-100%", "200%"] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 2.5,
-                        ease: "linear",
-                        repeatDelay: 1,
-                      }}
+                      transition={{ repeat: Infinity, duration: 2.5, ease: "linear", repeatDelay: 1 }}
                     />
                   </Mag>
                 </div>
@@ -982,28 +837,12 @@ const Home = () => {
             >
               <div className="text-[10px] tracking-[0.18em] uppercase text-white/80 mb-3 font-bold flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                {toDelete?.owner?.toString() === user?._id?.toString()
-                  ? "Delete project"
-                  : "Leave project"}
+                {toDelete?.owner?.toString() === user?._id?.toString() ? "Delete project" : "Leave project"}
               </div>
               <p className="text-[12px] text-white/50 font-mono mb-7 leading-relaxed">
-                {toDelete?.owner?.toString() === user?._id?.toString() ? (
-                  <>
-                    Permanently delete{" "}
-                    <span className="text-white/80 font-semibold">
-                      "{toDelete?.name}"
-                    </span>
-                    ?
-                  </>
-                ) : (
-                  <>
-                    Leave{" "}
-                    <span className="text-white/80 font-semibold">
-                      "{toDelete?.name}"
-                    </span>
-                    ?
-                  </>
-                )}
+                {toDelete?.owner?.toString() === user?._id?.toString()
+                  ? <>Permanently delete <span className="text-white/80 font-semibold">"{toDelete?.name}"</span>?</>
+                  : <>Leave <span className="text-white/80 font-semibold">"{toDelete?.name}"</span>?</>}
               </p>
               <div className="flex gap-2.5">
                 <motion.button
@@ -1018,9 +857,7 @@ const Home = () => {
                   onClick={execDelete}
                   className="flex-1 py-2.5 rounded-xl bg-white text-black text-[11px] uppercase tracking-[0.08em] font-bold hover:bg-white/90 transition-colors"
                 >
-                  {toDelete?.owner?.toString() === user?._id?.toString()
-                    ? "Delete"
-                    : "Leave"}
+                  {toDelete?.owner?.toString() === user?._id?.toString() ? "Delete" : "Leave"}
                 </Mag>
               </div>
             </motion.div>
