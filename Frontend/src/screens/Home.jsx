@@ -11,29 +11,69 @@ import {
 import Loader from "../components/Loader";
 import { authClient } from "../Config/auth-client.js";
 
+/* ---------- Animation Variants ---------- */
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.05, delayChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
 };
 const item = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+    scale: 1,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
+/* ---------- Tooltip ---------- */
+const Tooltip = ({ label, children, position = "top" }) => {
+  const [show, setShow] = useState(false);
+  const positions = {
+    top: "bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2",
+    bottom: "top-[calc(100%+8px)] left-1/2 -translate-x-1/2",
+    left: "right-[calc(100%+8px)] top-1/2 -translate-y-1/2",
+    right: "left-[calc(100%+8px)] top-1/2 -translate-y-1/2",
+  };
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      <AnimatePresence>
+        {show && (
+          <motion.span
+            initial={{
+              opacity: 0,
+              y: position === "top" ? 4 : -4,
+              scale: 0.95,
+            }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: position === "top" ? 4 : -4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className={`absolute ${positions[position]} z-[200] pointer-events-none whitespace-nowrap bg-white text-black text-[9px] font-mono tracking-wider uppercase px-2 py-1 rounded-[4px] shadow-lg`}
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
+
+/* ---------- Small UI Bits ---------- */
 const PulseDot = () => (
   <span className="relative inline-flex items-center justify-center">
-    <span className="absolute w-3 h-3 rounded-full bg-emerald-500 opacity-20 animate-ping" />
-    <span className="relative w-[6px] h-[6px] rounded-full bg-emerald-500" />
+    <span className="absolute w-3 h-3 rounded-full bg-white/20 animate-ping" />
+    <span className="relative w-[6px] h-[6px] rounded-full bg-white" />
   </span>
 );
 
 const CellLabel = ({ children, right }) => (
-  <div className="flex items-center justify-between mb-[14px] flex-shrink-0">
-    <span className="text-[9px] font-semibold tracking-[0.14em] uppercase text-[#444]">
+  <div className="flex items-center justify-between mb-4 flex-shrink-0">
+    <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#666]">
       {children}
     </span>
     {right}
@@ -53,8 +93,8 @@ const Mag = ({ children, onClick, className = "", type = "button" }) => {
       style={{ x: sx, y: sy }}
       onMouseMove={(e) => {
         const r = ref.current.getBoundingClientRect();
-        x.set((e.clientX - r.left - r.width / 2) * 0.28);
-        y.set((e.clientY - r.top - r.height / 2) * 0.28);
+        x.set((e.clientX - r.left - r.width / 2) * 0.25);
+        y.set((e.clientY - r.top - r.height / 2) * 0.25);
       }}
       onMouseLeave={() => {
         x.set(0);
@@ -68,15 +108,18 @@ const Mag = ({ children, onClick, className = "", type = "button" }) => {
   );
 };
 
-const Cell = ({ children, className = "", onClick, span = "" }) => (
+/* ---------- Bento Cell ---------- */
+const Cell = ({ children, className = "", onClick, span = "", delay = 0 }) => (
   <motion.div
     variants={item}
     onClick={onClick}
-    whileHover={{ borderColor: "#2a2a2a" }}
-    transition={{ duration: 0.2 }}
-    className={`bg-[#0a0a0a] p-5 flex flex-col border border-[#1a1a1a] relative overflow-hidden
+    whileHover={{ y: -2, transition: { duration: 0.25 } }}
+    className={`relative bg-[#0b0b0b] rounded-2xl border border-[#1a1a1a] p-5 flex flex-col overflow-hidden
+                transition-[border-color,box-shadow] duration-300 hover:border-[#2e2e2e] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_20px_40px_-20px_rgba(0,0,0,0.8)]
                 ${onClick ? "cursor-pointer" : ""} ${span} ${className}`}
   >
+    {/* Subtle inner glow on hover */}
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent" />
     {children}
   </motion.div>
 );
@@ -192,149 +235,174 @@ const Home = () => {
   if (isLoading) return <Loader />;
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/10 flex flex-col">
+    <main className="min-h-screen w-screen bg-[#050505] text-white font-sans selection:bg-white/10 flex flex-col overflow-hidden">
+      {/* Ambient gradient background */}
+      <div className="pointer-events-none fixed inset-0 opacity-[0.35]">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-white/[0.03] blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-white/[0.02] blur-[120px] rounded-full" />
+      </div>
+
       {/* NAV */}
       <motion.nav
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex-shrink-0 flex items-center justify-between px-6 h-11 border-b border-[#1a1a1a] bg-[#050505] z-50"
+        className="relative z-50 flex-shrink-0 flex items-center justify-between px-6 h-12 border-b border-[#141414] bg-[#050505]/80 backdrop-blur-md"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-[26px] h-[26px] border border-[#222] flex items-center justify-center">
-            <span className="text-[9px] font-bold tracking-widest text-[#555]">
+        <div className="flex items-center gap-2.5">
+          <motion.div
+            whileHover={{ rotate: 90 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="w-7 h-7 rounded-lg border border-[#222] bg-[#0a0a0a] flex items-center justify-center"
+          >
+            <span className="text-[9px] font-bold tracking-widest text-white">
               DD
             </span>
-          </div>
+          </motion.div>
           <span className="text-[13px] font-semibold tracking-[0.06em]">
-            Dev<span className="text-[#555] font-normal">Dialogue</span>
+            Dev<span className="text-[#666] font-normal">Dialogue</span>
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
           {[
-            ["Dashboard", "/dashboard"],
-            ["Profile", "/profile"],
-          ].map(([label, path]) => (
-            <motion.button
-              key={path}
-              onClick={() => navigate(path)}
-              className="text-[11px] tracking-[0.08em] uppercase text-[#555] hover:text-white transition-colors relative group"
-            >
-              {label}
-              <span className="absolute -bottom-px left-0 w-0 h-px bg-white group-hover:w-full transition-all duration-250" />
-            </motion.button>
+            ["Dashboard", "/dashboard", "View analytics"],
+            ["Profile", "/profile", "Account settings"],
+          ].map(([label, path, tip]) => (
+            <Tooltip key={path} label={tip} position="bottom">
+              <motion.button
+                onClick={() => navigate(path)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="text-[11px] tracking-[0.08em] uppercase text-[#777] hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.03]"
+              >
+                {label}
+              </motion.button>
+            </Tooltip>
           ))}
         </div>
       </motion.nav>
 
-      {/* GRID */}
+      {/* BENTO GRID */}
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="flex-1 grid grid-cols-4 grid-rows-2 gap-px bg-[#1a1a1a] min-h-0"
+        className="relative z-10 flex-1 grid grid-cols-6 grid-rows-6 gap-3 p-3 min-h-0"
       >
-        {/* 1. CREATE */}
+        {/* 1. CREATE — top-left compact */}
         <Cell
           onClick={() => setModal(true)}
-          className="!bg-[#050505] border-dashed hover:!bg-[#080808] items-center justify-center gap-3 group"
+          span="col-span-2 row-span-2"
+          className="!bg-gradient-to-br from-[#0d0d0d] to-[#080808] items-center justify-center gap-4 group border-dashed"
         >
-          <motion.div
-            className="w-10 h-10 border border-[#222] flex items-center justify-center text-[#555] text-xl font-light transition-colors group-hover:border-[#444]"
-            whileHover={{ rotate: 90 }}
-            transition={{ duration: 0.25 }}
-          >
-            +
-          </motion.div>
-          <span className="text-[10px] tracking-[0.12em] uppercase text-[#444] group-hover:text-[#777] transition-colors">
-            New project
-          </span>
+          <Tooltip label="Create new project" position="top">
+            <motion.div
+              className="w-14 h-14 rounded-xl border border-[#242424] bg-[#0a0a0a] flex items-center justify-center text-[#777] text-2xl font-light group-hover:border-white/40 group-hover:text-white transition-colors duration-300"
+              whileHover={{ rotate: 90, scale: 1.08 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            >
+              +
+            </motion.div>
+          </Tooltip>
+          <div className="text-center">
+            <div className="text-[13px] font-semibold text-white/90 mb-1 tracking-tight">
+              New Project
+            </div>
+            <div className="text-[9px] tracking-[0.18em] uppercase text-[#555]">
+              Click to initialize
+            </div>
+          </div>
         </Cell>
 
         {/* 2. ACTIVITY */}
-        <Cell>
-          <CellLabel right={<PulseDot />}>Activity</CellLabel>
+        <Cell span="col-span-2 row-span-3">
+          <CellLabel
+            right={
+              <Tooltip label="System online">
+                <PulseDot />
+              </Tooltip>
+            }
+          >
+            Activity
+          </CellLabel>
           <motion.div
             key={total}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-[52px] font-semibold leading-none tracking-[-0.04em] tabular-nums text-white mb-1"
+            transition={{ duration: 0.4 }}
+            className="text-[56px] font-semibold leading-none tracking-[-0.04em] tabular-nums text-white mb-1"
           >
             {total}
           </motion.div>
-          <div className="text-[10px] font-mono text-[#444] mb-3">
-            commits this week
+          <div className="text-[10px] font-mono text-[#555] mb-4">
+            commits · past 13 days
           </div>
-          <div className="relative flex items-end gap-[3px] h-[52px] mt-auto mb-3">
+          <div className="relative flex items-end gap-[4px] h-[70px] mt-auto mb-3">
             <div className="absolute bottom-0 left-0 right-0 h-px bg-[#1a1a1a]" />
             {week.map((d, i) => {
-              const h = Math.max(4, ((d.count ?? 0) / maxVal) * 52);
+              const h = Math.max(4, ((d.count ?? 0) / maxVal) * 70);
               const hi = (d.count ?? 0) > maxVal * 0.6;
               const mi = (d.count ?? 0) > maxVal * 0.3;
               return (
-                <motion.div
-                  key={i}
-                  className={`flex-1 cursor-pointer group/b relative
-                    ${hi ? "bg-white" : mi ? "bg-[#555]" : "bg-[#222]"}`}
-                  style={{ height: 4 }}
-                  animate={{ height: h }}
-                  transition={{
-                    delay: 0.4 + i * 0.04,
-                    duration: 0.45,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  whileHover={{ filter: "brightness(1.5)", scaleY: 1.1 }}
-                >
-                  <div className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 bg-white text-black text-[8px] font-mono px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover/b:opacity-100 transition-opacity pointer-events-none">
-                    {d.count ?? 0}
-                  </div>
-                </motion.div>
+                <Tooltip key={i} label={`${d.count ?? 0} commits`}>
+                  <motion.div
+                    className={`w-[10px] rounded-sm cursor-pointer relative
+                      ${hi ? "bg-white" : mi ? "bg-[#666]" : "bg-[#242424]"}`}
+                    style={{ height: 4 }}
+                    animate={{ height: h }}
+                    transition={{
+                      delay: 0.5 + i * 0.04,
+                      duration: 0.55,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    whileHover={{ filter: "brightness(1.4)", scaleY: 1.08 }}
+                  />
+                </Tooltip>
               );
             })}
           </div>
           <div className="relative h-px bg-[#1a1a1a] mb-3 overflow-hidden">
             <motion.div
-              className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-              animate={{ x: ["-2rem", "100%"] }}
+              className="absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              animate={{ x: ["-2.5rem", "100%"] }}
               transition={{
-                duration: 2.5,
+                duration: 2.8,
                 repeat: Infinity,
                 ease: "linear",
-                repeatDelay: 1,
+                repeatDelay: 1.2,
               }}
             />
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-mono text-[#444]">
+          <div className="flex items-center gap-2 text-[9px] font-mono text-[#555]">
             <PulseDot />
-            <span className="tracking-wider">system online</span>
+            <span className="tracking-wider uppercase">Realtime sync</span>
           </div>
         </Cell>
 
-        {/* 3. PROJECTS 2×2 */}
-        <Cell span="col-span-2 row-span-2">
+        {/* 3. PROJECTS — big bento */}
+        <Cell span="col-span-2 row-span-6">
           <CellLabel
             right={
-              <span className="text-[9px] font-mono text-[#444]">
-                {project.length} active
-              </span>
+              <Tooltip label="Active projects">
+                <span className="text-[9px] font-mono text-[#666] px-2 py-0.5 rounded-md bg-white/[0.03] border border-[#1a1a1a]">
+                  {project.length}
+                </span>
+              </Tooltip>
             }
           >
             Projects
           </CellLabel>
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
             {project.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2">
-                {[100, 70, 90].map((w, i) => (
-                  <motion.div
-                    key={i}
-                    className="h-px bg-[#1a1a1a]"
-                    style={{ width: w }}
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ delay: 0.3 + i * 0.1 }}
-                  />
-                ))}
-                <span className="text-[9px] tracking-[0.18em] uppercase text-[#333] font-mono mt-2">
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <motion.div
+                  animate={{ opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="w-10 h-10 rounded-xl border border-[#1a1a1a] flex items-center justify-center text-[#333]"
+                >
+                  ◇
+                </motion.div>
+                <span className="text-[9px] tracking-[0.18em] uppercase text-[#444] font-mono">
                   no repositories
                 </span>
               </div>
@@ -343,62 +411,57 @@ const Home = () => {
                 {project.map((proj, idx) => (
                   <motion.div
                     key={proj._id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ delay: idx * 0.05 }}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ delay: idx * 0.04, duration: 0.35 }}
                     onClick={() => navigate(`/project/${proj._id}`)}
-                    className="flex items-center justify-between py-[18px] border-b border-[#111] last:border-b-0 cursor-pointer group relative hover:pl-2.5 transition-all duration-150 overflow-hidden"
+                    whileHover={{ x: 4 }}
+                    className="flex items-center gap-3 p-3 mb-1.5 rounded-lg border border-transparent hover:border-[#1e1e1e] hover:bg-white/[0.02] cursor-pointer group relative"
                   >
-                    <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white scale-y-0 group-hover:scale-y-100 transition-transform duration-200 origin-bottom" />
-                    <div className="w-7 h-7 border border-[#1a1a1a] bg-[#050505] flex items-center justify-center text-[10px] font-bold font-mono text-[#555] flex-shrink-0 group-hover:border-[#333] group-hover:text-white transition-all">
+                    <div className="w-9 h-9 rounded-lg border border-[#1e1e1e] bg-[#0a0a0a] flex items-center justify-center text-[10px] font-bold font-mono text-[#888] flex-shrink-0 group-hover:border-[#333] group-hover:text-white transition-colors">
                       {proj.name?.slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1 min-w-0 mx-2.5">
-                      <div className="text-[13px] text-[#ccc] font-medium truncate group-hover:text-white transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] text-[#d0d0d0] font-medium truncate group-hover:text-white transition-colors">
                         {proj.name}
                       </div>
-                      <div className="text-[10px] font-mono text-[#444] mt-0.5 flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-[#333]" />
+                      <div className="text-[10px] font-mono text-[#555] mt-0.5 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-white/40" />
                         {proj.users?.length ?? 0} members
-                        <span className="w-1 h-1 rounded-full bg-emerald-500/50" />
-                        active
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="flex">
                         {proj.users?.slice(0, 3).map((u, i) => (
-                          <div
-                            key={i}
-                            className="w-[18px] h-[18px] bg-[#1a1a1a] border border-[#111] text-[8px] text-[#666] flex items-center justify-center font-semibold -ml-1 first:ml-0"
-                          >
-                            {u.email?.[0]?.toUpperCase()}
-                          </div>
+                          <Tooltip key={i} label={u.email || "member"}>
+                            <div className="w-[20px] h-[20px] rounded-full bg-[#1a1a1a] border border-[#0a0a0a] text-[8px] text-[#aaa] flex items-center justify-center font-semibold -ml-1.5 first:ml-0">
+                              {u.email?.[0]?.toUpperCase()}
+                            </div>
+                          </Tooltip>
                         ))}
-                        {proj.users?.length > 3 && (
-                          <div className="w-[18px] h-[18px] bg-[#1a1a1a] border border-[#111] text-[7px] font-mono text-[#555] flex items-center justify-center -ml-1">
-                            +{proj.users.length - 3}
-                          </div>
-                        )}
                       </div>
-                      <button
-                        onClick={(e) => confirmDelete(e, proj)}
-                        className="text-[11px] text-[#333] hover:text-red-500 transition-colors w-5 h-5 flex items-center justify-center"
-                      >
-                        ⊘
-                      </button>
-                      <motion.span
-                        className="text-[#333] group-hover:text-white transition-colors text-[13px]"
-                        animate={{ x: [0, 3, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 1.8,
-                          ease: "easeInOut",
-                        }}
-                      >
-                        →
-                      </motion.span>
+                      <Tooltip label="Remove" position="left">
+                        <button
+                          onClick={(e) => confirmDelete(e, proj)}
+                          className="text-[12px] text-[#444] hover:text-red-400 transition-colors w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-500/10"
+                        >
+                          ⊘
+                        </button>
+                      </Tooltip>
                     </div>
+                    <motion.span
+                      className="text-[#333] group-hover:text-white transition-colors text-[13px]"
+                      animate={{ x: [0, 2, 0] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      →
+                    </motion.span>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -406,21 +469,16 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* 4. INBOX 2×2 */}
-        <Cell span="col-span-2 row-span-2">
+        {/* 4. INBOX */}
+        <Cell span="col-span-2 row-span-4">
           <CellLabel
             right={
               invites.length > 0 && (
                 <motion.span
-                  initial={{ scale: 0, rotate: -10 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 15,
-                    delay: 0.2,
-                  }}
-                  className="bg-white text-black text-[9px] font-bold font-mono px-[6px] py-[1px] min-w-[18px] text-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                  className="bg-white text-black text-[9px] font-bold font-mono px-2 py-[2px] rounded-md min-w-[20px] text-center"
                 >
                   {invites.length}
                 </motion.span>
@@ -429,25 +487,22 @@ const Home = () => {
           >
             Inbox
           </CellLabel>
-          <div className="flex flex-col gap-[6px] flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
+          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a] [&::-webkit-scrollbar-thumb]:rounded-full">
             {invites.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex-1 flex flex-col items-center justify-center gap-2 opacity-30"
+                transition={{ delay: 0.3 }}
+                className="flex-1 flex flex-col items-center justify-center gap-3"
               >
-                {[120, 80, 100].map((w, i) => (
-                  <motion.div
-                    key={i}
-                    className="h-px bg-[#1f1f1f]"
-                    style={{ width: w }}
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ delay: 0.3 + i * 0.1 }}
-                  />
-                ))}
-                <span className="text-[9px] tracking-[0.18em] uppercase text-[#444] font-mono mt-2">
+                <motion.div
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                  className="w-10 h-10 rounded-xl border border-[#1a1a1a] flex items-center justify-center text-[#333]"
+                >
+                  ✓
+                </motion.div>
+                <span className="text-[9px] tracking-[0.18em] uppercase text-[#444] font-mono">
                   all clear
                 </span>
               </motion.div>
@@ -457,57 +512,54 @@ const Home = () => {
                   <motion.div
                     key={invite._id}
                     layout
-                    initial={{ opacity: 0, x: 16 }}
+                    initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -16, transition: { duration: 0.2 } }}
+                    exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
                     transition={{
-                      delay: idx * 0.07,
-                      duration: 0.35,
+                      delay: idx * 0.06,
+                      duration: 0.4,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className="flex items-center justify-between p-2.5 border border-[#1a1a1a] hover:border-[#2a2a2a] hover:-translate-x-1 transition-all duration-150 group relative overflow-hidden"
+                    className="flex items-center justify-between p-3 rounded-lg border border-[#1a1a1a] hover:border-[#2a2a2a] hover:bg-white/[0.02] transition-colors group"
                   >
-                    <motion.div
-                      className="absolute left-0 top-0 bottom-0 w-[2px] bg-white/20"
-                      initial={{ scaleY: 0 }}
-                      animate={{ scaleY: 1 }}
-                      transition={{ delay: idx * 0.07 + 0.15, duration: 0.3 }}
-                      style={{ transformOrigin: "top" }}
-                    />
-                    <div className="flex items-center gap-3 flex-1 min-w-0 relative z-10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <motion.div
-                        className="w-[26px] h-[26px] bg-[#111] border border-[#222] flex items-center justify-center text-[10px] font-semibold text-[#888] flex-shrink-0"
-                        whileHover={{ scale: 1.08 }}
+                        className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center text-[11px] font-semibold text-[#aaa] flex-shrink-0"
+                        whileHover={{ scale: 1.08, rotate: 3 }}
                       >
                         {invite.name?.[0]?.toUpperCase()}
                       </motion.div>
-                      <div>
-                        <div className="text-[13px] text-[#ccc] font-medium group-hover:text-white transition-colors">
+                      <div className="min-w-0">
+                        <div className="text-[13px] text-[#d0d0d0] font-medium truncate group-hover:text-white transition-colors">
                           {invite.name}
                         </div>
-                        <div className="text-[9px] tracking-[0.1em] uppercase text-[#444] mt-0.5 flex items-center gap-1.5">
+                        <div className="text-[9px] tracking-[0.1em] uppercase text-[#555] mt-0.5 flex items-center gap-1.5">
                           <motion.span
-                            className="w-1 h-1 rounded-full bg-white/40"
+                            className="w-1 h-1 rounded-full bg-white/50"
                             animate={{ opacity: [1, 0.3, 1] }}
                             transition={{ repeat: Infinity, duration: 1.8 }}
                           />
-                          Collaboration invite
+                          Invite pending
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 relative z-10">
-                      <Mag
-                        onClick={() => handleAccept(invite._id)}
-                        className="w-7 h-7 flex items-center justify-center text-[13px] text-[#444] hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 transition-all"
-                      >
-                        ✓
-                      </Mag>
-                      <Mag
-                        onClick={() => handleReject(invite._id)}
-                        className="w-7 h-7 flex items-center justify-center text-[13px] text-[#444] hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
-                      >
-                        ✕
-                      </Mag>
+                    <div className="flex gap-1.5">
+                      <Tooltip label="Accept">
+                        <Mag
+                          onClick={() => handleAccept(invite._id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] text-[#666] hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-colors"
+                        >
+                          ✓
+                        </Mag>
+                      </Tooltip>
+                      <Tooltip label="Reject">
+                        <Mag
+                          onClick={() => handleReject(invite._id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] text-[#666] hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors"
+                        >
+                          ✕
+                        </Mag>
+                      </Tooltip>
                     </div>
                   </motion.div>
                 ))}
@@ -517,73 +569,125 @@ const Home = () => {
         </Cell>
 
         {/* 5. PROFILE */}
-        <Cell onClick={() => navigate("/profile")} className="group">
-          <CellLabel>Profile</CellLabel>
-          <motion.div
-            className="w-10 h- bg-[#111] border border-[#222] text-[16px] font-semibold text-[#ccc] flex items-center justify-center mb-3.5 group-hover:border-[#333] transition-all"
-            whileHover={{ scale: 1.04, rotate: 3 }}
+        <Cell
+          onClick={() => navigate("/profile")}
+          span="col-span-2 row-span-3"
+          className="group"
+        >
+          <CellLabel
+            right={
+              <Tooltip label="Signed in">
+                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+              </Tooltip>
+            }
           >
-            {user?.email?.charAt(0).toUpperCase()}
-          </motion.div>
-          <div className="text-[15px] font-semibold text-white mb-1">
-            {user?.email?.split("@")[0]}
+            Profile
+          </CellLabel>
+          <div className="flex items-center gap-4">
+            <motion.div
+              className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#242424] text-[20px] font-semibold text-white flex items-center justify-center group-hover:border-[#333] transition-colors"
+              whileHover={{ scale: 1.05, rotate: 3 }}
+              transition={{ duration: 0.25 }}
+            >
+              {user?.email?.charAt(0).toUpperCase()}
+            </motion.div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[15px] font-semibold text-white truncate">
+                {user?.email?.split("@")[0]}
+              </div>
+              <div className="text-[10px] font-mono text-[#555] truncate">
+                {user?.email}
+              </div>
+            </div>
           </div>
-          <div className="text-[10px] font-mono text-[#444]">{user?.email}</div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleLogout();
-            }}
-            className="mt-auto pt-3 border-t border-[#1a1a1a] text-[9px] tracking-[0.12em] uppercase text-[#444] hover:text-red-400 transition-colors flex items-center gap-1.5 w-full text-left bg-transparent"
-          >
-            → Sign out
-          </button>
+          <Tooltip label="Sign out of your account" position="top">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
+              className="mt-auto pt-3 border-t border-[#1a1a1a] text-[10px] tracking-[0.12em] uppercase text-[#666] hover:text-red-400 transition-colors flex items-center gap-1.5 w-full text-left bg-transparent"
+            >
+              <motion.span
+                animate={{ x: [0, 3, 0] }}
+                transition={{ repeat: Infinity, duration: 1.8 }}
+              >
+                →
+              </motion.span>
+              Sign out
+            </button>
+          </Tooltip>
         </Cell>
 
         {/* 6. OVERVIEW */}
-        <Cell>
-          <CellLabel>Overview</CellLabel>
-          <div className="grid grid-cols-2 gap-1.5 mt-auto">
+        <Cell span="col-span-2 row-span-3">
+          <CellLabel
+            right={
+              <span className="text-[9px] font-mono text-[#555] tracking-wider">
+                LIVE
+              </span>
+            }
+          >
+            Overview
+          </CellLabel>
+          <div className="grid grid-cols-2 gap-2 mt-auto">
             {[
-              { k: "Projects", v: project.length, icon: "▣" },
-              { k: "Requests", v: invites.length, icon: "◈" },
+              {
+                k: "Projects",
+                v: project.length,
+                icon: "▣",
+                tip: "Total projects",
+              },
+              {
+                k: "Requests",
+                v: invites.length,
+                icon: "◈",
+                tip: "Pending invites",
+              },
               {
                 k: "Members",
                 v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0),
                 icon: "◉",
+                tip: "Team members across projects",
               },
-              { k: "Active", v: project.length, icon: "◎" },
-            ].map(({ k, v, icon }, i) => (
-              <motion.div
-                key={k}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.3 + i * 0.07,
-                  duration: 0.35,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                whileHover={{ y: -2, borderColor: "#2a2a2a" }}
-                className="bg-[#050505] border border-[#1a1a1a] px-3 py-2.5 transition-colors"
-              >
-                <div className="text-[9px] tracking-[0.12em] uppercase text-[#444] font-mono mb-1.5 flex items-center gap-1.5">
-                  <span className="text-[10px]">{icon}</span>
-                  {k}
-                </div>
+              {
+                k: "Active",
+                v: project.length,
+                icon: "◎",
+                tip: "Active workspaces",
+              },
+            ].map(({ k, v, icon, tip }, i) => (
+              <Tooltip key={k} label={tip}>
                 <motion.div
-                  className="text-[26px] font-semibold text-white leading-none tracking-[-0.03em]"
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    delay: 0.45 + i * 0.07,
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 18,
+                    delay: 0.35 + i * 0.07,
+                    duration: 0.4,
+                    ease: [0.22, 1, 0.36, 1],
                   }}
+                  whileHover={{ y: -3 }}
+                  className="w-full bg-[#080808] border border-[#181818] rounded-xl px-3 py-3 hover:border-[#2a2a2a] transition-colors cursor-default"
                 >
-                  {v}
+                  <div className="text-[9px] tracking-[0.12em] uppercase text-[#555] font-mono mb-1.5 flex items-center gap-1.5">
+                    <span className="text-[11px] text-white/60">{icon}</span>
+                    {k}
+                  </div>
+                  <motion.div
+                    className="text-[26px] font-semibold text-white leading-none tracking-[-0.03em]"
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      delay: 0.5 + i * 0.07,
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 18,
+                    }}
+                  >
+                    {v}
+                  </motion.div>
                 </motion.div>
-              </motion.div>
+              </Tooltip>
             ))}
           </div>
         </Cell>
@@ -604,33 +708,22 @@ const Home = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/85 backdrop-blur-md"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="relative z-10 bg-[#0a0a0a] border border-[#222] w-full max-w-md p-8"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 bg-[#0b0b0b] border border-[#222] rounded-2xl w-full max-w-md p-8 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]"
               onClick={(e) => e.stopPropagation()}
             >
-              {[
-                "top-0 left-0 border-l border-t",
-                "top-0 right-0 border-r border-t",
-                "bottom-0 left-0 border-l border-b",
-                "bottom-0 right-0 border-r border-b",
-              ].map((c, i) => (
-                <div
-                  key={i}
-                  className={`absolute w-4 h-4 border-white/20 ${c}`}
-                />
-              ))}
-              <div className="text-[9px] tracking-[0.18em] uppercase text-[#555] mb-7 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-white/20" />
+              <div className="text-[9px] tracking-[0.18em] uppercase text-[#666] mb-6 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-sm bg-white/50" />
                 Initialize project
               </div>
               <form onSubmit={createProject}>
-                <div className="relative mb-7">
+                <div className="relative mb-6">
                   <input
                     type="text"
                     value={projName}
@@ -638,7 +731,7 @@ const Home = () => {
                       setProjName(e.target.value);
                       setCreateErr("");
                     }}
-                    className={`w-full bg-transparent border-b py-3 text-white text-[15px] font-medium focus:outline-none placeholder-[#2a2a2a] transition-colors ${createErr ? "border-red-500/40" : "border-[#222] focus:border-[#555]"}`}
+                    className={`w-full bg-transparent border-b py-3 text-white text-[15px] font-medium focus:outline-none placeholder-[#333] transition-colors ${createErr ? "border-red-500/50" : "border-[#222] focus:border-white/60"}`}
                     placeholder="project-name"
                     required
                     autoFocus
@@ -646,7 +739,7 @@ const Home = () => {
                   <motion.div
                     className="absolute bottom-0 left-0 h-px bg-white"
                     animate={{ width: projName ? "100%" : "0%" }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
                 <AnimatePresence>
@@ -661,7 +754,7 @@ const Home = () => {
                     </motion.p>
                   )}
                 </AnimatePresence>
-                <div className="flex justify-end items-center gap-5">
+                <div className="flex justify-end items-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -669,24 +762,15 @@ const Home = () => {
                       setCreateErr("");
                       setProjName("");
                     }}
-                    className="text-[11px] tracking-[0.1em] uppercase text-[#555] hover:text-white transition-colors"
+                    className="text-[11px] tracking-[0.1em] uppercase text-[#666] hover:text-white transition-colors px-4 py-2.5 rounded-lg hover:bg-white/[0.03]"
                   >
                     Cancel
                   </button>
                   <Mag
                     type="submit"
-                    className="text-[11px] tracking-[0.08em] uppercase font-semibold text-black bg-white px-6 py-2.5 hover:bg-[#e0e0e0] transition-colors relative overflow-hidden"
+                    className="text-[11px] tracking-[0.08em] uppercase font-semibold text-black bg-white px-6 py-2.5 rounded-lg hover:bg-[#e5e5e5] transition-colors relative overflow-hidden"
                   >
                     Create
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent"
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 2,
-                        ease: "linear",
-                      }}
-                    />
                   </Mag>
                 </div>
               </form>
@@ -706,22 +790,22 @@ const Home = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/85 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.94 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.94 }}
-              transition={{ duration: 0.2 }}
-              className="relative z-10 bg-[#0a0a0a] border border-red-500/20 w-full max-w-sm p-7"
+              transition={{ duration: 0.25 }}
+              className="relative z-10 bg-[#0b0b0b] border border-[#252525] rounded-2xl w-full max-w-sm p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-[9px] tracking-[0.18em] uppercase text-red-400 mb-3 font-semibold">
+              <div className="text-[9px] tracking-[0.18em] uppercase text-white/80 mb-3 font-semibold">
                 {toDelete?.owner?.toString() === user?._id?.toString()
                   ? "Delete project"
                   : "Leave project"}
               </div>
-              <p className="text-[12px] text-[#666] font-mono mb-7 leading-relaxed">
+              <p className="text-[12px] text-[#777] font-mono mb-7 leading-relaxed">
                 {toDelete?.owner?.toString() === user?._id?.toString()
                   ? `Permanently delete "${toDelete?.name}"?`
                   : `Leave "${toDelete?.name}"?`}
@@ -729,13 +813,13 @@ const Home = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setDelete(false)}
-                  className="flex-1 py-2.5 border border-[#222] text-[11px] uppercase tracking-[0.08em] text-[#555] hover:text-white hover:border-[#333] transition-all"
+                  className="flex-1 py-2.5 rounded-lg border border-[#222] text-[11px] uppercase tracking-[0.08em] text-[#666] hover:text-white hover:border-[#333] transition-colors"
                 >
                   Cancel
                 </button>
                 <Mag
                   onClick={execDelete}
-                  className="flex-1 py-2.5 bg-red-500/10 border border-red-500/30 text-[11px] uppercase tracking-[0.08em] text-red-400 hover:bg-red-500/20 transition-all"
+                  className="flex-1 py-2.5 rounded-lg bg-white text-black text-[11px] uppercase tracking-[0.08em] font-semibold hover:bg-[#e5e5e5] transition-colors"
                 >
                   {toDelete?.owner?.toString() === user?._id?.toString()
                     ? "Delete"
