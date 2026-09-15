@@ -205,7 +205,7 @@ const AnimNum = ({ value, className = "" }) => {
 };
 
 /* ════════════════════════════════════════════════════════════ */
-/*                          HOME                               */
+/*                            HOME                              */
 /* ════════════════════════════════════════════════════════════ */
 
 const Home = () => {
@@ -336,10 +336,10 @@ const Home = () => {
         className="relative z-10 flex-1 grid grid-cols-12 grid-rows-6 gap-2.5 p-2.5 min-h-0"
       >
 
-        {/* ┌─ 1. PROFILE ─┐ */}
+        {/* ┌─ 1. PROFILE (Small) ─┐ */}
         <Cell
           onClick={() => navigate("/profile")}
-          span="col-span-3 row-span-2"
+          span="col-span-3 row-span-3"
           className="group justify-between"
         >
           <CellLabel
@@ -385,10 +385,10 @@ const Home = () => {
           </Tooltip>
         </Cell>
 
-        {/* ┌─ 2. CREATE ─┐ */}
+        {/* ┌─ 2. CREATE (Small) ─┐ */}
         <Cell
           onClick={() => setModal(true)}
-          span="col-span-3 row-span-2"
+          span="col-span-3 row-span-3"
           className="items-center justify-center gap-3 group border-dashed border-white/[0.04] hover:border-white/[0.1]"
         >
           <Tooltip label="Start a new project">
@@ -414,75 +414,8 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 3. ACTIVITY ─┐ */}
-        <Cell span="col-span-6 row-span-2">
-          <CellLabel
-            right={
-              <div className="flex items-center gap-2">
-                <Tooltip label="Live data feed">
-                  <PulseDot />
-                </Tooltip>
-                <span className="text-[9px] font-mono text-white/30 tracking-wider">LIVE</span>
-              </div>
-            }
-          >
-            Activity
-          </CellLabel>
-          <div className="flex items-end gap-6 flex-1">
-            <div className="flex flex-col justify-end">
-              <div className="text-[42px] font-bold leading-none tracking-[-0.03em] tabular-nums text-white">
-                <AnimNum value={total} />
-              </div>
-              <div className="text-[11px] text-white/40 mt-1 font-mono">
-                commits · 13d
-              </div>
-            </div>
-
-            <div className="flex-1 flex items-end gap-[3px] h-full pb-1">
-              {week.map((d, i) => {
-                const h = Math.max(6, ((d.count ?? 0) / maxVal) * 100);
-                const intensity = (d.count ?? 0) / maxVal;
-                return (
-                  <Tooltip key={i} label={`${d.count ?? 0} commits`}>
-                    <motion.div
-                      className="flex-1 rounded-sm cursor-pointer relative"
-                      style={{
-                        height: 6,
-                        background: intensity > 0.6
-                          ? "white"
-                          : intensity > 0.3
-                            ? "rgba(255,255,255,0.5)"
-                            : "rgba(255,255,255,0.1)",
-                      }}
-                      animate={{ height: `${h}%` }}
-                      transition={{
-                        delay: 0.6 + i * 0.05,
-                        duration: 0.7,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      whileHover={{
-                        background: "white",
-                        scaleX: 1.3,
-                        transition: { duration: 0.15 },
-                      }}
-                    />
-                  </Tooltip>
-                );
-              })}
-            </div>
-          </div>
-          {/* Shimmer line */}
-          <div className="relative h-px bg-white/[0.04] mt-3 overflow-hidden rounded-full">
-            <motion.div
-              className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-              animate={{ x: ["-4rem", "calc(100% + 4rem)"] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
-            />
-          </div>
-        </Cell>
-
-        {/* ┌─ 4. PROJECTS ─┐ */}
-        <Cell span="col-span-7 row-span-4">
+        {/* ┌─ 3. PROJECTS (Big) ─┐ */}
+        <Cell span="col-span-6 row-span-3">
           <CellLabel
             right={
               <Tooltip label="Total active projects">
@@ -589,39 +522,8 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 5. OVERVIEW ─┐ */}
-        <Cell span="col-span-2 row-span-2">
-          <CellLabel>Overview</CellLabel>
-          <div className="grid grid-cols-2 gap-1.5 flex-1 content-start">
-            {[
-              { k: "Projects", v: project.length, icon: "▣", tip: "Total projects" },
-              { k: "Requests", v: invites.length, icon: "◈", tip: "Pending invites" },
-              { k: "Members", v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0), icon: "◉", tip: "Across all projects" },
-              { k: "Active", v: project.length, icon: "◎", tip: "Active workspaces" },
-            ].map(({ k, v, icon, tip }, i) => (
-              <Tooltip key={k} label={tip}>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 200, damping: 16 }}
-                  whileHover={{ y: -3, scale: 1.03 }}
-                  className="w-full bg-white/[0.02] border border-white/[0.04] rounded-xl px-2.5 py-2 hover:border-white/[0.1] transition-colors cursor-default"
-                >
-                  <div className="text-[8px] tracking-[0.14em] uppercase text-white/35 font-mono mb-1 flex items-center gap-1">
-                    <span className="text-[10px] text-white/50">{icon}</span>
-                    {k}
-                  </div>
-                  <div className="text-[22px] font-bold text-white leading-none tracking-tight">
-                    <AnimNum value={v} />
-                  </div>
-                </motion.div>
-              </Tooltip>
-            ))}
-          </div>
-        </Cell>
-
-        {/* ┌─ 6. INBOX ─┐ */}
-        <Cell span="col-span-3 row-span-2">
+        {/* ┌─ 4. INBOX (Big) ─┐ */}
+        <Cell span="col-span-6 row-span-3">
           <CellLabel
             right={
               invites.length > 0 && (
@@ -714,6 +616,105 @@ const Home = () => {
             )}
           </div>
         </Cell>
+
+        {/* ┌─ 5. ACTIVITY (Small) ─┐ */}
+        <Cell span="col-span-3 row-span-3">
+          <CellLabel
+            right={
+              <div className="flex items-center gap-2">
+                <Tooltip label="Live data feed">
+                  <PulseDot />
+                </Tooltip>
+                <span className="text-[9px] font-mono text-white/30 tracking-wider">LIVE</span>
+              </div>
+            }
+          >
+            Activity
+          </CellLabel>
+          <div className="flex items-end gap-6 flex-1">
+            <div className="flex flex-col justify-end">
+              <div className="text-[42px] font-bold leading-none tracking-[-0.03em] tabular-nums text-white">
+                <AnimNum value={total} />
+              </div>
+              <div className="text-[11px] text-white/40 mt-1 font-mono">
+                commits · 13d
+              </div>
+            </div>
+
+            <div className="flex-1 flex items-end gap-[3px] h-full pb-1">
+              {week.map((d, i) => {
+                const h = Math.max(6, ((d.count ?? 0) / maxVal) * 100);
+                const intensity = (d.count ?? 0) / maxVal;
+                return (
+                  <Tooltip key={i} label={`${d.count ?? 0} commits`}>
+                    <motion.div
+                      className="flex-1 rounded-sm cursor-pointer relative"
+                      style={{
+                        height: 6,
+                        background: intensity > 0.6
+                          ? "white"
+                          : intensity > 0.3
+                            ? "rgba(255,255,255,0.5)"
+                            : "rgba(255,255,255,0.1)",
+                      }}
+                      animate={{ height: `${h}%` }}
+                      transition={{
+                        delay: 0.6 + i * 0.05,
+                        duration: 0.7,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      whileHover={{
+                        background: "white",
+                        scaleX: 1.3,
+                        transition: { duration: 0.15 },
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </div>
+          {/* Shimmer line */}
+          <div className="relative h-px bg-white/[0.04] mt-3 overflow-hidden rounded-full">
+            <motion.div
+              className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              animate={{ x: ["-4rem", "calc(100% + 4rem)"] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
+            />
+          </div>
+        </Cell>
+
+        {/* ┌─ 6. OVERVIEW (Small) ─┐ */}
+        <Cell span="col-span-3 row-span-3">
+          <CellLabel>Overview</CellLabel>
+          <div className="grid grid-cols-2 gap-1.5 flex-1 content-start">
+            {[
+              { k: "Projects", v: project.length, icon: "▣", tip: "Total projects" },
+              { k: "Requests", v: invites.length, icon: "◈", tip: "Pending invites" },
+              { k: "Members", v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0), icon: "◉", tip: "Across all projects" },
+              { k: "Active", v: project.length, icon: "◎", tip: "Active workspaces" },
+            ].map(({ k, v, icon, tip }, i) => (
+              <Tooltip key={k} label={tip}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 200, damping: 16 }}
+                  whileHover={{ y: -3, scale: 1.03 }}
+                  className="w-full bg-white/[0.02] border border-white/[0.04] rounded-xl px-2.5 py-2 hover:border-white/[0.1] transition-colors cursor-default"
+                >
+                  <div className="text-[8px] tracking-[0.14em] uppercase text-white/35 font-mono mb-1 flex items-center gap-1">
+                    <span className="text-[10px] text-white/50">{icon}</span>
+                    {k}
+                  </div>
+                  <div className="text-[22px] font-bold text-white leading-none tracking-tight">
+                    <AnimNum value={v} />
+                  </div>
+                </motion.div>
+              </Tooltip>
+            ))}
+          </div>
+        </Cell>
+
       </motion.div>
 
       {/* ─── CREATE MODAL ─── */}
