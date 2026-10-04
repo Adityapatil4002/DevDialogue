@@ -8,19 +8,13 @@ import {
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  Tooltip as ChartTooltip,
   Legend,
   ArcElement,
   Filler,
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
-import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useSpring,
-  useInView,
-} from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 
 ChartJS.register(
   CategoryScale,
@@ -28,150 +22,307 @@ ChartJS.register(
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  ChartTooltip,
   Legend,
   ArcElement,
   Filler,
 );
 
-const greyPalette = ["#ffffff", "#aaaaaa", "#666666", "#333333", "#1a1a1a"];
+/* ───────── Palette ───────── */
+const palette = ["#e4e4e7", "#a1a1aa", "#71717a", "#52525b", "#3f3f46"];
 
-const container = {
+/* ───────── Noise ───────── */
+const NoiseBG = () => (
+  <svg className="pointer-events-none fixed inset-0 z-0 w-full h-full opacity-[0.02]">
+    <filter id="noiseFilter">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.9"
+        numOctaves="4"
+        stitchTiles="stitch"
+      />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+  </svg>
+);
+
+/* ───────── Animations ───────── */
+const orchestrate = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
 };
 
-const itemUp = {
-  hidden: { opacity: 0, y: 16 },
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.45, ease: [0.25, 1, 0.5, 1] },
   },
 };
 
-// --- PLAIN DARK BACKGROUND ---
-const Background = () => <div className="fixed inset-0 z-0 bg-[#050505]" />;
+/* ───────── Tooltip ───────── */
+const Tip = ({ label, children, position = "top" }) => {
+  const [show, setShow] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const ref = useRef(null);
 
-// --- CORNERS ---
-const Corners = () => (
-  <>
-    {[
-      "top-0 left-0 border-l border-t",
-      "top-0 right-0 border-r border-t",
-      "bottom-0 left-0 border-l border-b",
-      "bottom-0 right-0 border-r border-b",
-    ].map((c, i) => (
-      <div key={i} className={`absolute w-3 h-3 border-white/20 ${c}`} />
-    ))}
-  </>
-);
+  const update = () => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    let x = r.left + r.width / 2;
+    let y = position === "top" ? r.top - 8 : r.bottom + 8;
+    x = Math.max(60, Math.min(window.innerWidth - 60, x));
+    y = Math.max(28, Math.min(window.innerHeight - 28, y));
+    setCoords({ x, y });
+  };
 
-// --- COUNTER ---
-const Counter = ({ from = 0, to, duration = 1.8 }) => {
-  const [count, setCount] = useState(from);
+  return (
+    <span
+      ref={ref}
+      className="relative inline-flex"
+      onMouseEnter={() => {
+        update();
+        setShow(true);
+      }}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      <AnimatePresence>
+        {show && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            style={{
+              position: "fixed",
+              left: coords.x,
+              top: coords.y,
+              transform:
+                position === "top"
+                  ? "translate(-50%, -100%)"
+                  : "translate(-50%, 0%)",
+            }}
+            className="z-[9999] pointer-events-none whitespace-nowrap bg-[#1a1a1a] text-white/90 text-[10px] font-medium tracking-wide px-2.5 py-1.5 rounded-lg border border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
+
+/* ───────── Counter ───────── */
+const Counter = ({ to, duration = 1.6 }) => {
+  const [count, setCount] = useState(0);
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
     if (!inView) return;
-    let startTime;
+    let start;
     let raf;
-    const update = (ts) => {
-      if (!startTime) startTime = ts;
-      const progress = Math.min((ts - startTime) / (duration * 1000), 1);
-      const ease = 1 - Math.pow(1 - progress, 4);
-      setCount(Math.floor(ease * (to - from) + from));
-      if (progress < 1) raf = requestAnimationFrame(update);
+    const run = (ts) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / (duration * 1000), 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setCount(Math.floor(ease * to));
+      if (p < 1) raf = requestAnimationFrame(run);
     };
-    raf = requestAnimationFrame(update);
+    raf = requestAnimationFrame(run);
     return () => cancelAnimationFrame(raf);
-  }, [inView, to, from, duration]);
+  }, [inView, to, duration]);
 
   return <span ref={ref}>{count}</span>;
 };
 
-// --- MAGNETIC BUTTON ---
-const MagButton = ({ children, onClick, className = "" }) => {
-  const ref = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { damping: 15, stiffness: 150 });
-  const sy = useSpring(y, { damping: 15, stiffness: 150 });
-  return (
-    <motion.button
-      ref={ref}
-      style={{ x: sx, y: sy }}
-      onMouseMove={(e) => {
-        const r = ref.current.getBoundingClientRect();
-        x.set((e.clientX - r.left - r.width / 2) * 0.3);
-        y.set((e.clientY - r.top - r.height / 2) * 0.3);
-      }}
-      onMouseLeave={() => {
-        x.set(0);
-        y.set(0);
-      }}
-      onClick={onClick}
-      className={className}
-    >
-      {children}
-    </motion.button>
-  );
-};
-
-// --- STAT CARD ---
-const StatCard = ({ title, value, index, icon }) => (
-  <motion.div
-    variants={itemUp}
-    whileHover={{ borderColor: "#2a2a2a", y: -2 }}
-    transition={{ duration: 0.2 }}
-    className="relative bg-[#0a0a0a] border border-[#1a1a1a] px-5 py-4 overflow-hidden group"
+/* ───────── Icons ───────── */
+const ArrowLeftIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
   >
-    <Corners />
-    <motion.div
-      className="absolute top-0 left-0 w-0 h-[1px] bg-white"
-      whileHover={{ width: "100%" }}
-      transition={{ duration: 0.4 }}
-    />
-    <div className="flex items-start justify-between mb-2">
-      <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#444]">
-        {title}
-      </span>
-      <span className="text-[11px] text-[#333]">{icon}</span>
-    </div>
-    <div className="text-[40px] font-semibold leading-none tracking-[-0.04em] text-white tabular-nums">
-      <Counter to={value ?? 0} />
-    </div>
-    <motion.div
-      className="absolute bottom-0 left-0 h-[1px] bg-white/10"
-      initial={{ width: 0 }}
-      animate={{ width: "100%" }}
-      transition={{
-        delay: 0.3 + index * 0.1,
-        duration: 0.8,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-    />
-  </motion.div>
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
 );
 
-// --- PULSE DOT ---
-const PulseDot = () => (
-  <span className="relative inline-flex items-center justify-center">
-    <span className="absolute w-3 h-3 rounded-full bg-white opacity-10 animate-ping" />
-    <span className="relative w-[5px] h-[5px] rounded-full bg-white/60" />
-  </span>
+const FolderIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+  </svg>
 );
 
-// --- SECTION LABEL ---
-const SectionLabel = ({ children, right }) => (
+const UsersIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+    <path d="M16 3.13a4 4 0 010 7.75" />
+  </svg>
+);
+
+const BoxIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+
+const ChartBarIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
+  </svg>
+);
+
+const ZapIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const CalendarIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+
+const CodeIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+);
+
+const TrendUpIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </svg>
+);
+
+/* ───────── Cell Label ───────── */
+const CellLabel = ({ children, right }) => (
   <div className="flex items-center justify-between mb-3 flex-shrink-0">
-    <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#444]">
+    <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/40">
       {children}
     </span>
     {right}
   </div>
 );
+
+/* ───────── Cell ───────── */
+const Cell = ({ children, className = "", span = "" }) => (
+  <motion.div
+    variants={fadeUp}
+    className={`relative bg-[#0a0a0a] rounded-2xl border border-white/[0.06] p-5 flex flex-col overflow-hidden
+                transition-colors duration-300 hover:border-white/[0.12] hover:bg-[#0d0d0d] ${span} ${className}`}
+  >
+    <div className="relative z-10 flex flex-col flex-1 min-h-0">{children}</div>
+  </motion.div>
+);
+
+/* ───────── Stat Card ───────── */
+const StatCard = ({ title, value, Icon, index }) => (
+  <motion.div
+    variants={fadeUp}
+    className="bg-[#0a0a0a] rounded-2xl border border-white/[0.06] p-5 flex flex-col justify-between
+               hover:border-white/[0.12] hover:bg-[#0d0d0d] transition-colors duration-300"
+  >
+    <div className="flex items-center justify-between mb-4">
+      <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-white/35">
+        {title}
+      </span>
+      <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+        <Icon className="w-4 h-4 text-white/30" />
+      </div>
+    </div>
+    <div className="text-[38px] font-semibold leading-none tracking-tight text-white tabular-nums">
+      <Counter to={value ?? 0} />
+    </div>
+  </motion.div>
+);
+
+/* ════════════════════════════════════════════════════════════ */
+/*                          DASHBOARD                           */
+/* ════════════════════════════════════════════════════════════ */
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -216,7 +367,7 @@ const Dashboard = () => {
         } else {
           setStats(res.data);
         }
-      } catch (err) {
+      } catch {
         setStats(generateMockData());
       } finally {
         setLoading(false);
@@ -228,13 +379,13 @@ const Dashboard = () => {
   const filteredActivityData = useMemo(() => {
     if (!stats?.activityChartData) return { labels: [], data: [] };
     const days = parseInt(timeRange);
-    const slicedData = stats.activityChartData.slice(-days);
+    const sliced = stats.activityChartData.slice(-days);
     return {
-      labels: slicedData.map((d) => {
+      labels: sliced.map((d) => {
         const date = new Date(d.date);
         return `${date.getDate()}/${date.getMonth() + 1}`;
       }),
-      data: slicedData.map((d) => d.count),
+      data: sliced.map((d) => d.count),
     };
   }, [stats, timeRange]);
 
@@ -244,20 +395,19 @@ const Dashboard = () => {
       {
         label: "Activity",
         data: filteredActivityData.data,
-        borderColor: "rgba(255,255,255,0.8)",
-        backgroundColor: (context) => {
-          const ctx = context.chart.ctx;
-          const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-          gradient.addColorStop(0, "rgba(255,255,255,0.10)");
-          gradient.addColorStop(1, "rgba(255,255,255,0)");
-          return gradient;
+        borderColor: "rgba(255,255,255,0.7)",
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
+          g.addColorStop(0, "rgba(255,255,255,0.08)");
+          g.addColorStop(1, "rgba(255,255,255,0)");
+          return g;
         },
-        tension: 0.4,
+        tension: 0.35,
         fill: true,
-        pointBackgroundColor: "#ffffff",
-        pointBorderColor: "#050505",
+        pointBackgroundColor: "#fff",
+        pointBorderColor: "#0a0a0a",
         pointBorderWidth: 2,
-        pointRadius: 2,
+        pointRadius: 0,
         pointHoverRadius: 5,
         borderWidth: 1.5,
       },
@@ -267,38 +417,41 @@ const Dashboard = () => {
   const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { intersect: false, mode: "index" },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "#0a0a0a",
+        backgroundColor: "#111",
         titleColor: "#fff",
-        bodyColor: "#666",
-        borderColor: "#2a2a2a",
+        bodyColor: "#888",
+        borderColor: "#222",
         borderWidth: 1,
-        padding: 8,
+        padding: 10,
+        cornerRadius: 8,
         displayColors: false,
-        callbacks: {
-          label: (item) => `${item.raw} commits`,
-        },
+        titleFont: { size: 11, weight: "600" },
+        bodyFont: { size: 10, family: "monospace" },
+        callbacks: { label: (item) => `${item.raw} commits` },
       },
     },
     scales: {
       x: {
         grid: { display: false },
-        border: { color: "#1a1a1a" },
+        border: { display: false },
         ticks: {
-          color: "#444",
-          font: { family: "monospace", size: 8 },
+          color: "#333",
+          font: { family: "monospace", size: 9 },
           maxTicksLimit: 8,
         },
       },
       y: {
-        grid: { color: "rgba(255,255,255,0.03)" },
-        border: { color: "#1a1a1a" },
+        grid: { color: "rgba(255,255,255,0.03)", drawBorder: false },
+        border: { display: false },
         ticks: {
-          color: "#444",
-          font: { family: "monospace", size: 8 },
-          stepSize: 1,
+          color: "#333",
+          font: { family: "monospace", size: 9 },
+          stepSize: 2,
+          padding: 8,
         },
         beginAtZero: true,
       },
@@ -310,34 +463,48 @@ const Dashboard = () => {
     datasets: [
       {
         data: stats?.languageStats?.map((l) => l.data) || [],
-        backgroundColor: greyPalette,
-        borderColor: "#050505",
+        backgroundColor: palette,
+        borderColor: "#0a0a0a",
         borderWidth: 3,
         hoverOffset: 4,
       },
     ],
   };
 
-  // --- LOADING ---
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#111",
+        titleColor: "#fff",
+        bodyColor: "#888",
+        borderColor: "#222",
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8,
+        displayColors: true,
+        boxWidth: 8,
+        boxHeight: 8,
+        boxPadding: 4,
+      },
+    },
+    cutout: "75%",
+  };
+
+  /* ─── LOADING ─── */
   if (loading) {
     return (
-      <main className="h-screen w-screen bg-[#050505] flex items-center justify-center overflow-hidden">
-        <Background />
-        <div className="relative z-10 flex flex-col items-center gap-6">
-          <div className="relative w-10 h-10">
-            <motion.div
-              className="absolute inset-0 border border-white/20"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            />
-            <motion.div
-              className="absolute inset-2 border-t border-white/60"
-              animate={{ rotate: -360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-          <span className="text-[9px] tracking-[0.25em] uppercase text-[#444] font-mono">
-            loading
+      <main className="h-screen w-screen bg-[#050505] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <motion.div
+            className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <span className="text-[10px] tracking-[0.2em] uppercase text-white/25 font-mono">
+            Loading dashboard
           </span>
         </div>
       </main>
@@ -355,311 +522,261 @@ const Dashboard = () => {
   );
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/10 flex flex-col">
-      <Background />
+    <main className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/15 flex flex-col relative">
+      <NoiseBG />
 
-      <div className="relative z-10 flex flex-col h-full px-5 py-4">
-        {/* NAV */}
-        <motion.nav
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-shrink-0 flex items-center justify-between pb-3 mb-3 border-b border-[#1a1a1a]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-[26px] h-[26px] border border-[#222] flex items-center justify-center">
-              <span className="text-[9px] font-bold tracking-widest text-[#555]">
-                DD
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold tracking-[0.06em]">
-                Dev<span className="text-[#555] font-normal">Dialogue</span>
-              </span>
-              <span className="text-[#333] font-mono text-[11px]">/</span>
-              <span className="text-[9px] tracking-[0.18em] uppercase text-[#333] font-mono">
-                dashboard
-              </span>
-            </div>
+      {/* ─── NAV ─── */}
+      <motion.nav
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-50 flex-shrink-0 flex items-center justify-between px-5 h-[52px] border-b border-white/[0.06] bg-[#050505]/80 backdrop-blur-md"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
+            <span className="text-[9px] font-black tracking-wider text-black">
+              DD
+            </span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-semibold tracking-tight">
+              Dev<span className="text-white/35 font-normal">Dialogue</span>
+            </span>
+            <span className="text-white/15 text-[11px]">/</span>
+            <span className="text-[10px] tracking-wider text-white/30 font-mono">
+              dashboard
+            </span>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-[9px] font-mono text-[#444]">
-              <PulseDot />
-              <span className="tracking-wider">live</span>
-            </div>
-            <MagButton
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/40" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400/80" />
+            </span>
+            <span className="text-[9px] font-medium text-white/30 tracking-wider">
+              LIVE
+            </span>
+          </div>
+          <Tip label="Back to workspace" position="bottom">
+            <button
               onClick={() => navigate("/home")}
-              className="flex items-center gap-2 px-3 py-1.5 border border-[#1a1a1a] hover:border-[#2a2a2a] text-[9px] tracking-[0.1em] uppercase text-[#555] hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-white/45 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
             >
-              <motion.span
-                animate={{ x: [-1, 1, -1] }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.5,
-                  ease: "easeInOut",
-                }}
-              >
-                ←
-              </motion.span>
-              Workspace
-            </MagButton>
-          </div>
-        </motion.nav>
+              <ArrowLeftIcon className="w-3.5 h-3.5" />
+              Home
+            </button>
+          </Tip>
+        </div>
+      </motion.nav>
 
-        {/* TITLE ROW */}
+      {/* ─── CONTENT ─── */}
+      <div className="relative z-10 flex-1 flex flex-col p-2.5 min-h-0">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-shrink-0 flex items-baseline gap-4 mb-3"
+          transition={{ duration: 0.4, delay: 0.05, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-shrink-0 flex items-baseline gap-3 px-2.5 mb-2.5"
         >
-          <h1 className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-white">
+          <h1 className="text-[24px] font-semibold leading-none tracking-tight text-white">
             Dashboard
           </h1>
-          <span className="text-[9px] font-mono text-[#333] tracking-[0.14em]">
-            system overview · real-time metrics
+          <span className="text-[10px] text-white/25 font-mono tracking-wide">
+            overview · real-time metrics
           </span>
         </motion.div>
 
-        {/* MAIN GRID */}
+        {/* Grid */}
         <motion.div
-          variants={container}
+          variants={orchestrate}
           initial="hidden"
           animate="show"
-          className="flex-1 min-h-0 flex flex-col gap-px"
+          className="flex-1 min-h-0 grid grid-cols-12 grid-rows-[auto_1fr_auto] gap-2.5"
         >
-          {/* ROW 1 — STAT CARDS */}
-          <div className="grid grid-cols-3 gap-px flex-shrink-0">
+          {/* ─── ROW 1: Stat Cards ─── */}
+          <div className="col-span-12 grid grid-cols-3 gap-2.5">
             <StatCard
               title="Active Projects"
               value={stats?.totalProjects}
+              Icon={FolderIcon}
               index={0}
-              icon="▣"
             />
             <StatCard
               title="Collaborators"
               value={stats?.totalCollaborators}
+              Icon={UsersIcon}
               index={1}
-              icon="◉"
             />
             <StatCard
               title="Total Modules"
               value={stats?.totalFiles}
+              Icon={BoxIcon}
               index={2}
-              icon="◈"
             />
           </div>
 
-          {/* ROW 2 — CHARTS */}
-          <div className="flex gap-px flex-1 min-h-0">
-            {/* ACTIVITY CHART */}
-            <motion.div
-              variants={itemUp}
-              className="flex-[2] bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative overflow-hidden flex flex-col min-w-0"
-            >
-              <Corners />
-              <SectionLabel
-                right={
-                  <div className="flex gap-px border border-[#1a1a1a]">
-                    {["7", "15", "30"].map((range) => (
-                      <motion.button
-                        key={range}
-                        onClick={() => setTimeRange(range)}
-                        whileTap={{ scale: 0.95 }}
-                        className={`px-3 py-1 text-[9px] font-mono tracking-wider transition-all ${
-                          timeRange === range
-                            ? "bg-white text-black"
-                            : "text-[#444] hover:text-white"
-                        }`}
-                      >
-                        {range}D
-                      </motion.button>
-                    ))}
-                  </div>
-                }
-              >
-                Activity Overview
-              </SectionLabel>
-
-              <div className="flex items-baseline gap-3 mb-3 flex-shrink-0">
-                <motion.div
-                  key={totalCommits}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-[36px] font-semibold leading-none tracking-[-0.04em] tabular-nums"
-                >
-                  {totalCommits}
-                </motion.div>
-                <div>
-                  <div className="text-[9px] font-mono text-[#444]">
-                    total commits
-                  </div>
-                  <div className="text-[9px] font-mono text-[#333]">
-                    last {timeRange} days
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative h-px bg-[#1a1a1a] mb-3 overflow-hidden flex-shrink-0">
-                <motion.div
-                  className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                  animate={{ x: ["-4rem", "100%"] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "linear",
-                    repeatDelay: 1,
-                  }}
-                />
-              </div>
-
-              <div className="flex-1 min-h-0 w-full">
-                <Line data={lineChartData} options={lineChartOptions} />
-              </div>
-            </motion.div>
-
-            {/* TECH STACK */}
-            <motion.div
-              variants={itemUp}
-              className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative overflow-hidden flex flex-col min-w-0"
-            >
-              <Corners />
-              <SectionLabel>Tech Stack</SectionLabel>
-
-              <div className="relative flex-shrink-0 h-[140px] flex items-center justify-center mb-3">
-                <Doughnut
-                  data={doughnutData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: {
-                        backgroundColor: "#0a0a0a",
-                        titleColor: "#fff",
-                        bodyColor: "#666",
-                        borderColor: "#2a2a2a",
-                        borderWidth: 1,
-                        padding: 8,
-                      },
-                    },
-                    cutout: "78%",
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-[28px] font-semibold leading-none tracking-[-0.04em] text-white">
-                    {stats?.languageStats?.length || 0}
-                  </span>
-                  <span className="text-[8px] tracking-[0.2em] uppercase text-[#444] font-mono mt-0.5">
-                    langs
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative h-px bg-[#1a1a1a] mb-3 overflow-hidden flex-shrink-0">
-                <motion.div
-                  className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{ x: ["-4rem", "100%"] }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "linear",
-                    repeatDelay: 0.5,
-                  }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-[3px] flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
-                <AnimatePresence>
-                  {stats?.languageStats?.map((l, idx) => (
-                    <motion.div
-                      key={l.label}
-                      initial={{ opacity: 0, x: 8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.06, duration: 0.3 }}
-                      whileHover={{ x: 3, borderColor: "#2a2a2a" }}
-                      className="flex items-center gap-2 px-3 py-1.5 border border-[#111] group transition-all"
+          {/* ─── ROW 2: Charts ─── */}
+          {/* Activity Chart */}
+          <Cell span="col-span-8" className="min-h-0">
+            <CellLabel
+              right={
+                <div className="flex gap-0.5 bg-white/[0.03] rounded-lg border border-white/[0.06] p-0.5">
+                  {["7", "15", "30"].map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setTimeRange(r)}
+                      className={`px-3 py-1 rounded-md text-[10px] font-medium tracking-wide transition-all duration-200 ${
+                        timeRange === r
+                          ? "bg-white text-black"
+                          : "text-white/35 hover:text-white/70"
+                      }`}
                     >
-                      <span
-                        className="w-[5px] h-[5px] flex-shrink-0"
-                        style={{ backgroundColor: greyPalette[idx] || "#333" }}
-                      />
-                      <span className="text-[10px] text-[#777] flex-grow group-hover:text-white transition-colors font-mono truncate">
-                        {l.label}
-                      </span>
-                      <span className="text-[10px] font-semibold text-white tabular-nums flex-shrink-0">
-                        {l.data}
-                      </span>
-                      <div className="w-10 h-[2px] bg-[#1a1a1a] relative overflow-hidden flex-shrink-0">
-                        <motion.div
-                          className="absolute inset-y-0 left-0 bg-white"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(l.data / maxLang) * 100}%` }}
-                          transition={{
-                            delay: 0.4 + idx * 0.07,
-                            duration: 0.6,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                        />
-                      </div>
-                    </motion.div>
+                      {r}D
+                    </button>
                   ))}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </div>
+                </div>
+              }
+            >
+              Activity
+            </CellLabel>
 
-          {/* ROW 3 — BOTTOM STATS STRIP */}
-          <div className="grid grid-cols-4 gap-px flex-shrink-0">
+            <div className="flex items-baseline gap-3 mb-3 flex-shrink-0">
+              <motion.div
+                key={totalCommits}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-[34px] font-semibold leading-none tracking-tight tabular-nums text-white"
+              >
+                {totalCommits}
+              </motion.div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-white/35 font-mono">
+                  total commits
+                </span>
+                <span className="text-[9px] text-white/20 font-mono">
+                  last {timeRange} days
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 w-full">
+              <Line data={lineChartData} options={lineChartOptions} />
+            </div>
+          </Cell>
+
+          {/* Tech Stack */}
+          <Cell span="col-span-4" className="min-h-0">
+            <CellLabel>Tech Stack</CellLabel>
+
+            <div className="relative flex-shrink-0 h-[130px] flex items-center justify-center mb-3">
+              <Doughnut data={doughnutData} options={doughnutOptions} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-[24px] font-semibold leading-none text-white">
+                  {stats?.languageStats?.length || 0}
+                </span>
+                <span className="text-[8px] tracking-[0.18em] uppercase text-white/30 font-mono mt-0.5">
+                  languages
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-white/8 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {stats?.languageStats?.map((lang, idx) => (
+                <motion.div
+                  key={lang.label}
+                  initial={{ opacity: 0, x: 6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: 0.3 + idx * 0.05,
+                    duration: 0.3,
+                    ease: [0.25, 1, 0.5, 1],
+                  }}
+                  className="flex items-center gap-2.5 py-2 px-1 group"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: palette[idx] || "#444" }}
+                  />
+                  <span className="text-[11px] text-white/50 group-hover:text-white/80 transition-colors flex-1 truncate font-mono">
+                    {lang.label}
+                  </span>
+                  <span className="text-[11px] font-semibold text-white/80 tabular-nums flex-shrink-0 mr-2">
+                    {lang.data}
+                  </span>
+                  <div className="w-14 h-[3px] bg-white/[0.06] rounded-full overflow-hidden flex-shrink-0">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: palette[idx] || "#444" }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(lang.data / maxLang) * 100}%` }}
+                      transition={{
+                        delay: 0.4 + idx * 0.06,
+                        duration: 0.5,
+                        ease: [0.25, 1, 0.5, 1],
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </Cell>
+
+          {/* ─── ROW 3: Bottom Stats ─── */}
+          <div className="col-span-12 grid grid-cols-4 gap-2.5">
             {[
-              { label: "Avg commits/day", value: avgPerDay },
-              { label: "Peak activity", value: peakActivity },
-              { label: "Active days", value: activeDays },
-              { label: "Languages", value: stats?.languageStats?.length || 0 },
-            ].map(({ label, value }, i) => (
+              { label: "Avg / Day", value: avgPerDay, Icon: TrendUpIcon },
+              { label: "Peak Activity", value: peakActivity, Icon: ZapIcon },
+              { label: "Active Days", value: activeDays, Icon: CalendarIcon },
+              {
+                label: "Languages",
+                value: stats?.languageStats?.length || 0,
+                Icon: CodeIcon,
+              },
+            ].map(({ label, value, Icon }, i) => (
               <motion.div
                 key={label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  delay: 0.5 + i * 0.06,
+                  delay: 0.35 + i * 0.05,
                   duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
+                  ease: [0.25, 1, 0.5, 1],
                 }}
-                whileHover={{ borderColor: "#2a2a2a", y: -1 }}
-                className="bg-[#0a0a0a] border border-[#1a1a1a] px-4 py-3 relative overflow-hidden transition-all"
+                className="bg-[#0a0a0a] rounded-2xl border border-white/[0.06] px-5 py-4
+                           hover:border-white/[0.12] hover:bg-[#0d0d0d] transition-colors duration-300"
               >
-                <div className="text-[9px] tracking-[0.14em] uppercase text-[#444] font-mono mb-1">
-                  {label}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-medium tracking-[0.14em] uppercase text-white/30 font-mono">
+                    {label}
+                  </span>
+                  <Icon className="w-3.5 h-3.5 text-white/20" />
                 </div>
-                <div className="text-[22px] font-semibold leading-none tracking-[-0.03em] text-white tabular-nums">
+                <div className="text-[22px] font-semibold leading-none tracking-tight text-white tabular-nums">
                   {value}
                 </div>
-                <motion.div
-                  className="absolute bottom-0 left-0 h-[1px] bg-white/10"
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ delay: 0.6 + i * 0.06, duration: 0.6 }}
-                />
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* FOOTER */}
+        {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="flex-shrink-0 flex items-center justify-between mt-3 pt-3 border-t border-[#1a1a1a]"
+          transition={{ delay: 0.6, duration: 0.4 }}
+          className="flex-shrink-0 flex items-center justify-between px-2.5 pt-2.5 mt-1"
         >
-          <span className="text-[9px] font-mono text-[#333] tracking-[0.14em]">
-            DEVDIALOGUE · DASHBOARD · v1.0
+          <span className="text-[9px] font-mono text-white/15 tracking-wider">
+            DEVDIALOGUE · v1.0
           </span>
-          <div className="flex items-center gap-2 text-[9px] font-mono text-[#333]">
-            <PulseDot />
-            <span>all systems operational</span>
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-white/20">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500/60" />
+            </span>
+            <span>systems operational</span>
           </div>
         </motion.div>
       </div>
