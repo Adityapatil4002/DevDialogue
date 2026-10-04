@@ -5,20 +5,37 @@ import axios from "../Config/axios.js";
 import { useNavigate } from "react-router-dom";
 import { authClient } from "../Config/auth-client.js";
 
-const container = {
+/* ───────── Animations ───────── */
+const orchestrate = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.04, delayChildren: 0.04 } },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 8 },
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.4, ease: [0.25, 1, 0.5, 1] },
   },
 };
 
+/* ───────── Noise ───────── */
+const NoiseBG = () => (
+  <svg className="pointer-events-none fixed inset-0 z-0 w-full h-full opacity-[0.02]">
+    <filter id="noiseFilter">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.9"
+        numOctaves="4"
+        stitchTiles="stitch"
+      />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+  </svg>
+);
+
+/* ───────── Helpers ───────── */
 const getInitials = (name) => {
   if (!name) return "U";
   const parts = name.split(" ");
@@ -26,45 +43,346 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-const Corners = ({ color = "white/20" }) => (
-  <>
-    {[
-      "top-0 left-0 border-l border-t",
-      "top-0 right-0 border-r border-t",
-      "bottom-0 left-0 border-l border-b",
-      "bottom-0 right-0 border-r border-b",
-    ].map((c, i) => (
-      <div key={i} className={`absolute w-3 h-3 border-${color} ${c}`} />
-    ))}
-  </>
-);
+/* ───────── Tooltip ───────── */
+const Tip = ({ label, children, position = "top" }) => {
+  const [show, setShow] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const ref = useRef(null);
 
-const PulseDot = () => (
-  <span className="relative inline-flex items-center justify-center">
-    <span className="absolute w-3 h-3 rounded-full bg-white opacity-10 animate-ping" />
-    <span className="relative w-[5px] h-[5px] rounded-full bg-white/60" />
-  </span>
-);
+  const update = () => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    let x = r.left + r.width / 2;
+    let y = position === "top" ? r.top - 8 : r.bottom + 8;
+    x = Math.max(60, Math.min(window.innerWidth - 60, x));
+    y = Math.max(28, Math.min(window.innerHeight - 28, y));
+    setCoords({ x, y });
+  };
 
-const ShimmerLine = () => (
-  <div className="relative h-px bg-[#1a1a1a] overflow-hidden flex-shrink-0 my-px">
-    <motion.div
-      className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-      animate={{ x: ["-4rem", "100%"] }}
-      transition={{
-        duration: 2.5,
-        repeat: Infinity,
-        ease: "linear",
-        repeatDelay: 1,
+  return (
+    <span
+      ref={ref}
+      className="relative inline-flex"
+      onMouseEnter={() => {
+        update();
+        setShow(true);
       }}
-    />
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      <AnimatePresence>
+        {show && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            style={{
+              position: "fixed",
+              left: coords.x,
+              top: coords.y,
+              transform:
+                position === "top"
+                  ? "translate(-50%, -100%)"
+                  : "translate(-50%, 0%)",
+            }}
+            className="z-[9999] pointer-events-none whitespace-nowrap bg-[#1a1a1a] text-white/90 text-[10px] font-medium tracking-wide px-2.5 py-1.5 rounded-lg border border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
+
+/* ───────── Icons ───────── */
+const ArrowLeftIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+);
+const CheckIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const XIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+const UserIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const SettingsIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+  </svg>
+);
+const LinkIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+  </svg>
+);
+const MessageIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+const LockIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0110 0v4" />
+  </svg>
+);
+const GridIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
+const LogOutIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+const CameraIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+const MapPinIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+const StarIcon = ({ className = "w-4 h-4", filled = false }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+const SaveIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+const SendIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+const AlertIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+const ArrowRightIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
+);
+const TrashIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+  </svg>
+);
+const EyeIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+/* ───────── UI Primitives ───────── */
+const CellLabel = ({ children, right }) => (
+  <div className="flex items-center justify-between mb-3 flex-shrink-0">
+    <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/40">
+      {children}
+    </span>
+    {right}
   </div>
 );
 
-const CellLabel = ({ children }) => (
-  <div className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#444] mb-4 flex-shrink-0">
+const Cell = ({ children, className = "" }) => (
+  <motion.div
+    variants={fadeUp}
+    className={`relative bg-[#0a0a0a] rounded-2xl border border-white/[0.06] p-5 flex flex-col overflow-hidden transition-colors duration-300 hover:border-white/[0.1] ${className}`}
+  >
     {children}
-  </div>
+  </motion.div>
 );
 
 const Input = ({
@@ -76,8 +394,8 @@ const Input = ({
   type = "text",
   disabled = false,
 }) => (
-  <motion.div variants={item} className="flex flex-col gap-1.5">
-    <label className="text-[9px] font-semibold tracking-[0.16em] uppercase text-[#444]">
+  <motion.div variants={fadeUp} className="flex flex-col gap-1.5">
+    <label className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/40">
       {label}
     </label>
     <input
@@ -87,59 +405,59 @@ const Input = ({
       onChange={onChange}
       disabled={disabled}
       placeholder={placeholder}
-      className="w-full bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2 text-[11px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#333] disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-mono"
+      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[12px] text-white placeholder-white/20 focus:outline-none focus:border-white/[0.2] focus:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
     />
   </motion.div>
 );
 
 const StatBox = ({ label, value }) => (
   <motion.div
-    variants={item}
-    whileHover={{ borderColor: "#2a2a2a", y: -1 }}
-    className="bg-[#080808] border border-[#1a1a1a] p-3 relative overflow-hidden transition-all"
+    variants={fadeUp}
+    className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5 hover:border-white/[0.1] hover:bg-white/[0.035] transition-colors"
   >
-    <div className="text-[8px] tracking-[0.16em] uppercase text-[#444] font-mono mb-1">
+    <div className="text-[9px] tracking-[0.14em] uppercase text-white/35 font-mono mb-1.5">
       {label}
     </div>
-    <div className="text-[22px] font-semibold leading-none tracking-[-0.03em] text-white tabular-nums">
+    <div className="text-[22px] font-semibold leading-none tracking-tight text-white tabular-nums">
       {value}
     </div>
-    <motion.div
-      className="absolute bottom-0 left-0 h-[1px] bg-white/10"
-      initial={{ width: 0 }}
-      animate={{ width: "100%" }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-    />
   </motion.div>
 );
 
 const Toggle = ({ label, description, checked, onChange }) => (
   <motion.div
-    variants={item}
-    className="flex items-center justify-between py-3 border-b border-[#111] last:border-b-0"
+    variants={fadeUp}
+    className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-b-0"
   >
-    <div>
-      <div className="text-[11px] text-white font-mono">{label}</div>
+    <div className="flex-1 min-w-0 pr-4">
+      <div className="text-[12px] text-white/85 font-medium">{label}</div>
       {description && (
-        <div className="text-[9px] text-[#444] mt-0.5">{description}</div>
+        <div className="text-[10px] text-white/35 mt-0.5">{description}</div>
       )}
     </div>
     <button
       onClick={() => onChange(!checked)}
-      className={`relative w-10 h-5 border transition-colors flex-shrink-0 ${
-        checked ? "border-white/30 bg-white/10" : "border-[#222] bg-transparent"
+      className={`relative w-10 h-5.5 rounded-full border transition-colors flex-shrink-0 ${
+        checked
+          ? "border-white/30 bg-white/80"
+          : "border-white/[0.1] bg-white/[0.03]"
       }`}
+      style={{ height: "22px" }}
     >
       <motion.div
-        layout
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className={`absolute top-[3px] w-[10px] h-[10px] bg-white transition-colors ${
-          checked ? "left-[calc(100%-13px)]" : "left-[3px]"
+        animate={{ x: checked ? 20 : 2 }}
+        transition={{ type: "spring", stiffness: 500, damping: 32 }}
+        className={`absolute top-[2px] w-4 h-4 rounded-full ${
+          checked ? "bg-black" : "bg-white/40"
         }`}
       />
     </button>
   </motion.div>
 );
+
+/* ════════════════════════════════════════════════════════════ */
+/*                        USER PROFILE                          */
+/* ════════════════════════════════════════════════════════════ */
 
 const UserProfile = () => {
   const { user, setUser, aiUsage, refreshAiUsage } = useContext(UserContext);
@@ -206,13 +524,10 @@ const UserProfile = () => {
 
   useEffect(() => {
     if (!refreshAiUsage) return;
-
     refreshAiUsage();
-
     const interval = setInterval(() => {
       refreshAiUsage();
     }, 15000);
-
     return () => clearInterval(interval);
   }, [refreshAiUsage]);
 
@@ -344,12 +659,12 @@ const UserProfile = () => {
   };
 
   const tabs = [
-    { id: "overview", label: "Overview" },
-    { id: "profile", label: "Profile" },
-    { id: "socials", label: "Socials" },
-    { id: "preferences", label: "Preferences" },
-    { id: "feedback", label: "Feedback" },
-    { id: "security", label: "Security" },
+    { id: "overview", label: "Overview", Icon: GridIcon },
+    { id: "profile", label: "Profile", Icon: UserIcon },
+    { id: "socials", label: "Socials", Icon: LinkIcon },
+    { id: "preferences", label: "Preferences", Icon: SettingsIcon },
+    { id: "feedback", label: "Feedback", Icon: MessageIcon },
+    { id: "security", label: "Security", Icon: LockIcon },
   ];
 
   const saveLabel = {
@@ -371,70 +686,88 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans flex flex-col selection:bg-white/10">
-      {/* NAV */}
+    <div className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans flex flex-col selection:bg-white/15 relative">
+      <NoiseBG />
+
+      {/* ─── NAV ─── */}
       <motion.nav
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex-shrink-0 flex items-center justify-between px-6 h-11 border-b border-[#1a1a1a] bg-[#050505] z-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-50 flex-shrink-0 flex items-center justify-between px-5 h-[52px] border-b border-white/[0.06] bg-[#050505]/80 backdrop-blur-md"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-[26px] h-[26px] border border-[#222] flex items-center justify-center">
-            <span className="text-[9px] font-bold tracking-widest text-[#555]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
+            <span className="text-[9px] font-black tracking-wider text-black">
               DD
             </span>
           </div>
-          <span className="text-[13px] font-semibold tracking-[0.06em]">
-            Dev<span className="text-[#555] font-normal">Dialogue</span>
-          </span>
-          <span className="text-[#333] font-mono text-[11px] ml-1">/</span>
-          <span className="text-[9px] tracking-[0.18em] uppercase text-[#333] font-mono">
-            profile
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-semibold tracking-tight">
+              Dev<span className="text-white/35 font-normal">Dialogue</span>
+            </span>
+            <span className="text-white/15 text-[11px]">/</span>
+            <span className="text-[10px] tracking-wider text-white/30 font-mono">
+              profile
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-5">
+
+        <div className="flex items-center gap-3">
           <AnimatePresence>
             {message && (
               <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className={`text-[10px] font-mono px-3 py-1 border flex items-center gap-2 ${
+                initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className={`text-[10px] font-medium px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${
                   message.type === "success"
-                    ? "border-white/10 text-white/50"
-                    : "border-red-500/20 text-red-400"
+                    ? "border-emerald-400/20 text-emerald-300 bg-emerald-400/[0.05]"
+                    : "border-red-400/20 text-red-300 bg-red-400/[0.05]"
                 }`}
               >
-                {message.type === "success" ? "✓" : "⚠"} {message.text}
+                {message.type === "success" ? (
+                  <CheckIcon className="w-3 h-3" />
+                ) : (
+                  <AlertIcon className="w-3 h-3" />
+                )}
+                {message.text}
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="flex items-center gap-2 text-[9px] font-mono text-[#444]">
-            <PulseDot />
-            <span className="tracking-wider">online</span>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/40" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400/80" />
+            </span>
+            <span className="text-[9px] font-medium text-white/30 tracking-wider">
+              ONLINE
+            </span>
           </div>
-          <motion.button
-            onClick={() => navigate("/home")}
-            whileHover={{ x: -2 }}
-            className="text-[10px] tracking-[0.1em] uppercase text-[#555] hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            ← Workspace
-          </motion.button>
+          <Tip label="Back to workspace" position="bottom">
+            <button
+              onClick={() => navigate("/home")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-white/45 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
+            >
+              <ArrowLeftIcon className="w-3.5 h-3.5" />
+              Home
+            </button>
+          </Tip>
         </div>
       </motion.nav>
 
-      {/* BODY */}
-      <div className="flex flex-1 min-h-0">
-        {/* SIDEBAR */}
+      {/* ─── BODY ─── */}
+      <div className="relative z-10 flex flex-1 min-h-0">
+        {/* ─── SIDEBAR ─── */}
         <motion.aside
-          initial={{ opacity: 0, x: -10 }}
+          initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="w-52 flex-shrink-0 border-r border-[#1a1a1a] flex flex-col bg-[#050505]"
+          transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+          className="w-60 flex-shrink-0 border-r border-white/[0.06] flex flex-col bg-[#070707]"
         >
           {/* Avatar + user info */}
-          <div className="p-4 border-b border-[#1a1a1a] relative">
+          <div className="p-5 border-b border-white/[0.06] relative">
             <input
               type="file"
               ref={fileInputRef}
@@ -443,7 +776,6 @@ const UserProfile = () => {
               onChange={handleImageUpload}
             />
 
-            {/* Big avatar */}
             <div
               className="relative cursor-pointer group mb-3 mx-auto w-fit"
               onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)}
@@ -453,40 +785,39 @@ const UserProfile = () => {
                   src={user.avatar}
                   alt="Avatar"
                   onError={() => setImgError(true)}
-                  className="w-16 h-16 object-cover border border-[#2a2a2a]"
+                  className="w-16 h-16 rounded-2xl object-cover border border-white/[0.08]"
                 />
               ) : (
-                <div className="w-16 h-16 bg-[#111] border border-[#222] flex items-center justify-center text-[20px] font-semibold text-[#ccc]">
+                <div className="w-16 h-16 rounded-2xl bg-white text-black border border-white/[0.1] flex items-center justify-center text-[22px] font-bold">
                   {getInitials(user?.name)}
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-[8px] text-white font-mono tracking-wider">
-                  EDIT
-                </span>
+              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                <CameraIcon className="w-5 h-5 text-white/90" />
               </div>
 
               {/* Online indicator */}
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#050505] flex items-center justify-center">
-                <div className="w-2 h-2 bg-white/60" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#070707] rounded-full flex items-center justify-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
               </div>
             </div>
 
             <div className="text-center">
-              <div className="text-[12px] font-semibold text-white truncate">
+              <div className="text-[13px] font-semibold text-white truncate">
                 {user?.name || "Developer"}
               </div>
-              <div className="text-[9px] font-mono text-[#444] truncate mt-0.5">
+              <div className="text-[10px] text-white/40 truncate mt-0.5 font-mono">
                 {user?.email}
               </div>
               {formData.jobTitle && (
-                <div className="text-[9px] font-mono text-[#555] mt-0.5 truncate">
+                <div className="text-[10px] text-white/50 mt-1.5 truncate">
                   {formData.jobTitle}
                 </div>
               )}
               {formData.location && (
-                <div className="text-[9px] font-mono text-[#333] mt-0.5 truncate">
-                  ◎ {formData.location}
+                <div className="text-[10px] text-white/30 mt-1 truncate flex items-center justify-center gap-1">
+                  <MapPinIcon className="w-3 h-3" />
+                  {formData.location}
                 </div>
               )}
             </div>
@@ -495,22 +826,21 @@ const UserProfile = () => {
             <AnimatePresence>
               {isAvatarMenuOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                  transition={{ duration: 0.18 }}
-                  className="absolute top-full left-4 mt-1 w-44 bg-[#0a0a0a] border border-[#1a1a1a] z-50 overflow-hidden"
+                  exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute top-full left-5 right-5 mt-1 bg-[#0e0e0e] border border-white/[0.08] rounded-xl z-50 overflow-hidden shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
                 >
-                  <Corners />
                   {user?.avatar && !imgError && (
                     <button
                       onClick={() => {
                         setIsViewingImage(true);
                         setIsAvatarMenuOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2.5 text-[10px] font-mono text-[#777] hover:text-white hover:bg-[#111] transition-all"
+                      className="w-full text-left px-3.5 py-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/[0.05] transition-colors flex items-center gap-2.5"
                     >
-                      → View photo
+                      <EyeIcon className="w-3.5 h-3.5" /> View photo
                     </button>
                   )}
                   <button
@@ -518,16 +848,16 @@ const UserProfile = () => {
                       fileInputRef.current.click();
                       setIsAvatarMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-[10px] font-mono text-[#777] hover:text-white hover:bg-[#111] transition-all"
+                    className="w-full text-left px-3.5 py-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/[0.05] transition-colors flex items-center gap-2.5"
                   >
-                    → Change photo
+                    <CameraIcon className="w-3.5 h-3.5" /> Change photo
                   </button>
                   {user?.avatar && !imgError && (
                     <button
                       onClick={handleDeleteAvatar}
-                      className="w-full text-left px-4 py-2.5 text-[10px] font-mono text-red-500/60 hover:text-red-400 hover:bg-red-500/5 transition-all border-t border-[#1a1a1a]"
+                      className="w-full text-left px-3.5 py-2.5 text-[11px] text-red-400/70 hover:text-red-400 hover:bg-red-400/[0.05] transition-colors border-t border-white/[0.05] flex items-center gap-2.5"
                     >
-                      → Remove photo
+                      <TrashIcon className="w-3.5 h-3.5" /> Remove photo
                     </button>
                   )}
                 </motion.div>
@@ -536,60 +866,66 @@ const UserProfile = () => {
           </div>
 
           {/* Tabs */}
-          <nav className="flex flex-col p-2 gap-px flex-1 overflow-y-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative w-full text-left px-4 py-2.5 text-[10px] tracking-[0.1em] uppercase font-semibold transition-all ${
-                  activeTab === tab.id
-                    ? "text-white bg-[#0f0f0f] border border-[#222]"
-                    : "text-[#444] hover:text-[#888] border border-transparent"
-                }`}
-              >
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="tabIndicator"
-                    className="absolute left-0 top-0 bottom-0 w-[2px] bg-white"
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          <nav className="flex flex-col p-2 gap-0.5 flex-1 overflow-y-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.Icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative w-full text-left px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2.5 ${
+                    isActive
+                      ? "text-white bg-white/[0.06]"
+                      : "text-white/40 hover:text-white/80 hover:bg-white/[0.03]"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="tabIndicator"
+                      className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-white rounded-r-full"
+                      transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+                    />
+                  )}
+                  <Icon
+                    className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-white/40"}`}
                   />
-                )}
-                {tab.label}
-              </button>
-            ))}
+                  {tab.label}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Bottom actions */}
-          <div className="p-2 border-t border-[#1a1a1a] flex flex-col gap-px">
+          <div className="p-2 border-t border-white/[0.06]">
             <button
               onClick={handleLogout}
-              className="w-full text-left px-4 py-2.5 text-[10px] tracking-[0.1em] uppercase font-semibold text-[#444] hover:text-red-400 transition-colors"
+              className="w-full text-left px-3 py-2.5 rounded-lg text-[12px] font-medium text-white/40 hover:text-red-400 hover:bg-red-400/[0.05] transition-colors flex items-center gap-2.5"
             >
-              → Sign out
+              <LogOutIcon className="w-3.5 h-3.5" /> Sign out
             </button>
           </div>
         </motion.aside>
 
-        {/* MAIN CONTENT */}
+        {/* ─── MAIN CONTENT ─── */}
         <main className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Tab bar */}
-          <div className="flex-shrink-0 flex items-center justify-between px-6 h-11 border-b border-[#1a1a1a]">
+          <div className="flex-shrink-0 flex items-center justify-between px-5 h-[52px] border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#444]">
+              <span className="text-[13px] font-semibold text-white/90 tracking-tight">
                 {tabs.find((t) => t.id === activeTab)?.label}
               </span>
               {activeTab === "overview" && (
-                <span className="text-[9px] font-mono text-[#333]">
+                <span className="text-[10px] font-mono text-white/25 ml-1">
                   · read only
                 </span>
               )}
             </div>
             {saveLabel[activeTab] && (
-              <motion.button
+              <button
                 onClick={handleSave}
                 disabled={loading}
-                whileTap={{ scale: 0.97 }}
-                className="text-[9px] tracking-[0.12em] uppercase font-semibold text-black bg-white px-4 py-1.5 hover:bg-[#e0e0e0] transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="text-[11px] font-semibold text-black bg-white px-4 py-1.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
               >
                 {loading ? (
                   <motion.span
@@ -599,87 +935,93 @@ const UserProfile = () => {
                       repeat: Infinity,
                       ease: "linear",
                     }}
-                    className="inline-block w-3 h-3 border border-black border-t-transparent rounded-full"
+                    className="inline-block w-3 h-3 border border-black/70 border-t-transparent rounded-full"
                   />
+                ) : saveLabel[activeTab] === "Send" ? (
+                  <SendIcon className="w-3 h-3" />
                 ) : (
-                  "↑"
+                  <SaveIcon className="w-3 h-3" />
                 )}
                 {saveLabel[activeTab]}
-              </motion.button>
+              </button>
             )}
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-thumb]:bg-[#2a2a2a]">
+          <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-thumb]:bg-white/8 [&::-webkit-scrollbar-thumb]:rounded-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
                 className="h-full"
               >
                 {/* ── OVERVIEW TAB ── */}
                 {activeTab === "overview" && (
-                  <div className="h-full grid grid-cols-3 grid-rows-2 gap-px bg-[#1a1a1a]">
-                    {/* Identity cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
+                  <motion.div
+                    variants={orchestrate}
+                    initial="hidden"
+                    animate="show"
+                    className="h-full grid grid-cols-3 grid-rows-2 gap-2.5 p-2.5"
+                  >
+                    {/* Identity */}
+                    <Cell>
                       <CellLabel>Identity</CellLabel>
-                      <div className="flex items-start gap-4 mb-4">
+                      <div className="flex items-start gap-3.5 mb-3">
                         {!imgError && user?.avatar ? (
                           <img
                             src={user.avatar}
                             alt="Avatar"
                             onError={() => setImgError(true)}
-                            className="w-14 h-14 object-cover border border-[#2a2a2a] flex-shrink-0"
+                            className="w-14 h-14 rounded-2xl object-cover border border-white/[0.08] flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-14 h-14 bg-[#111] border border-[#222] flex items-center justify-center text-[18px] font-semibold text-[#ccc] flex-shrink-0">
+                          <div className="w-14 h-14 rounded-2xl bg-white text-black border border-white/[0.1] flex items-center justify-center text-[20px] font-bold flex-shrink-0">
                             {getInitials(user?.name)}
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <div className="text-[18px] font-semibold text-white leading-none mb-1 truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[17px] font-semibold text-white leading-tight mb-1 truncate">
                             {user?.name || "Developer"}
                           </div>
-                          <div className="text-[10px] font-mono text-[#555] truncate">
+                          <div className="text-[10px] text-white/40 truncate font-mono">
                             {user?.email}
                           </div>
                           {formData.jobTitle && (
-                            <div className="text-[10px] font-mono text-[#444] mt-1 truncate">
+                            <div className="text-[10px] text-white/50 mt-1 truncate">
                               {formData.jobTitle}
-                            </div>
-                          )}
-                          {formData.company && (
-                            <div className="text-[10px] font-mono text-[#333] truncate">
-                              @ {formData.company}
+                              {formData.company && (
+                                <span className="text-white/25">
+                                  {" "}
+                                  @ {formData.company}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
                       {formData.bio && (
-                        <p className="text-[11px] font-mono text-[#555] leading-relaxed line-clamp-3">
+                        <p className="text-[11px] text-white/50 leading-relaxed line-clamp-3">
                           {formData.bio}
                         </p>
                       )}
                       {formData.location && (
-                        <div className="mt-auto pt-3 text-[9px] font-mono text-[#333] flex items-center gap-1.5">
-                          <span>◎</span> {formData.location}
+                        <div className="mt-auto pt-3 text-[10px] text-white/30 flex items-center gap-1.5">
+                          <MapPinIcon className="w-3 h-3" /> {formData.location}
                         </div>
                       )}
-                    </div>
+                    </Cell>
 
-                    {/* Stats cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
+                    {/* Stats */}
+                    <Cell>
                       <CellLabel>Stats</CellLabel>
                       <motion.div
-                        variants={container}
+                        variants={orchestrate}
                         initial="hidden"
                         animate="show"
-                        className="grid grid-cols-2 gap-px flex-1"
+                        className="grid grid-cols-2 gap-2 flex-1"
                       >
                         <StatBox
                           label="Projects"
@@ -695,98 +1037,98 @@ const UserProfile = () => {
                           value={user?.daysActive ?? 1}
                         />
                       </motion.div>
-                    </div>
+                    </Cell>
 
-                    {/* AI Usage cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
-                      <CellLabel>AI Usage</CellLabel>
+                    {/* AI Usage */}
+                    <Cell>
+                      <CellLabel
+                        right={
+                          <span
+                            className={`text-[9px] font-mono px-2 py-0.5 rounded-md ${
+                              aiUsage?.isLimited
+                                ? "bg-red-400/[0.08] text-red-400 border border-red-400/[0.15]"
+                                : "bg-emerald-400/[0.08] text-emerald-400 border border-emerald-400/[0.15]"
+                            }`}
+                          >
+                            {aiUsage?.isLimited ? "LIMITED" : "ACTIVE"}
+                          </span>
+                        }
+                      >
+                        AI Usage
+                      </CellLabel>
 
                       <div className="flex items-end justify-between mb-3">
                         <div>
-                          <div className="text-[22px] font-semibold leading-none tracking-[-0.03em] text-white tabular-nums">
+                          <div className="text-[26px] font-semibold leading-none tracking-tight text-white tabular-nums">
                             {aiUsage?.remaining ?? 0}
                           </div>
-                          <div className="text-[8px] tracking-[0.16em] uppercase text-[#444] font-mono mt-1">
+                          <div className="text-[9px] tracking-[0.14em] uppercase text-white/35 font-mono mt-1.5">
                             Requests left
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] font-mono text-[#666]">
-                            {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 20} used
+                          <div className="text-[11px] font-mono text-white/55">
+                            {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 20}
                           </div>
-                          <div className="text-[9px] font-mono text-[#333] mt-1">
+                          <div className="text-[9px] font-mono text-white/25 mt-0.5">
                             resets in {aiUsage?.resetInHuman || "Now"}
                           </div>
                         </div>
                       </div>
 
-                      <div className="w-full h-2 border border-[#1a1a1a] bg-[#080808] overflow-hidden mb-4">
+                      <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden mb-3">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{
                             width: `${aiUsage?.percentageUsed ?? 0}%`,
                           }}
                           transition={{
-                            duration: 0.5,
-                            ease: [0.22, 1, 0.36, 1],
+                            duration: 0.6,
+                            ease: [0.25, 1, 0.5, 1],
                           }}
-                          className={`h-full ${
+                          className={`h-full rounded-full ${
                             aiUsage?.isLimited
                               ? "bg-red-400/70"
                               : aiUsage?.percentageUsed >= 80
-                                ? "bg-yellow-300/70"
-                                : "bg-white/70"
+                                ? "bg-yellow-400/70"
+                                : "bg-white/80"
                           }`}
                         />
                       </div>
 
-                      <div className="flex flex-col gap-[3px]">
+                      <div className="flex flex-col gap-0.5">
                         {[
                           { label: "Plan", value: "Free" },
                           {
                             label: "Hourly limit",
                             value: aiUsage?.limit ?? 20,
                           },
-                          {
-                            label: "Status",
-                            value: aiUsage?.isLimited
-                              ? "Limit reached"
-                              : "Available",
-                          },
                         ].map(({ label, value }) => (
                           <div
                             key={label}
-                            className="flex items-center justify-between py-2 border-b border-[#0f0f0f]"
+                            className="flex items-center justify-between py-1.5"
                           >
-                            <span className="text-[9px] tracking-[0.14em] uppercase text-[#333] font-mono">
+                            <span className="text-[10px] tracking-wider text-white/35 font-mono">
                               {label}
                             </span>
-                            <span
-                              className={`text-[10px] font-mono ${
-                                label === "Status" && aiUsage?.isLimited
-                                  ? "text-red-400"
-                                  : "text-[#666]"
-                              }`}
-                            >
+                            <span className="text-[10px] font-mono text-white/60">
                               {value}
                             </span>
                           </div>
                         ))}
                       </div>
 
-                      <div className="mt-auto pt-3 text-[9px] font-mono text-[#444] leading-relaxed">
+                      <div className="mt-auto pt-3 text-[10px] text-white/35 leading-relaxed">
                         {aiUsage?.isLimited
-                          ? `You have reached your AI limit. Come back in ${aiUsage?.resetInHuman}.`
-                          : `${aiUsage?.remaining ?? 0} AI request(s) remaining in the current window.`}
+                          ? `Limit reached. Resets in ${aiUsage?.resetInHuman}.`
+                          : `${aiUsage?.remaining ?? 0} request(s) remaining.`}
                       </div>
-                    </div>
+                    </Cell>
 
-                    {/* Account info cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
+                    {/* Account */}
+                    <Cell>
                       <CellLabel>Account</CellLabel>
-                      <div className="flex flex-col gap-[3px]">
+                      <div className="flex flex-col gap-0.5">
                         {[
                           { label: "Email", value: user?.email },
                           {
@@ -809,59 +1151,83 @@ const UserProfile = () => {
                         ].map(({ label, value }) => (
                           <div
                             key={label}
-                            className="flex items-center justify-between py-2 border-b border-[#0f0f0f]"
+                            className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-b-0"
                           >
-                            <span className="text-[9px] tracking-[0.14em] uppercase text-[#333] font-mono">
+                            <span className="text-[10px] tracking-wider text-white/35 font-mono">
                               {label}
                             </span>
-                            <span className="text-[10px] font-mono text-[#666]">
+                            <span className="text-[10px] font-mono text-white/60 truncate ml-3">
                               {value}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </Cell>
 
-                    {/* Quick actions cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
+                    {/* Quick Actions */}
+                    <Cell>
                       <CellLabel>Quick Actions</CellLabel>
-                      <div className="flex flex-col gap-px flex-1">
+                      <div className="flex flex-col gap-1 flex-1">
                         {[
-                          { label: "Edit Profile", tab: "profile" },
-                          { label: "Update Socials", tab: "socials" },
-                          { label: "Preferences", tab: "preferences" },
-                          { label: "Change Password", tab: "security" },
-                          { label: "Send Feedback", tab: "feedback" },
-                        ].map(({ label, tab }) => (
-                          <motion.button
+                          {
+                            label: "Edit Profile",
+                            tab: "profile",
+                            Icon: UserIcon,
+                          },
+                          {
+                            label: "Update Socials",
+                            tab: "socials",
+                            Icon: LinkIcon,
+                          },
+                          {
+                            label: "Preferences",
+                            tab: "preferences",
+                            Icon: SettingsIcon,
+                          },
+                          {
+                            label: "Change Password",
+                            tab: "security",
+                            Icon: LockIcon,
+                          },
+                          {
+                            label: "Send Feedback",
+                            tab: "feedback",
+                            Icon: MessageIcon,
+                          },
+                        ].map(({ label, tab, Icon }) => (
+                          <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            whileHover={{ x: 4 }}
-                            className="text-left px-3 py-2.5 border border-[#111] text-[10px] font-mono text-[#555] hover:text-white hover:border-[#222] transition-all flex items-center justify-between group"
+                            className="text-left px-3 py-2 rounded-lg text-[11px] text-white/55 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-between group"
                           >
-                            <span>{label}</span>
-                            <motion.span
-                              className="text-[#333] group-hover:text-white transition-colors"
-                              animate={{ x: [0, 2, 0] }}
-                              transition={{
-                                repeat: Infinity,
-                                duration: 1.8,
-                                ease: "easeInOut",
-                              }}
-                            >
-                              →
-                            </motion.span>
-                          </motion.button>
+                            <span className="flex items-center gap-2.5">
+                              <Icon className="w-3.5 h-3.5 text-white/30 group-hover:text-white/70 transition-colors" />
+                              {label}
+                            </span>
+                            <ArrowRightIcon className="w-3 h-3 text-white/20 group-hover:text-white/60 transition-colors" />
+                          </button>
                         ))}
                       </div>
-                    </div>
+                    </Cell>
 
-                    {/* Activity cell */}
-                    <div className="bg-[#0a0a0a] p-5 relative overflow-hidden flex flex-col">
-                      <Corners />
-                      <CellLabel>Recent Activity</CellLabel>
-                      <div className="flex flex-col gap-[3px] flex-1">
+                    {/* Recent Activity */}
+                    <Cell>
+                      <CellLabel
+                        right={
+                          <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/40" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400/80" />
+                            </span>
+                            <span className="text-[9px] font-mono text-white/35 tracking-wider">
+                              live
+                            </span>
+                          </div>
+                        }
+                      >
+                        Recent Activity
+                      </CellLabel>
+                      <div className="flex flex-col gap-1.5 flex-1">
                         {[
                           { action: "Profile viewed", time: "Just now" },
                           { action: "Session started", time: "Today" },
@@ -874,46 +1240,38 @@ const UserProfile = () => {
                         ].map(({ action, time }, i) => (
                           <motion.div
                             key={i}
-                            initial={{ opacity: 0, x: -6 }}
+                            initial={{ opacity: 0, x: -4 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.08 }}
-                            className="flex items-center justify-between px-3 py-2.5 border border-[#111]"
+                            transition={{ delay: 0.2 + i * 0.06 }}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-[4px] h-[4px] bg-white/30" />
-                              <span className="text-[10px] font-mono text-[#666]">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                              <span className="text-[11px] text-white/60">
                                 {action}
                               </span>
                             </div>
-                            <span className="text-[9px] font-mono text-[#333]">
+                            <span className="text-[10px] font-mono text-white/30">
                               {time}
                             </span>
                           </motion.div>
                         ))}
                       </div>
-                      <div className="mt-3 pt-3 border-t border-[#111] flex items-center gap-2">
-                        <PulseDot />
-                        <span className="text-[9px] font-mono text-[#333] tracking-wider">
-                          session active
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    </Cell>
+                  </motion.div>
                 )}
 
                 {/* ── PROFILE TAB ── */}
                 {activeTab === "profile" && (
                   <div className="p-5 max-w-2xl">
                     <motion.div
-                      variants={container}
+                      variants={orchestrate}
                       initial="hidden"
                       animate="show"
-                      className="flex flex-col gap-px"
                     >
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      <Cell>
                         <CellLabel>Personal Information</CellLabel>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-2 gap-3 mb-3">
                           <Input
                             label="Full Name"
                             name="name"
@@ -943,18 +1301,20 @@ const UserProfile = () => {
                             placeholder="San Francisco, CA"
                           />
                         </div>
-                        <Input
-                          label="Website"
-                          name="website"
-                          value={formData.website}
-                          onChange={handleInputChange}
-                          placeholder="https://yoursite.com"
-                        />
+                        <div className="mb-3">
+                          <Input
+                            label="Website"
+                            name="website"
+                            value={formData.website}
+                            onChange={handleInputChange}
+                            placeholder="https://yoursite.com"
+                          />
+                        </div>
                         <motion.div
-                          variants={item}
-                          className="flex flex-col gap-1.5 mt-4"
+                          variants={fadeUp}
+                          className="flex flex-col gap-1.5"
                         >
-                          <label className="text-[9px] font-semibold tracking-[0.16em] uppercase text-[#444]">
+                          <label className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/40">
                             Bio
                           </label>
                           <textarea
@@ -963,10 +1323,10 @@ const UserProfile = () => {
                             onChange={handleInputChange}
                             rows="4"
                             placeholder="Tell us about yourself..."
-                            className="w-full bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2.5 text-[11px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#333] transition-colors font-mono resize-none"
+                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[12px] text-white placeholder-white/20 focus:outline-none focus:border-white/[0.2] focus:bg-white/[0.04] transition-colors resize-none"
                           />
                         </motion.div>
-                      </div>
+                      </Cell>
                     </motion.div>
                   </div>
                 )}
@@ -975,15 +1335,13 @@ const UserProfile = () => {
                 {activeTab === "socials" && (
                   <div className="p-5 max-w-xl">
                     <motion.div
-                      variants={container}
+                      variants={orchestrate}
                       initial="hidden"
                       animate="show"
-                      className="flex flex-col gap-px"
                     >
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      <Cell>
                         <CellLabel>Social Links</CellLabel>
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                           <Input
                             label="GitHub"
                             name="github"
@@ -1028,22 +1386,20 @@ const UserProfile = () => {
                             placeholder="https://yoursite.com"
                           />
                         </div>
-                      </div>
+                      </Cell>
                     </motion.div>
                   </div>
                 )}
 
                 {/* ── PREFERENCES TAB ── */}
                 {activeTab === "preferences" && (
-                  <div className="p-5 max-w-xl">
+                  <div className="p-5 max-w-xl flex flex-col gap-2.5">
                     <motion.div
-                      variants={container}
+                      variants={orchestrate}
                       initial="hidden"
                       animate="show"
-                      className="flex flex-col gap-px"
                     >
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      <Cell>
                         <CellLabel>Notifications</CellLabel>
                         <div>
                           <Toggle
@@ -1077,10 +1433,14 @@ const UserProfile = () => {
                             }
                           />
                         </div>
-                      </div>
-                      <ShimmerLine />
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      </Cell>
+                    </motion.div>
+                    <motion.div
+                      variants={orchestrate}
+                      initial="hidden"
+                      animate="show"
+                    >
+                      <Cell>
                         <CellLabel>Interface</CellLabel>
                         <div>
                           <Toggle
@@ -1111,7 +1471,7 @@ const UserProfile = () => {
                             }
                           />
                         </div>
-                      </div>
+                      </Cell>
                     </motion.div>
                   </div>
                 )}
@@ -1120,22 +1480,21 @@ const UserProfile = () => {
                 {activeTab === "feedback" && (
                   <div className="p-5 max-w-xl">
                     <motion.div
-                      variants={container}
+                      variants={orchestrate}
                       initial="hidden"
                       animate="show"
                     >
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      <Cell>
                         <CellLabel>Send Feedback</CellLabel>
                         <form
                           onSubmit={submitFeedback}
                           className="flex flex-col gap-4"
                         >
                           <motion.div
-                            variants={item}
+                            variants={fadeUp}
                             className="flex flex-col gap-2"
                           >
-                            <label className="text-[9px] font-semibold tracking-[0.16em] uppercase text-[#444]">
+                            <label className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/40">
                               Rating
                             </label>
                             <div className="flex items-center gap-1.5">
@@ -1146,30 +1505,34 @@ const UserProfile = () => {
                                   onClick={() =>
                                     setFeedback({ ...feedback, rating: star })
                                   }
-                                  className={`w-7 h-7 border text-[11px] transition-all ${
+                                  className={`w-9 h-9 rounded-lg border transition-colors flex items-center justify-center ${
                                     star <= feedback.rating
-                                      ? "border-white bg-white text-black"
-                                      : "border-[#2a2a2a] text-[#444] hover:border-[#444]"
+                                      ? "border-white/20 bg-white/[0.08] text-yellow-300"
+                                      : "border-white/[0.06] text-white/25 hover:border-white/[0.15] hover:text-white/50"
                                   }`}
                                 >
-                                  ★
+                                  <StarIcon
+                                    className="w-4 h-4"
+                                    filled={star <= feedback.rating}
+                                  />
                                 </button>
                               ))}
-                              <span className="text-[10px] font-mono text-[#444] ml-1">
+                              <span className="text-[11px] font-mono text-white/35 ml-2">
                                 {feedback.rating > 0
                                   ? `${feedback.rating}/5`
                                   : "—"}
                               </span>
                             </div>
                           </motion.div>
+
                           <motion.div
-                            variants={item}
+                            variants={fadeUp}
                             className="flex flex-col gap-2"
                           >
-                            <label className="text-[9px] font-semibold tracking-[0.16em] uppercase text-[#444]">
+                            <label className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/40">
                               Category
                             </label>
-                            <div className="flex gap-px">
+                            <div className="flex gap-1.5 flex-wrap">
                               {["General", "Bug", "Feature", "Other"].map(
                                 (cat) => (
                                   <button
@@ -1181,10 +1544,10 @@ const UserProfile = () => {
                                         category: cat.toLowerCase(),
                                       })
                                     }
-                                    className={`px-3 py-2 text-[9px] tracking-[0.1em] uppercase font-semibold transition-all ${
+                                    className={`px-3.5 py-2 rounded-lg text-[11px] font-medium transition-colors ${
                                       feedback.category === cat.toLowerCase()
                                         ? "bg-white text-black"
-                                        : "bg-[#0a0a0a] border border-[#1a1a1a] text-[#444] hover:text-white hover:border-[#2a2a2a]"
+                                        : "bg-white/[0.03] border border-white/[0.06] text-white/50 hover:text-white/90 hover:border-white/[0.15]"
                                     }`}
                                   >
                                     {cat}
@@ -1193,11 +1556,12 @@ const UserProfile = () => {
                               )}
                             </div>
                           </motion.div>
+
                           <motion.div
-                            variants={item}
-                            className="flex flex-col gap-2"
+                            variants={fadeUp}
+                            className="flex flex-col gap-1.5"
                           >
-                            <label className="text-[9px] font-semibold tracking-[0.16em] uppercase text-[#444]">
+                            <label className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/40">
                               Message
                             </label>
                             <textarea
@@ -1211,28 +1575,26 @@ const UserProfile = () => {
                               }
                               rows="5"
                               placeholder="Type your message here..."
-                              className="w-full bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2.5 text-[11px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#333] transition-colors font-mono resize-none"
+                              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[12px] text-white placeholder-white/20 focus:outline-none focus:border-white/[0.2] focus:bg-white/[0.04] transition-colors resize-none"
                             />
                           </motion.div>
                         </form>
-                      </div>
+                      </Cell>
                     </motion.div>
                   </div>
                 )}
 
                 {/* ── SECURITY TAB ── */}
                 {activeTab === "security" && (
-                  <div className="p-5 max-w-md">
+                  <div className="p-5 max-w-md flex flex-col gap-2.5">
                     <motion.div
-                      variants={container}
+                      variants={orchestrate}
                       initial="hidden"
                       animate="show"
-                      className="flex flex-col gap-px"
                     >
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
+                      <Cell>
                         <CellLabel>Change Password</CellLabel>
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                           <Input
                             label="Current Password"
                             type="password"
@@ -1258,65 +1620,61 @@ const UserProfile = () => {
                             placeholder="••••••••"
                           />
                         </div>
-                      </div>
-                      <ShimmerLine />
-                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-5 relative">
-                        <Corners />
-                        <CellLabel>Sessions</CellLabel>
-                        <div className="flex flex-col gap-[3px]">
-                          {[
-                            {
-                              label: "Current session",
-                              device: "This browser",
-                              status: "active",
-                            },
-                          ].map(({ label, device, status }, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between px-3 py-2.5 border border-[#111]"
-                            >
-                              <div>
-                                <div className="text-[10px] font-mono text-white">
-                                  {label}
-                                </div>
-                                <div className="text-[9px] font-mono text-[#444]">
-                                  {device}
-                                </div>
+                      </Cell>
+                    </motion.div>
+
+                    <motion.div
+                      variants={orchestrate}
+                      initial="hidden"
+                      animate="show"
+                    >
+                      <Cell>
+                        <CellLabel>Active Sessions</CellLabel>
+                        <div className="flex items-center justify-between px-3 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
+                              <UserIcon className="w-4 h-4 text-white/60" />
+                            </div>
+                            <div>
+                              <div className="text-[12px] text-white/90 font-medium">
+                                Current session
                               </div>
-                              <div className="flex items-center gap-2">
-                                <PulseDot />
-                                <span className="text-[9px] font-mono text-[#444]">
-                                  {status}
-                                </span>
+                              <div className="text-[10px] text-white/35 font-mono">
+                                This browser
                               </div>
                             </div>
-                          ))}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/40" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400/80" />
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-400/80">
+                              active
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <ShimmerLine />
-                      <div className="bg-[#0a0a0a] border border-red-500/10 p-5 relative">
-                        {[
-                          "top-0 left-0 border-l border-t",
-                          "top-0 right-0 border-r border-t",
-                          "bottom-0 left-0 border-l border-b",
-                          "bottom-0 right-0 border-r border-b",
-                        ].map((c, i) => (
-                          <div
-                            key={i}
-                            className={`absolute w-3 h-3 border-red-500/20 ${c}`}
-                          />
-                        ))}
-                        <div className="text-[9px] font-semibold tracking-[0.18em] uppercase text-red-500/50 mb-2">
-                          Danger Zone
+                      </Cell>
+                    </motion.div>
+
+                    <motion.div
+                      variants={orchestrate}
+                      initial="hidden"
+                      animate="show"
+                    >
+                      <div className="relative bg-red-500/[0.03] rounded-2xl border border-red-500/[0.15] p-5">
+                        <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-red-400/80 mb-2 flex items-center gap-2">
+                          <AlertIcon className="w-3.5 h-3.5" /> Danger Zone
                         </div>
-                        <p className="text-[10px] font-mono text-[#444] mb-4 leading-relaxed">
+                        <p className="text-[11px] text-white/45 mb-4 leading-relaxed">
                           Permanently remove your account and all associated
                           data. This cannot be undone.
                         </p>
                         <button
                           onClick={deleteAccount}
-                          className="text-[9px] tracking-[0.12em] uppercase font-semibold text-red-400 border border-red-500/20 px-4 py-2 hover:bg-red-500/10 transition-all"
+                          className="text-[11px] font-semibold text-white bg-red-500/90 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
                         >
+                          <TrashIcon className="w-3.5 h-3.5" />
                           Delete Account
                         </button>
                       </div>
@@ -1329,34 +1687,35 @@ const UserProfile = () => {
         </main>
       </div>
 
-      {/* LIGHTBOX */}
+      {/* ─── LIGHTBOX ─── */}
       <AnimatePresence>
         {isViewingImage && user?.avatar && !imgError && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
             onClick={() => setIsViewingImage(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
               className="relative"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setIsViewingImage(false)}
-                className="absolute -top-8 right-0 text-[10px] font-mono text-[#555] hover:text-white tracking-wider uppercase transition-colors"
+                className="absolute -top-10 right-0 text-[11px] font-medium text-white/60 hover:text-white transition-colors flex items-center gap-1.5"
               >
-                ✕ close
+                <XIcon className="w-3.5 h-3.5" /> Close
               </button>
               <img
                 src={user.avatar}
                 alt="Full Avatar"
-                className="max-h-[80vh] border border-[#2a2a2a]"
+                className="max-h-[80vh] rounded-2xl border border-white/[0.1]"
               />
             </motion.div>
           </motion.div>
