@@ -39,6 +39,8 @@ import {
   AlertTriangle,
   Code2,
   Clock,
+  MessageSquare,
+  Home,
 } from "lucide-react";
 import Loader from "../components/Loader";
 
@@ -78,7 +80,6 @@ const cleanTerminalOutput = (text) => {
   );
 };
 
-// Formats raw seconds into "Xh Xm Xs" or "Xm Xs" or "Xs"
 const formatCountdown = (totalSeconds) => {
   const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);
@@ -179,7 +180,7 @@ const FileTreeNode = ({
             e.stopPropagation();
             onDelete(path);
           }}
-          className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ccc] transition-all duration-150 p-0.5 flex-shrink-0"
+          className="opacity-0 group-hover:opacity-100 md:opacity-0 text-[#555] hover:text-[#ccc] transition-all duration-150 p-0.5 flex-shrink-0 active:opacity-100"
         >
           <Trash2 size={10} />
         </button>
@@ -266,19 +267,14 @@ const StatusDot = ({ active = false, pulse = false }) => (
 
 // ─────────────────────────────────────────────────────────────
 //  AI RATE LIMIT POPUP MODAL
-//  Shown as a centred overlay when the server rejects an @ai
-//  message. Includes a live countdown and auto-closes when
-//  the timer reaches zero.
 // ─────────────────────────────────────────────────────────────
 const AiRateLimitModal = ({ data, onClose }) => {
-  // secondsLeft ticks down every second from data.retryAfterSeconds
   const [secondsLeft, setSecondsLeft] = useState(
     Math.max(0, data?.retryAfterSeconds ?? 0),
   );
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      // Limit has expired — close the modal automatically
       onClose();
       return;
     }
@@ -296,28 +292,23 @@ const AiRateLimitModal = ({ data, onClose }) => {
     return () => clearInterval(tick);
   }, []);
 
-  // Progress 0 → 1 as time runs down
   const progress =
     data?.retryAfterSeconds > 0 ? secondsLeft / data.retryAfterSeconds : 0;
 
   return (
-    // Backdrop
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
     >
-      {/* Blurred dark overlay — click to dismiss */}
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal card */}
       <div
         className="relative z-10 w-full max-w-sm bg-[#141414] border border-[#2a2a2a] rounded-2xl overflow-hidden shadow-2xl shadow-black/90"
         style={{ animation: "scaleIn 0.2s ease-out forwards" }}
       >
-        {/* Progress bar — drains from full to empty as countdown ticks */}
         <div className="h-[2px] w-full bg-[#222]">
           <div
             className="h-full bg-[#cc8844] transition-all duration-1000 ease-linear"
@@ -325,20 +316,16 @@ const AiRateLimitModal = ({ data, onClose }) => {
           />
         </div>
 
-        {/* Body */}
         <div className="p-6 flex flex-col items-center text-center gap-5">
-          {/* Icon ring */}
           <div className="relative">
             <div className="w-14 h-14 rounded-full bg-[#1e1510] border border-[#3a2a1a] flex items-center justify-center">
               <Bot size={22} className="text-[#cc8844]" />
             </div>
-            {/* Small clock badge */}
             <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#1e1510] border border-[#3a2a1a] flex items-center justify-center">
               <Clock size={11} className="text-[#cc8844]" />
             </div>
           </div>
 
-          {/* Heading */}
           <div>
             <h3 className="text-[14px] font-semibold text-[#ececec] tracking-tight mb-1">
               AI Limit Reached
@@ -350,7 +337,6 @@ const AiRateLimitModal = ({ data, onClose }) => {
             </p>
           </div>
 
-          {/* Countdown ring / number */}
           <div className="flex flex-col items-center gap-1">
             <div className="text-[32px] font-bold text-[#cc8844] tabular-nums leading-none tracking-tight">
               {formatCountdown(secondsLeft)}
@@ -360,7 +346,6 @@ const AiRateLimitModal = ({ data, onClose }) => {
             </p>
           </div>
 
-          {/* Info row */}
           <div className="w-full bg-[#1a1a1a] border border-[#252525] rounded-xl px-4 py-3 flex items-center justify-between">
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-[8px] font-mono text-[#444] tracking-widest uppercase">
@@ -374,7 +359,6 @@ const AiRateLimitModal = ({ data, onClose }) => {
               </span>
             </div>
 
-            {/* Mini progress arc */}
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-[8px] font-mono text-[#444] tracking-widest uppercase">
                 Remaining
@@ -385,7 +369,6 @@ const AiRateLimitModal = ({ data, onClose }) => {
             </div>
           </div>
 
-          {/* Usage bar */}
           <div className="w-full">
             <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
               <div className="h-full w-full bg-red-400/60 rounded-full" />
@@ -400,7 +383,6 @@ const AiRateLimitModal = ({ data, onClose }) => {
             </div>
           </div>
 
-          {/* CTA buttons */}
           <div className="flex gap-2 w-full">
             <button
               onClick={onClose}
@@ -481,14 +463,18 @@ const Project = () => {
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
 
   // ── AI rate limit state ──────────────────────────────────
-  // rateLimitData holds the full payload from the server so
-  // the modal can show used/limit/retryAfterSeconds.
-  // When null the modal is hidden.
   const [rateLimitData, setRateLimitData] = useState(null);
+
+  // ── MOBILE STATE ─────────────────────────────────────────
+  const [mobileTab, setMobileTab] = useState("chat"); // chat | code | run
+  const [mobileShowExplorer, setMobileShowExplorer] = useState(true);
+  const [mobileRunTab, setMobileRunTab] = useState("terminal"); // terminal | browser
 
   // ── Refs ─────────────────────────────────────────────────
   const messageEndRef = useRef(null);
+  const mobileMessageEndRef = useRef(null);
   const terminalEndRef = useRef(null);
+  const mobileTerminalEndRef = useRef(null);
   const saveTimeout = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -557,40 +543,24 @@ const Project = () => {
 
           const socket = initializeSocket(projectId);
 
-          // ── Typing indicators ────────────────────────────
           socket.on("typing", (data) => setRemoteTypingUser(data.email));
           socket.on("stop-typing", () => setRemoteTypingUser(""));
 
-          // ── Message deleted ──────────────────────────────
           socket.on("message-deleted", ({ messageId }) => {
             setMessages((prev) => prev.filter((m) => m._id !== messageId));
           });
 
-          // ── AI rate limit error ──────────────────────────
-          // Server emits this ONLY to the sender whose @ai
-          // message was blocked by the hourly bucket.
-          // We store the full payload so the modal can render
-          // the used/limit numbers and start its countdown.
           socket.on("ai-rate-limit-error", (data) => {
             if (!isMounted) return;
-
-            // Stop the thinking spinner — no response is coming
             setIsAiThinking(false);
-
-            // Show the modal with the server payload
             setRateLimitData(data);
-
-            // Also refresh the global usage counter in context
-            // so UserProfile reflects the hit immediately
             if (refreshAiUsage) refreshAiUsage();
           });
 
-          // ── Incoming messages ────────────────────────────
           cleanupMessageListener = recieveMessage("project-message", (data) => {
             if (isMounted) {
               if (data.isAi) {
                 setIsAiThinking(false);
-                // Refresh usage after a successful AI response
                 if (refreshAiUsage) refreshAiUsage();
               }
 
@@ -623,7 +593,6 @@ const Project = () => {
                 return prev;
               });
 
-              // Sync file tree if AI returned one
               if (
                 data.isAi &&
                 data.filetree &&
@@ -664,13 +633,16 @@ const Project = () => {
   // ── Scroll to latest message ─────────────────────────────
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    mobileMessageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAiThinking]);
 
   // ── Scroll terminal to bottom ────────────────────────────
   useEffect(() => {
     if (activeTab === "terminal")
       terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [terminalOutput, activeTab]);
+    if (mobileRunTab === "terminal")
+      mobileTerminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [terminalOutput, activeTab, mobileRunTab]);
 
   // ─────────────────────────────────────────────────────────
   //  HANDLERS
@@ -777,6 +749,8 @@ const Project = () => {
     setCurrentFile(filePath);
     if (!openFiles.includes(filePath))
       setOpenFiles((prev) => [...prev, filePath]);
+    // On mobile, collapse explorer after selecting a file so editor is visible
+    setMobileShowExplorer(false);
   };
 
   const onRequestDelete = (path) => {
@@ -799,7 +773,6 @@ const Project = () => {
     setFileToDelete(null);
   };
 
-  // ── Send chat message ────────────────────────────────────
   const send = () => {
     if (!message.trim() || !user?._id || !projectId) return;
 
@@ -807,7 +780,6 @@ const Project = () => {
 
     if (message.trim().toLowerCase().includes("@ai")) {
       setIsAiThinking(true);
-      // Clear any stale rate limit modal when user tries again
       setRateLimitData(null);
 
       if (currentFile && fileTree[currentFile]?.file) {
@@ -830,11 +802,12 @@ const Project = () => {
     initializeSocket(projectId).emit("stop-typing");
   };
 
-  // ── WebContainer run ─────────────────────────────────────
   const handleRunClick = async () => {
     if (!webContainer) return;
     setTerminalOutput("");
     setActiveTab("terminal");
+    setMobileRunTab("terminal");
+    setMobileTab("run");
 
     try {
       setTerminalOutput("[System] Syncing files...\n");
@@ -893,6 +866,7 @@ const Project = () => {
           setTerminalOutput(`\n[System] Server ready at ${url}\n`);
           setIframeUrl(url);
           setActiveTab("browser");
+          setMobileRunTab("browser");
         });
       } else {
         setIsInstalling(false);
@@ -948,7 +922,8 @@ const Project = () => {
   };
 
   const handleClear = () => {
-    if (activeTab === "browser") setIframeUrl(null);
+    if (activeTab === "browser" || mobileRunTab === "browser")
+      setIframeUrl(null);
     else setTerminalOutput("");
   };
 
@@ -982,6 +957,203 @@ const Project = () => {
   };
 
   // ─────────────────────────────────────────────────────────
+  //  SHARED CHAT MESSAGES RENDERER (used by desktop + mobile)
+  // ─────────────────────────────────────────────────────────
+  const renderMessages = (endRef) => (
+    <>
+      {messages.map((msg, i) => {
+        const getSenderId = (m) => m.sender?._id || m.senderId || m.sender;
+        const currentSenderId = getSenderId(msg);
+        const isOwnMessage =
+          currentSenderId?.toString() === user?._id?.toString();
+        const senderEmail =
+          typeof msg.sender === "object" ? msg.sender.email : "User";
+        const isMenuOpen = activeMenuMsgId === (msg._id || i);
+        const previousMsg = messages[i - 1];
+        const isSameSender =
+          previousMsg &&
+          getSenderId(previousMsg) === currentSenderId &&
+          previousMsg.isAi === msg.isAi;
+
+        return (
+          <div
+            key={msg._id || i}
+            className={`flex w-full group relative ${
+              isOwnMessage ? "justify-end" : "justify-start"
+            } ${isSameSender ? "mt-0.5" : "mt-4"}`}
+            style={{ animation: "fadeIn 0.18s ease-out forwards" }}
+          >
+            <div
+              className={`max-w-[87%] flex flex-col relative ${
+                isOwnMessage ? "items-end" : "items-start"
+              }`}
+            >
+              {!isSameSender && !isOwnMessage && !msg.isAi && (
+                <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
+                  <div className="w-5 h-5 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[8px] font-bold text-[#888]">
+                    {typeof senderEmail === "string"
+                      ? senderEmail[0]?.toUpperCase()
+                      : "?"}
+                  </div>
+                  <span className="text-[9px] font-mono text-[#555] tracking-wide">
+                    {senderEmail}
+                  </span>
+                </div>
+              )}
+
+              {!isSameSender && msg.isAi && (
+                <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
+                  <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center">
+                    <Bot size={10} className="text-[#777]" />
+                  </div>
+                  <span className="text-[9px] font-mono text-[#555] tracking-wide">
+                    AI Assistant
+                  </span>
+                </div>
+              )}
+
+              {msg.replyTo && (
+                <div
+                  className={`text-[10px] mb-1 px-2.5 py-1.5 border-l-2 font-mono max-w-full rounded ${
+                    isOwnMessage
+                      ? "border-[#555] bg-[#1c1c1c] text-[#777]"
+                      : "border-[#333] bg-[#181818] text-[#555]"
+                  }`}
+                >
+                  <span className="block mb-0.5 text-[9px] text-[#444]">
+                    {msg.replyTo.originalSender}
+                  </span>
+                  <span className="line-clamp-1 opacity-70">
+                    {msg.replyTo.originalMessage}
+                  </span>
+                </div>
+              )}
+
+              <div
+                className={`relative px-3 py-2 text-[11px] break-words font-mono leading-relaxed ${
+                  isOwnMessage
+                    ? "bubble-own"
+                    : msg.isAi
+                      ? "bubble-ai text-[#ccc]"
+                      : "bubble-other text-[#ccc]"
+                } ${msg.isOptimistic ? "opacity-40" : ""}`}
+              >
+                {msg.isAi ? (
+                  <div className="flex gap-2">
+                    <div className="overflow-hidden w-full">
+                      <AiMessage raw={msg.message} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="leading-relaxed">{msg.message}</p>
+                )}
+                <div
+                  className={`text-[9px] mt-1.5 text-right font-mono ${
+                    isOwnMessage ? "text-[#555]" : "text-[#444]"
+                  }`}
+                >
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              </div>
+
+              <div
+                className={`absolute top-0 ${
+                  isOwnMessage ? "-left-8" : "-right-8"
+                } z-50 message-menu-container`}
+              >
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuMsgId(isMenuOpen ? null : msg._id || i);
+                    }}
+                    className={`p-1.5 rounded-md transition-all duration-150 ${
+                      isMenuOpen
+                        ? "opacity-100 bg-[#222] text-[#ccc]"
+                        : "opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] hover:bg-[#1e1e1e]"
+                    }`}
+                  >
+                    <MoreVertical size={12} />
+                  </button>
+
+                  {isMenuOpen && (
+                    <div
+                      className={`absolute bottom-full mb-1.5 ${
+                        isOwnMessage
+                          ? "left-0 origin-bottom-left"
+                          : "right-0 origin-bottom-right"
+                      } w-28 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden shadow-xl shadow-black/80 animate-fade-in-up z-[9999]`}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplyingTo({
+                            originalMessage: msg.message,
+                            originalSender: senderEmail,
+                          });
+                          setActiveMenuMsgId(null);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#666] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 transition-colors"
+                      >
+                        <Reply size={10} />
+                        Reply
+                      </button>
+                      {isOwnMessage && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMessage(msg._id);
+                            setActiveMenuMsgId(null);
+                          }}
+                          className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#555] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 border-t border-[#222] transition-colors"
+                        >
+                          <Trash2 size={10} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {isAiThinking && (
+        <div className="flex justify-start animate-fade-in mt-4">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center flex-shrink-0">
+              <Bot size={10} className="text-[#666]" />
+            </div>
+            <div className="bubble-ai px-3 py-2.5 flex items-center gap-1.5">
+              <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+              <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+              <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {remoteTypingUser && (
+        <div className="flex justify-start animate-fade-in mt-1">
+          <div className="px-2 py-1 text-[9px] font-mono text-[#444] flex items-center gap-1.5">
+            <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+            <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+            <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
+            <span className="ml-1">{remoteTypingUser}</span>
+          </div>
+        </div>
+      )}
+
+      <div ref={endRef} />
+    </>
+  );
+
+  // ─────────────────────────────────────────────────────────
   //  EARLY RETURNS
   // ─────────────────────────────────────────────────────────
   if (isBooting) return <Loader />;
@@ -997,7 +1169,7 @@ const Project = () => {
   //  RENDER
   // ─────────────────────────────────────────────────────────
   return (
-    <main className="h-screen w-screen flex flex-col bg-[#111] text-[#ececec] overflow-hidden font-sans selection:bg-[#333]">
+    <main className="h-[100dvh] w-screen flex flex-col bg-[#111] text-[#ececec] overflow-hidden font-sans selection:bg-[#333]">
       <style>{`
         .styled-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
         .styled-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -1071,11 +1243,7 @@ const Project = () => {
         }
       `}</style>
 
-      {/* ══════════════════════════════════════════════════════
-          AI RATE LIMIT MODAL
-          Rendered at root level so it overlays everything.
-          Only visible when rateLimitData is not null.
-      ══════════════════════════════════════════════════════ */}
+      {/* AI RATE LIMIT MODAL */}
       {rateLimitData && (
         <AiRateLimitModal
           data={rateLimitData}
@@ -1083,738 +1251,533 @@ const Project = () => {
         />
       )}
 
-      <PanelGroup direction="horizontal">
-        {/* ══════════════════════════════════════
-            LEFT PANEL — CHAT
-        ══════════════════════════════════════ */}
-        <Panel defaultSize={20} minSize={15} maxSize={30}>
-          <section className="relative flex flex-col h-full w-full border-r border-[#1e1e1e] bg-[#131313] z-10 overflow-hidden">
-            {/* ── Chat header ── */}
-            <header className="flex justify-between items-center px-3 pl-14 bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <button
-                  onClick={() => navigate("/home")}
-                  className="text-[#555] hover:text-[#ccc] transition-colors duration-150 group flex-shrink-0"
-                >
-                  <ArrowLeft
-                    size={13}
-                    className="group-hover:-translate-x-0.5 transition-transform duration-150"
-                  />
-                </button>
-                <div className="flex items-center gap-2 min-w-0">
-                  <StatusDot active pulse />
-                  <h1 className="text-[12px] font-semibold text-[#ddd] truncate max-w-[100px] tracking-tight">
-                    {project?.name}
-                  </h1>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-0.5">
-                {/* Notifications */}
-                <button
-                  onClick={() =>
-                    setIsNotificationPanelOpen(!isNotificationPanelOpen)
-                  }
-                  className={`relative p-2 rounded-md transition-colors duration-150 ${
-                    isNotificationPanelOpen
-                      ? "bg-[#222] text-[#ccc]"
-                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
-                  }`}
-                >
-                  <Bell size={13} />
-                  {pendingInvites.length > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#ccc] rounded-full">
-                      <span className="absolute inset-0 animate-ping bg-[#aaa] rounded-full opacity-60" />
-                    </span>
-                  )}
-                </button>
-
-                {/* Collaborators */}
-                <button
-                  onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
-                  className={`p-2 rounded-md transition-colors duration-150 ${
-                    isSidePanelOpen
-                      ? "bg-[#222] text-[#ccc]"
-                      : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
-                  }`}
-                >
-                  <Users size={13} />
-                </button>
-              </div>
-            </header>
-
-            {/* ── Messages area ── */}
-            <div className="conversation-area flex-grow flex flex-col overflow-hidden relative">
-              <div className="message-box styled-scroll p-3 flex-grow flex flex-col gap-0.5 overflow-y-auto pb-24">
-                {messages.map((msg, i) => {
-                  const getSenderId = (m) =>
-                    m.sender?._id || m.senderId || m.sender;
-                  const currentSenderId = getSenderId(msg);
-                  const isOwnMessage =
-                    currentSenderId?.toString() === user?._id?.toString();
-                  const senderEmail =
-                    typeof msg.sender === "object" ? msg.sender.email : "User";
-                  const isMenuOpen = activeMenuMsgId === (msg._id || i);
-                  const previousMsg = messages[i - 1];
-                  const isSameSender =
-                    previousMsg &&
-                    getSenderId(previousMsg) === currentSenderId &&
-                    previousMsg.isAi === msg.isAi;
-
-                  return (
-                    <div
-                      key={msg._id || i}
-                      className={`flex w-full group relative ${
-                        isOwnMessage ? "justify-end" : "justify-start"
-                      } ${isSameSender ? "mt-0.5" : "mt-4"}`}
-                      style={{
-                        animation: "fadeIn 0.18s ease-out forwards",
-                      }}
-                    >
-                      <div
-                        className={`max-w-[87%] flex flex-col relative ${
-                          isOwnMessage ? "items-end" : "items-start"
-                        }`}
-                      >
-                        {/* Sender label — other user */}
-                        {!isSameSender && !isOwnMessage && !msg.isAi && (
-                          <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
-                            <div className="w-5 h-5 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[8px] font-bold text-[#888]">
-                              {typeof senderEmail === "string"
-                                ? senderEmail[0]?.toUpperCase()
-                                : "?"}
-                            </div>
-                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
-                              {senderEmail}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Sender label — AI */}
-                        {!isSameSender && msg.isAi && (
-                          <div className="flex items-center gap-1.5 mb-1.5 ml-0.5">
-                            <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center">
-                              <Bot size={10} className="text-[#777]" />
-                            </div>
-                            <span className="text-[9px] font-mono text-[#555] tracking-wide">
-                              AI Assistant
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Reply preview */}
-                        {msg.replyTo && (
-                          <div
-                            className={`text-[10px] mb-1 px-2.5 py-1.5 border-l-2 font-mono max-w-full rounded ${
-                              isOwnMessage
-                                ? "border-[#555] bg-[#1c1c1c] text-[#777]"
-                                : "border-[#333] bg-[#181818] text-[#555]"
-                            }`}
-                          >
-                            <span className="block mb-0.5 text-[9px] text-[#444]">
-                              {msg.replyTo.originalSender}
-                            </span>
-                            <span className="line-clamp-1 opacity-70">
-                              {msg.replyTo.originalMessage}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Message bubble */}
-                        <div
-                          className={`relative px-3 py-2 text-[11px] break-words font-mono leading-relaxed ${
-                            isOwnMessage
-                              ? "bubble-own"
-                              : msg.isAi
-                                ? "bubble-ai text-[#ccc]"
-                                : "bubble-other text-[#ccc]"
-                          } ${msg.isOptimistic ? "opacity-40" : ""}`}
-                        >
-                          {msg.isAi ? (
-                            <div className="flex gap-2">
-                              <div className="overflow-hidden w-full">
-                                <AiMessage raw={msg.message} />
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="leading-relaxed">{msg.message}</p>
-                          )}
-                          <div
-                            className={`text-[9px] mt-1.5 text-right font-mono ${
-                              isOwnMessage ? "text-[#555]" : "text-[#444]"
-                            }`}
-                          >
-                            {new Date(msg.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Message context menu trigger */}
-                        <div
-                          className={`absolute top-0 ${
-                            isOwnMessage ? "-left-8" : "-right-8"
-                          } z-50 message-menu-container`}
-                        >
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuMsgId(
-                                  isMenuOpen ? null : msg._id || i,
-                                );
-                              }}
-                              className={`p-1.5 rounded-md transition-all duration-150 ${
-                                isMenuOpen
-                                  ? "opacity-100 bg-[#222] text-[#ccc]"
-                                  : "opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] hover:bg-[#1e1e1e]"
-                              }`}
-                            >
-                              <MoreVertical size={12} />
-                            </button>
-
-                            {isMenuOpen && (
-                              <div
-                                className={`absolute bottom-full mb-1.5 ${
-                                  isOwnMessage
-                                    ? "left-0 origin-bottom-left"
-                                    : "right-0 origin-bottom-right"
-                                } w-28 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden shadow-xl shadow-black/80 animate-fade-in-up z-[9999]`}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setReplyingTo({
-                                      originalMessage: msg.message,
-                                      originalSender: senderEmail,
-                                    });
-                                    setActiveMenuMsgId(null);
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#666] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 transition-colors"
-                                >
-                                  <Reply size={10} />
-                                  Reply
-                                </button>
-                                {isOwnMessage && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteMessage(msg._id);
-                                      setActiveMenuMsgId(null);
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-[10px] font-mono text-[#555] hover:bg-[#222] hover:text-[#ccc] flex items-center gap-2 border-t border-[#222] transition-colors"
-                                  >
-                                    <Trash2 size={10} />
-                                    Delete
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* AI Thinking indicator */}
-                {isAiThinking && (
-                  <div className="flex justify-start animate-fade-in mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full flex items-center justify-center flex-shrink-0">
-                        <Bot size={10} className="text-[#666]" />
-                      </div>
-                      <div className="bubble-ai px-3 py-2.5 flex items-center gap-1.5">
-                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
-                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
-                        <span className="typing-dot w-1.5 h-1.5 bg-[#555] rounded-full" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Remote user typing */}
-                {remoteTypingUser && (
-                  <div className="flex justify-start animate-fade-in mt-1">
-                    <div className="px-2 py-1 text-[9px] font-mono text-[#444] flex items-center gap-1.5">
-                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
-                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
-                      <span className="typing-dot w-1 h-1 bg-[#444] rounded-full" />
-                      <span className="ml-1">{remoteTypingUser}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messageEndRef} />
-              </div>
-
-              {/* ── Message input ── */}
-              <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
-                {/* Reply preview strip */}
-                {replyingTo && (
-                  <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
-                    <div className="text-[9px] font-mono text-[#555] border-l-2 border-[#333] pl-2 min-w-0">
-                      <span className="text-[#666] flex items-center gap-1 mb-0.5">
-                        <Reply size={9} />
-                        {replyingTo.originalSender}
-                      </span>
-                      <span className="truncate max-w-[140px] block opacity-50 text-[9px]">
-                        {replyingTo.originalMessage}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setReplyingTo(null)}
-                      className="text-[#444] hover:text-[#ccc] p-1 rounded hover:bg-[#222] transition-all ml-2 flex-shrink-0"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 p-2.5">
-                  <div className="flex-grow flex items-center bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-3 py-2 focus-within:border-[#3a3a3a] focus-within:bg-[#1e1e1e] transition-all duration-200">
-                    <input
-                      value={message}
-                      onChange={handleTyping}
-                      onKeyPress={(e) => e.key === "Enter" && send()}
-                      className="flex-grow bg-transparent text-[#ddd] outline-none placeholder-[#3a3a3a] text-[11px] font-mono"
-                      placeholder="message or @ai ..."
-                    />
-                    {message.toLowerCase().includes("@ai") && (
-                      <Bot
-                        size={11}
-                        className="text-[#555] flex-shrink-0 ml-1"
-                      />
-                    )}
-                  </div>
+      {/* ════════════════════════════════════════════════════════
+          DESKTOP LAYOUT — completely unchanged, hidden on mobile
+      ════════════════════════════════════════════════════════ */}
+      <div className="hidden md:flex flex-1 min-h-0 w-full">
+        <PanelGroup direction="horizontal">
+          {/* LEFT PANEL — CHAT */}
+          <Panel defaultSize={20} minSize={15} maxSize={30}>
+            <section className="relative flex flex-col h-full w-full border-r border-[#1e1e1e] bg-[#131313] z-10 overflow-hidden">
+              <header className="flex justify-between items-center px-3 pl-14 bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <button
-                    onClick={send}
-                    disabled={!message.trim()}
-                    className="w-8 h-8 bg-[#ececec] rounded-lg flex items-center justify-center text-[#111] hover:bg-white transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
+                    onClick={() => navigate("/home")}
+                    className="text-[#555] hover:text-[#ccc] transition-colors duration-150 group flex-shrink-0"
                   >
-                    <Send size={12} />
+                    <ArrowLeft
+                      size={13}
+                      className="group-hover:-translate-x-0.5 transition-transform duration-150"
+                    />
+                  </button>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusDot active pulse />
+                    <h1 className="text-[12px] font-semibold text-[#ddd] truncate max-w-[100px] tracking-tight">
+                      {project?.name}
+                    </h1>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-0.5">
+                  <button
+                    onClick={() =>
+                      setIsNotificationPanelOpen(!isNotificationPanelOpen)
+                    }
+                    className={`relative p-2 rounded-md transition-colors duration-150 ${
+                      isNotificationPanelOpen
+                        ? "bg-[#222] text-[#ccc]"
+                        : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
+                    }`}
+                  >
+                    <Bell size={13} />
+                    {pendingInvites.length > 0 && (
+                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#ccc] rounded-full">
+                        <span className="absolute inset-0 animate-ping bg-[#aaa] rounded-full opacity-60" />
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
+                    className={`p-2 rounded-md transition-colors duration-150 ${
+                      isSidePanelOpen
+                        ? "bg-[#222] text-[#ccc]"
+                        : "text-[#555] hover:text-[#aaa] hover:bg-[#1c1c1c]"
+                    }`}
+                  >
+                    <Users size={13} />
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* ── Collaborators slide-in panel ── */}
-            <div
-              className={`sidePanel w-full h-full flex flex-col bg-[#131313] border-r border-[#1e1e1e] absolute transition-all duration-300 ease-out ${
-                isSidePanelOpen
-                  ? "translate-x-0 opacity-100"
-                  : "-translate-x-full opacity-0"
-              } top-0 z-30`}
-            >
-              <header className="flex justify-between items-center px-4 border-b border-[#1e1e1e] h-11 min-h-[2.75rem]">
-                <div className="flex items-center gap-2">
-                  <Users size={12} className="text-[#555]" />
-                  <span className="section-label">Collaborators</span>
-                </div>
-                <button
-                  onClick={() => setisSidePanelOpen(false)}
-                  className="text-[#444] hover:text-[#ccc] p-1 hover:bg-[#1e1e1e] rounded-md transition-all"
-                >
-                  <X size={13} />
-                </button>
               </header>
 
-              <div className="p-3 flex-grow overflow-y-auto styled-scroll">
-                <button
-                  onClick={() => setAddUserModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-[#2a2a2a] text-[10px] font-mono text-[#555] hover:border-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a] transition-all duration-200 mb-4 group rounded-lg"
-                >
-                  <Plus
-                    size={11}
-                    className="group-hover:rotate-90 transition-transform duration-200"
-                  />
-                  Invite member
-                </button>
-                <div className="space-y-0.5">
-                  {project?.users?.map((u) => (
-                    <div
-                      key={u._id}
-                      className="py-2 px-2 flex gap-2.5 items-center hover:bg-[#1a1a1a] transition-colors rounded-md"
-                    >
-                      <div className="w-6 h-6 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[9px] font-bold text-[#888] flex-shrink-0">
-                        {u.email[0].toUpperCase()}
-                      </div>
-                      <span className="font-mono text-[10px] text-[#666] truncate flex-grow">
-                        {u.email}
-                      </span>
-                      <StatusDot active />
-                    </div>
-                  ))}
+              <div className="conversation-area flex-grow flex flex-col overflow-hidden relative">
+                <div className="message-box styled-scroll p-3 flex-grow flex flex-col gap-0.5 overflow-y-auto pb-24">
+                  {renderMessages(messageEndRef)}
                 </div>
-              </div>
-            </div>
 
-            {/* ── Notifications dropdown ── */}
-            {isNotificationPanelOpen && (
-              <div className="absolute top-11 right-0 left-0 bg-[#141414]/98 border-b border-[#1e1e1e] z-40 p-3 animate-fade-in shadow-xl shadow-black/60 backdrop-blur-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <Bell size={10} className="text-[#444]" />
-                  <span className="section-label">Notifications</span>
-                </div>
-                {pendingInvites.length === 0 ? (
-                  <p className="text-[9px] font-mono text-[#3a3a3a] tracking-wider py-2 text-center">
-                    All caught up ✓
-                  </p>
-                ) : (
-                  pendingInvites.map((invite) => (
-                    <div
-                      key={invite._id}
-                      className="flex justify-between items-center py-2.5 border-b border-[#1e1e1e] last:border-b-0"
-                    >
-                      <div>
-                        <p className="text-[10px] font-mono text-[#bbb]">
-                          {invite.name}
-                        </p>
-                        <p className="text-[9px] font-mono text-[#555] mt-0.5">
-                          Project invitation
-                        </p>
+                <div className="absolute bottom-0 w-full bg-[#131313]/95 border-t border-[#1e1e1e] z-20 backdrop-blur-sm">
+                  {replyingTo && (
+                    <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center animate-fade-in bg-[#1a1a1a]">
+                      <div className="text-[9px] font-mono text-[#555] border-l-2 border-[#333] pl-2 min-w-0">
+                        <span className="text-[#666] flex items-center gap-1 mb-0.5">
+                          <Reply size={9} />
+                          {replyingTo.originalSender}
+                        </span>
+                        <span className="truncate max-w-[140px] block opacity-50 text-[9px]">
+                          {replyingTo.originalMessage}
+                        </span>
                       </div>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleInviteResponse(invite._id, true)}
-                          className="text-[9px] font-mono bg-[#ececec] text-[#111] border border-[#ddd] hover:bg-white px-2 py-1 transition-colors rounded-md"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleInviteResponse(invite._id, false)
-                          }
-                          className="text-[9px] font-mono bg-[#1e1e1e] text-[#666] border border-[#2a2a2a] hover:bg-[#252525] hover:text-[#aaa] px-2 py-1 transition-colors rounded-md"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </section>
-        </Panel>
-
-        <ResizeHandle />
-
-        <Panel>
-          <PanelGroup direction="horizontal">
-            {/* ══════════════════════════════════════
-                FILE EXPLORER
-            ══════════════════════════════════════ */}
-            {isExplorerOpen && (
-              <>
-                <Panel defaultSize={18} minSize={10} maxSize={25}>
-                  <div className="h-full w-full bg-[#111] flex flex-col border-r border-[#1e1e1e]">
-                    <div
-                      onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                      className="flex items-center justify-between border-b border-[#1e1e1e] px-3 cursor-pointer hover:bg-[#161616] h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
-                    >
-                      <span className="section-label flex items-center gap-1.5 group-hover:text-[#666] transition-colors">
-                        <Code2 size={10} />
-                        Explorer
-                      </span>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadProject();
-                        }}
-                        className="text-[#444] hover:text-[#ccc] transition-all duration-150 p-1 hover:bg-[#1e1e1e] rounded-md group/btn"
-                        title="Download ZIP"
+                        onClick={() => setReplyingTo(null)}
+                        className="text-[#444] hover:text-[#ccc] p-1 rounded hover:bg-[#222] transition-all ml-2 flex-shrink-0"
                       >
-                        <Download
-                          size={11}
-                          className="group-hover/btn:translate-y-0.5 transition-transform duration-150"
-                        />
+                        <X size={11} />
                       </button>
                     </div>
+                  )}
 
-                    <div className="styled-scroll w-full flex-grow overflow-y-auto py-2">
-                      {isAiThinking ? (
-                        <FileTreeSkeleton />
-                      ) : (
-                        <div className="space-y-0.5">
-                          {Object.keys(folderStructure).map((key) => (
-                            <FileTreeNode
-                              key={key}
-                              fileName={key}
-                              nodes={folderStructure[key]}
-                              onSelect={handleFileSelect}
-                              onDelete={onRequestDelete}
-                              path={key}
-                              newFilePaths={newFilePaths}
-                              selectedFile={currentFile}
-                            />
-                          ))}
+                  <div className="flex items-center gap-2 p-2.5">
+                    <div className="flex-grow flex items-center bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-3 py-2 focus-within:border-[#3a3a3a] focus-within:bg-[#1e1e1e] transition-all duration-200">
+                      <input
+                        value={message}
+                        onChange={handleTyping}
+                        onKeyPress={(e) => e.key === "Enter" && send()}
+                        className="flex-grow bg-transparent text-[#ddd] outline-none placeholder-[#3a3a3a] text-[11px] font-mono"
+                        placeholder="message or @ai ..."
+                      />
+                      {message.toLowerCase().includes("@ai") && (
+                        <Bot
+                          size={11}
+                          className="text-[#555] flex-shrink-0 ml-1"
+                        />
+                      )}
+                    </div>
+                    <button
+                      onClick={send}
+                      disabled={!message.trim()}
+                      className="w-8 h-8 bg-[#ececec] rounded-lg flex items-center justify-center text-[#111] hover:bg-white transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      <Send size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collaborators slide-in */}
+              <div
+                className={`sidePanel w-full h-full flex flex-col bg-[#131313] border-r border-[#1e1e1e] absolute transition-all duration-300 ease-out ${
+                  isSidePanelOpen
+                    ? "translate-x-0 opacity-100"
+                    : "-translate-x-full opacity-0"
+                } top-0 z-30`}
+              >
+                <header className="flex justify-between items-center px-4 border-b border-[#1e1e1e] h-11 min-h-[2.75rem]">
+                  <div className="flex items-center gap-2">
+                    <Users size={12} className="text-[#555]" />
+                    <span className="section-label">Collaborators</span>
+                  </div>
+                  <button
+                    onClick={() => setisSidePanelOpen(false)}
+                    className="text-[#444] hover:text-[#ccc] p-1 hover:bg-[#1e1e1e] rounded-md transition-all"
+                  >
+                    <X size={13} />
+                  </button>
+                </header>
+
+                <div className="p-3 flex-grow overflow-y-auto styled-scroll">
+                  <button
+                    onClick={() => setAddUserModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-[#2a2a2a] text-[10px] font-mono text-[#555] hover:border-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a] transition-all duration-200 mb-4 group rounded-lg"
+                  >
+                    <Plus
+                      size={11}
+                      className="group-hover:rotate-90 transition-transform duration-200"
+                    />
+                    Invite member
+                  </button>
+                  <div className="space-y-0.5">
+                    {project?.users?.map((u) => (
+                      <div
+                        key={u._id}
+                        className="py-2 px-2 flex gap-2.5 items-center hover:bg-[#1a1a1a] transition-colors rounded-md"
+                      >
+                        <div className="w-6 h-6 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[9px] font-bold text-[#888] flex-shrink-0">
+                          {u.email[0].toUpperCase()}
                         </div>
+                        <span className="font-mono text-[10px] text-[#666] truncate flex-grow">
+                          {u.email}
+                        </span>
+                        <StatusDot active />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notifications dropdown */}
+              {isNotificationPanelOpen && (
+                <div className="absolute top-11 right-0 left-0 bg-[#141414]/98 border-b border-[#1e1e1e] z-40 p-3 animate-fade-in shadow-xl shadow-black/60 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Bell size={10} className="text-[#444]" />
+                    <span className="section-label">Notifications</span>
+                  </div>
+                  {pendingInvites.length === 0 ? (
+                    <p className="text-[9px] font-mono text-[#3a3a3a] tracking-wider py-2 text-center">
+                      All caught up ✓
+                    </p>
+                  ) : (
+                    pendingInvites.map((invite) => (
+                      <div
+                        key={invite._id}
+                        className="flex justify-between items-center py-2.5 border-b border-[#1e1e1e] last:border-b-0"
+                      >
+                        <div>
+                          <p className="text-[10px] font-mono text-[#bbb]">
+                            {invite.name}
+                          </p>
+                          <p className="text-[9px] font-mono text-[#555] mt-0.5">
+                            Project invitation
+                          </p>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() =>
+                              handleInviteResponse(invite._id, true)
+                            }
+                            className="text-[9px] font-mono bg-[#ececec] text-[#111] border border-[#ddd] hover:bg-white px-2 py-1 transition-colors rounded-md"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleInviteResponse(invite._id, false)
+                            }
+                            className="text-[9px] font-mono bg-[#1e1e1e] text-[#666] border border-[#2a2a2a] hover:bg-[#252525] hover:text-[#aaa] px-2 py-1 transition-colors rounded-md"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+          </Panel>
+
+          <ResizeHandle />
+
+          <Panel>
+            <PanelGroup direction="horizontal">
+              {/* FILE EXPLORER */}
+              {isExplorerOpen && (
+                <>
+                  <Panel defaultSize={18} minSize={10} maxSize={25}>
+                    <div className="h-full w-full bg-[#111] flex flex-col border-r border-[#1e1e1e]">
+                      <div
+                        onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+                        className="flex items-center justify-between border-b border-[#1e1e1e] px-3 cursor-pointer hover:bg-[#161616] h-11 min-h-[2.75rem] flex-shrink-0 group transition-colors"
+                      >
+                        <span className="section-label flex items-center gap-1.5 group-hover:text-[#666] transition-colors">
+                          <Code2 size={10} />
+                          Explorer
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadProject();
+                          }}
+                          className="text-[#444] hover:text-[#ccc] transition-all duration-150 p-1 hover:bg-[#1e1e1e] rounded-md group/btn"
+                          title="Download ZIP"
+                        >
+                          <Download
+                            size={11}
+                            className="group-hover/btn:translate-y-0.5 transition-transform duration-150"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="styled-scroll w-full flex-grow overflow-y-auto py-2">
+                        {isAiThinking ? (
+                          <FileTreeSkeleton />
+                        ) : (
+                          <div className="space-y-0.5">
+                            {Object.keys(folderStructure).map((key) => (
+                              <FileTreeNode
+                                key={key}
+                                fileName={key}
+                                nodes={folderStructure[key]}
+                                onSelect={handleFileSelect}
+                                onDelete={onRequestDelete}
+                                path={key}
+                                newFilePaths={newFilePaths}
+                                selectedFile={currentFile}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Panel>
+                  <ResizeHandle />
+                </>
+              )}
+
+              {/* CODE EDITOR */}
+              <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
+                <div className="flex flex-col h-full w-full bg-[#141414]">
+                  <div className="top-bar flex justify-between items-center bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
+                    <div className="files flex overflow-x-auto no-scrollbar h-full items-end flex-grow">
+                      {openFiles.map((file) => {
+                        const isActive = currentFile === file;
+                        return (
+                          <div
+                            key={file}
+                            onClick={() => setCurrentFile(file)}
+                            className={`group relative flex items-center min-w-fit px-3 h-full text-[10px] font-mono border-r border-[#1e1e1e] cursor-pointer transition-all duration-150 gap-1.5 ${
+                              isActive
+                                ? "tab-active text-[#ddd]"
+                                : "bg-[#111] text-[#555] hover:text-[#aaa] hover:bg-[#161616]"
+                            }`}
+                          >
+                            <span className="flex-shrink-0">
+                              {getFileIcon(file.split("/").pop())}
+                            </span>
+                            <span className="mr-1.5 truncate max-w-[80px]">
+                              {file.split("/").pop()}
+                            </span>
+                            <button
+                              onClick={(e) => handleCloseFile(e, file)}
+                              className="opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] flex-shrink-0 p-0.5 hover:bg-[#222] rounded transition-all"
+                            >
+                              <X size={9} />
+                            </button>
+                          </div>
+                        );
+                      })}
+
+                      {!isExplorerOpen && (
+                        <button
+                          onClick={() => setIsExplorerOpen(true)}
+                          className="h-full px-3 text-[#444] hover:text-[#888] hover:bg-[#161616] transition-colors border-r border-[#1e1e1e]"
+                        >
+                          <ChevronRight size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="px-3 flex-shrink-0">
+                      {!runProcess ? (
+                        <button
+                          onClick={handleRunClick}
+                          disabled={isInstalling}
+                          className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#aaa] bg-[#1a1a1a] hover:bg-[#222] hover:text-[#ececec] hover:border-[#3a3a3a] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed rounded-md"
+                        >
+                          {isInstalling ? (
+                            <>
+                              <span className="w-2 h-2 border border-[#555] border-t-transparent rounded-full animate-spin" />
+                              <span className="animate-pulse">installing</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play size={10} className="fill-[#aaa]" />
+                              Run
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleStopClick}
+                          className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#777] bg-[#181818] hover:bg-[#1e1e1e] hover:text-[#aaa] hover:border-[#333] transition-all duration-150 rounded-md"
+                        >
+                          <Square size={10} className="fill-[#777]" />
+                          Stop
+                        </button>
                       )}
                     </div>
                   </div>
-                </Panel>
-                <ResizeHandle />
-              </>
-            )}
 
-            {/* ══════════════════════════════════════
-                CODE EDITOR
-            ══════════════════════════════════════ */}
-            <Panel defaultSize={isExplorerOpen ? 42 : 50} minSize={20}>
-              <div className="flex flex-col h-full w-full bg-[#141414]">
-                <div className="top-bar flex justify-between items-center bg-[#111] border-b border-[#1e1e1e] h-11 min-h-[2.75rem] flex-shrink-0">
-                  <div className="files flex overflow-x-auto no-scrollbar h-full items-end flex-grow">
-                    {openFiles.map((file) => {
-                      const isActive = currentFile === file;
-                      return (
-                        <div
-                          key={file}
-                          onClick={() => setCurrentFile(file)}
-                          className={`group relative flex items-center min-w-fit px-3 h-full text-[10px] font-mono border-r border-[#1e1e1e] cursor-pointer transition-all duration-150 gap-1.5 ${
-                            isActive
-                              ? "tab-active text-[#ddd]"
-                              : "bg-[#111] text-[#555] hover:text-[#aaa] hover:bg-[#161616]"
-                          }`}
-                        >
-                          <span className="flex-shrink-0">
-                            {getFileIcon(file.split("/").pop())}
-                          </span>
-                          <span className="mr-1.5 truncate max-w-[80px]">
-                            {file.split("/").pop()}
-                          </span>
-                          <button
-                            onClick={(e) => handleCloseFile(e, file)}
-                            className="opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ccc] flex-shrink-0 p-0.5 hover:bg-[#222] rounded transition-all"
-                          >
-                            <X size={9} />
-                          </button>
-                        </div>
-                      );
-                    })}
-
-                    {!isExplorerOpen && (
-                      <button
-                        onClick={() => setIsExplorerOpen(true)}
-                        className="h-full px-3 text-[#444] hover:text-[#888] hover:bg-[#161616] transition-colors border-r border-[#1e1e1e]"
+                  <div className="flex-grow overflow-hidden relative h-full w-full">
+                    {currentFile && fileTree[currentFile]?.file ? (
+                      <div
+                        key={currentFile}
+                        className="h-full w-full"
+                        style={{ animation: "fadeIn 0.15s ease-out" }}
                       >
-                        <ChevronRight size={12} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="px-3 flex-shrink-0">
-                    {!runProcess ? (
-                      <button
-                        onClick={handleRunClick}
-                        disabled={isInstalling}
-                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#aaa] bg-[#1a1a1a] hover:bg-[#222] hover:text-[#ececec] hover:border-[#3a3a3a] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed rounded-md"
-                      >
-                        {isInstalling ? (
-                          <>
-                            <span className="w-2 h-2 border border-[#555] border-t-transparent rounded-full animate-spin" />
-                            <span className="animate-pulse">installing</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play size={10} className="fill-[#aaa]" />
-                            Run
-                          </>
-                        )}
-                      </button>
+                        <Editor
+                          height="100%"
+                          width="100%"
+                          path={currentFile}
+                          language={getLanguageFromFileName(currentFile)}
+                          theme="vs-dark"
+                          value={fileTree[currentFile].file.contents}
+                          onChange={handleFileContentChange}
+                          options={{
+                            fontSize: 12,
+                            fontFamily:
+                              "'JetBrains Mono', 'Fira Code', monospace",
+                            minimap: { enabled: false },
+                            lineNumbersMinChars: 3,
+                            padding: { top: 16 },
+                            scrollbar: {
+                              verticalScrollbarSize: 3,
+                              horizontalScrollbarSize: 3,
+                            },
+                            renderLineHighlight: "gutter",
+                            cursorBlinking: "smooth",
+                            smoothScrolling: true,
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <button
-                        onClick={handleStopClick}
-                        className="flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-mono tracking-wide border border-[#2e2e2e] text-[#777] bg-[#181818] hover:bg-[#1e1e1e] hover:text-[#aaa] hover:border-[#333] transition-all duration-150 rounded-md"
-                      >
-                        <Square size={10} className="fill-[#777]" />
-                        Stop
-                      </button>
+                      <div className="w-full h-full flex items-center justify-center bg-[#141414]">
+                        <div className="text-center space-y-4">
+                          <div className="w-14 h-14 mx-auto border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                            <Code2 size={22} className="text-[#333]" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                              No file selected
+                            </p>
+                            <p className="text-[10px] font-mono text-[#333]">
+                              Choose a file from the explorer
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
+              </Panel>
 
-                <div className="flex-grow overflow-hidden relative h-full w-full">
-                  {currentFile && fileTree[currentFile]?.file ? (
-                    <div
-                      key={currentFile}
-                      className="h-full w-full"
-                      style={{ animation: "fadeIn 0.15s ease-out" }}
-                    >
-                      <Editor
-                        height="100%"
-                        width="100%"
-                        path={currentFile}
-                        language={getLanguageFromFileName(currentFile)}
-                        theme="vs-dark"
-                        value={fileTree[currentFile].file.contents}
-                        onChange={handleFileContentChange}
-                        options={{
-                          fontSize: 12,
-                          fontFamily:
-                            "'JetBrains Mono', 'Fira Code', monospace",
-                          minimap: { enabled: false },
-                          lineNumbersMinChars: 3,
-                          padding: { top: 16 },
-                          scrollbar: {
-                            verticalScrollbarSize: 3,
-                            horizontalScrollbarSize: 3,
-                          },
-                          renderLineHighlight: "gutter",
-                          cursorBlinking: "smooth",
-                          smoothScrolling: true,
-                        }}
-                      />
+              <ResizeHandle />
+
+              {/* BROWSER / TERMINAL */}
+              <Panel defaultSize={40} minSize={20}>
+                <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
+                  <div className="flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-11 min-h-[2.75rem]">
+                    <div className="flex gap-1">
+                      {[
+                        { id: "browser", icon: Globe, label: "Browser" },
+                        {
+                          id: "terminal",
+                          icon: Terminal,
+                          label: "Terminal",
+                        },
+                      ].map(({ id, icon: Icon, label }) => (
+                        <button
+                          key={id}
+                          onClick={() => setActiveTab(id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide transition-all duration-150 rounded-md ${
+                            activeTab === id
+                              ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                              : "text-[#555] hover:text-[#aaa] hover:bg-[#181818]"
+                          }`}
+                        >
+                          <Icon size={11} />
+                          {label}
+                          {id === "terminal" && runProcess && (
+                            <StatusDot active pulse />
+                          )}
+                          {id === "browser" && iframeUrl && (
+                            <StatusDot active />
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#141414]">
-                      <div className="text-center space-y-4">
-                        <div className="w-14 h-14 mx-auto border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
-                          <Code2 size={22} className="text-[#333]" />
+                    <button
+                      onClick={handleClear}
+                      className="text-[#444] hover:text-[#ccc] transition-colors p-1.5 hover:bg-[#1a1a1a] rounded-md"
+                      title="Clear"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+
+                  {activeTab === "browser" && (
+                    <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
+                      {iframeUrl ? (
+                        <>
+                          <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
+                            <StatusDot active pulse />
+                            <span className="text-[9px] font-mono text-[#555] truncate">
+                              {iframeUrl}
+                            </span>
+                          </div>
+                          <iframe
+                            src={iframeUrl}
+                            className="w-full h-full border-none pt-7"
+                          />
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-4 text-center">
+                          <div className="w-14 h-14 border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                            <Globe size={20} className="text-[#333]" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                              No preview
+                            </p>
+                            <p className="text-[10px] font-mono text-[#333]">
+                              Run your project to see it here
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleRunClick}
+                            disabled={!webContainer}
+                            className="flex items-center gap-2 py-2 px-4 text-[10px] font-mono border border-[#2a2a2a] text-[#777] bg-[#1a1a1a] hover:bg-[#1e1e1e] hover:text-[#ccc] transition-all duration-150 disabled:opacity-30 rounded-md"
+                          >
+                            <Play size={10} className="fill-[#777]" />
+                            Run Project
+                          </button>
                         </div>
-                        <div>
-                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
-                            No file selected
-                          </p>
-                          <p className="text-[10px] font-mono text-[#333]">
-                            Choose a file from the explorer
-                          </p>
-                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === "terminal" && (
+                    <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                        <span className="ml-2 section-label">TERMINAL</span>
+                        {runProcess && (
+                          <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-[#555]">
+                            <StatusDot active pulse />
+                            running
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="styled-scroll flex-grow p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
+                        {cleanTerminalOutput(terminalOutput) ? (
+                          <span className="text-[#aaa]">
+                            {cleanTerminalOutput(terminalOutput)}
+                          </span>
+                        ) : (
+                          <span className="text-[#333] flex items-center gap-2">
+                            <span className="text-[#3a3a3a]">$</span>
+                            <span className="terminal-cursor text-[#3a3a3a]">
+                              ▌
+                            </span>
+                            <span>Waiting for output...</span>
+                          </span>
+                        )}
+                        <div ref={terminalEndRef} />
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
-            </Panel>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        </PanelGroup>
+      </div>
 
-            <ResizeHandle />
-
-            {/* ══════════════════════════════════════
-                BROWSER / TERMINAL
-            ══════════════════════════════════════ */}
-            <Panel defaultSize={40} minSize={20}>
-              <div className="flex flex-col h-full w-full border-l border-[#1e1e1e] bg-[#111]">
-                <div className="flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-11 min-h-[2.75rem]">
-                  <div className="flex gap-1">
-                    {[
-                      { id: "browser", icon: Globe, label: "Browser" },
-                      {
-                        id: "terminal",
-                        icon: Terminal,
-                        label: "Terminal",
-                      },
-                    ].map(({ id, icon: Icon, label }) => (
-                      <button
-                        key={id}
-                        onClick={() => setActiveTab(id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide transition-all duration-150 rounded-md ${
-                          activeTab === id
-                            ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
-                            : "text-[#555] hover:text-[#aaa] hover:bg-[#181818]"
-                        }`}
-                      >
-                        <Icon size={11} />
-                        {label}
-                        {id === "terminal" && runProcess && (
-                          <StatusDot active pulse />
-                        )}
-                        {id === "browser" && iframeUrl && <StatusDot active />}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleClear}
-                    className="text-[#444] hover:text-[#ccc] transition-colors p-1.5 hover:bg-[#1a1a1a] rounded-md"
-                    title="Clear"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-
-                {activeTab === "browser" && (
-                  <div className="flex-grow bg-[#141414] relative flex items-center justify-center overflow-hidden">
-                    {iframeUrl ? (
-                      <>
-                        <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
-                          <StatusDot active pulse />
-                          <span className="text-[9px] font-mono text-[#555] truncate">
-                            {iframeUrl}
-                          </span>
-                        </div>
-                        <iframe
-                          src={iframeUrl}
-                          className="w-full h-full border-none pt-7"
-                        />
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center gap-4 text-center">
-                        <div className="w-14 h-14 border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
-                          <Globe size={20} className="text-[#333]" />
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
-                            No preview
-                          </p>
-                          <p className="text-[10px] font-mono text-[#333]">
-                            Run your project to see it here
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleRunClick}
-                          disabled={!webContainer}
-                          className="flex items-center gap-2 py-2 px-4 text-[10px] font-mono border border-[#2a2a2a] text-[#777] bg-[#1a1a1a] hover:bg-[#1e1e1e] hover:text-[#ccc] transition-all duration-150 disabled:opacity-30 rounded-md"
-                        >
-                          <Play size={10} className="fill-[#777]" />
-                          Run Project
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === "terminal" && (
-                  <div className="flex-grow bg-[#0e0e0e] flex flex-col overflow-hidden">
-                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a]">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
-                      <span className="ml-2 section-label">TERMINAL</span>
-                      {runProcess && (
-                        <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-[#555]">
-                          <StatusDot active pulse />
-                          running
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="styled-scroll flex-grow p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
-                      {cleanTerminalOutput(terminalOutput) ? (
-                        <span className="text-[#aaa]">
-                          {cleanTerminalOutput(terminalOutput)}
-                        </span>
-                      ) : (
-                        <span className="text-[#333] flex items-center gap-2">
-                          <span className="text-[#3a3a3a]">$</span>
-                          <span className="terminal-cursor text-[#3a3a3a]">
-                            ▌
-                          </span>
-                          <span>Waiting for output...</span>
-                        </span>
-                      )}
-                      <div ref={terminalEndRef} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Panel>
-          </PanelGroup>
-        </Panel>
-      </PanelGroup>
-
-      {/* ── Staggered nav menu ── */}
+      {/* Desktop staggered menu */}
       {!isSidePanelOpen && (
-        <div className="fixed top-2 left-4 z-50">
+        <div className="hidden md:block fixed top-2 left-4 z-50">
           <StaggeredMenu
             items={menuItems}
             socialItems={socialItems}
@@ -1825,11 +1788,533 @@ const Project = () => {
         </div>
       )}
 
+      {/* ════════════════════════════════════════════════════════
+          MOBILE LAYOUT — md:hidden
+      ════════════════════════════════════════════════════════ */}
+      <div className="md:hidden flex flex-col h-full w-full relative">
+        {/* ── Mobile Top Header ── */}
+        <header className="flex-shrink-0 flex items-center justify-between px-3 h-12 bg-[#111] border-b border-[#1e1e1e] z-40">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => navigate("/home")}
+              className="text-[#555] active:text-[#ccc] p-1 -ml-1"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <StatusDot active pulse />
+              <h1 className="text-[13px] font-semibold text-[#ddd] truncate max-w-[140px] tracking-tight">
+                {project?.name}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Run / Stop shortcut */}
+            {!runProcess ? (
+              <button
+                onClick={handleRunClick}
+                disabled={isInstalling}
+                className="flex items-center gap-1 py-1.5 px-2.5 text-[10px] font-mono border border-[#2e2e2e] text-[#aaa] bg-[#1a1a1a] rounded-md disabled:opacity-30"
+              >
+                {isInstalling ? (
+                  <span className="w-2.5 h-2.5 border border-[#555] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Play size={10} className="fill-[#aaa]" />
+                )}
+                <span className="hidden xs:inline">
+                  {isInstalling ? "..." : "Run"}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStopClick}
+                className="flex items-center gap-1 py-1.5 px-2.5 text-[10px] font-mono border border-[#2e2e2e] text-[#777] bg-[#181818] rounded-md"
+              >
+                <Square size={10} className="fill-[#777]" />
+              </button>
+            )}
+
+            <button
+              onClick={() =>
+                setIsNotificationPanelOpen(!isNotificationPanelOpen)
+              }
+              className={`relative p-2 rounded-md ${
+                isNotificationPanelOpen
+                  ? "bg-[#222] text-[#ccc]"
+                  : "text-[#555]"
+              }`}
+            >
+              <Bell size={15} />
+              {pendingInvites.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#ccc] rounded-full" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setisSidePanelOpen(!isSidePanelOpen)}
+              className={`p-2 rounded-md ${
+                isSidePanelOpen ? "bg-[#222] text-[#ccc]" : "text-[#555]"
+              }`}
+            >
+              <Users size={15} />
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile notifications dropdown */}
+        {isNotificationPanelOpen && (
+          <div className="absolute top-12 left-0 right-0 bg-[#141414] border-b border-[#1e1e1e] z-50 p-3 animate-fade-in shadow-xl">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={10} className="text-[#444]" />
+              <span className="section-label">Notifications</span>
+            </div>
+            {pendingInvites.length === 0 ? (
+              <p className="text-[9px] font-mono text-[#3a3a3a] tracking-wider py-2 text-center">
+                All caught up ✓
+              </p>
+            ) : (
+              pendingInvites.map((invite) => (
+                <div
+                  key={invite._id}
+                  className="flex justify-between items-center py-2.5 border-b border-[#1e1e1e] last:border-b-0"
+                >
+                  <div>
+                    <p className="text-[10px] font-mono text-[#bbb]">
+                      {invite.name}
+                    </p>
+                    <p className="text-[9px] font-mono text-[#555] mt-0.5">
+                      Project invitation
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleInviteResponse(invite._id, true)}
+                      className="text-[9px] font-mono bg-[#ececec] text-[#111] px-2 py-1 rounded-md"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleInviteResponse(invite._id, false)}
+                      className="text-[9px] font-mono bg-[#1e1e1e] text-[#666] border border-[#2a2a2a] px-2 py-1 rounded-md"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Mobile collaborators slide-over */}
+        <div
+          className={`absolute inset-0 z-50 flex flex-col bg-[#131313] transition-transform duration-300 ease-out ${
+            isSidePanelOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <header className="flex justify-between items-center px-4 border-b border-[#1e1e1e] h-12 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Users size={14} className="text-[#555]" />
+              <span className="text-[12px] font-medium text-[#ccc]">
+                Collaborators
+              </span>
+            </div>
+            <button
+              onClick={() => setisSidePanelOpen(false)}
+              className="text-[#444] p-1.5"
+            >
+              <X size={16} />
+            </button>
+          </header>
+          <div className="p-4 flex-grow overflow-y-auto styled-scroll">
+            <button
+              onClick={() => {
+                setisSidePanelOpen(false);
+                setAddUserModalOpen(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-[#2a2a2a] text-[11px] font-mono text-[#555] rounded-xl mb-4"
+            >
+              <Plus size={12} />
+              Invite member
+            </button>
+            <div className="space-y-1">
+              {project?.users?.map((u) => (
+                <div
+                  key={u._id}
+                  className="py-3 px-3 flex gap-3 items-center bg-[#1a1a1a] rounded-xl border border-[#222]"
+                >
+                  <div className="w-8 h-8 bg-[#222] border border-[#2e2e2e] rounded-full flex items-center justify-center text-[11px] font-bold text-[#888] flex-shrink-0">
+                    {u.email[0].toUpperCase()}
+                  </div>
+                  <span className="font-mono text-[12px] text-[#aaa] truncate flex-grow">
+                    {u.email}
+                  </span>
+                  <StatusDot active />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Mobile Content Area ── */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          {/* ════ CHAT TAB ════ */}
+          {mobileTab === "chat" && (
+            <div className="absolute inset-0 flex flex-col bg-[#131313]">
+              <div className="flex-1 overflow-y-auto styled-scroll p-3 pb-4">
+                {renderMessages(mobileMessageEndRef)}
+              </div>
+
+              {/* Input */}
+              <div className="flex-shrink-0 bg-[#131313] border-t border-[#1e1e1e]">
+                {replyingTo && (
+                  <div className="border-b border-[#1e1e1e] px-3 py-2 flex justify-between items-center bg-[#1a1a1a]">
+                    <div className="text-[9px] font-mono text-[#555] border-l-2 border-[#333] pl-2 min-w-0">
+                      <span className="text-[#666] flex items-center gap-1 mb-0.5">
+                        <Reply size={9} />
+                        {replyingTo.originalSender}
+                      </span>
+                      <span className="truncate max-w-[200px] block opacity-50 text-[9px]">
+                        {replyingTo.originalMessage}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setReplyingTo(null)}
+                      className="text-[#444] p-1 ml-2 flex-shrink-0"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 p-2.5">
+                  <div className="flex-grow flex items-center bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-3 py-2.5">
+                    <input
+                      value={message}
+                      onChange={handleTyping}
+                      onKeyPress={(e) => e.key === "Enter" && send()}
+                      className="flex-grow bg-transparent text-[#ddd] outline-none placeholder-[#3a3a3a] text-[12px] font-mono"
+                      placeholder="message or @ai ..."
+                    />
+                    {message.toLowerCase().includes("@ai") && (
+                      <Bot
+                        size={12}
+                        className="text-[#555] flex-shrink-0 ml-1"
+                      />
+                    )}
+                  </div>
+                  <button
+                    onClick={send}
+                    disabled={!message.trim()}
+                    className="w-10 h-10 bg-[#ececec] rounded-xl flex items-center justify-center text-[#111] disabled:opacity-20 flex-shrink-0"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ════ CODE TAB ════ */}
+          {mobileTab === "code" && (
+            <div className="absolute inset-0 flex flex-col bg-[#141414]">
+              {/* Explorer toggle + open files bar */}
+              <div className="flex-shrink-0 bg-[#111] border-b border-[#1e1e1e]">
+                <div className="flex items-center h-10 px-2 gap-1">
+                  <button
+                    onClick={() => setMobileShowExplorer(!mobileShowExplorer)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono ${
+                      mobileShowExplorer
+                        ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                        : "text-[#555]"
+                    }`}
+                  >
+                    <Code2 size={11} />
+                    Files
+                  </button>
+
+                  <div className="flex-1 flex overflow-x-auto no-scrollbar h-full items-center gap-0.5">
+                    {openFiles.map((file) => {
+                      const isActive = currentFile === file;
+                      return (
+                        <div
+                          key={file}
+                          onClick={() => {
+                            setCurrentFile(file);
+                            setMobileShowExplorer(false);
+                          }}
+                          className={`flex items-center min-w-fit px-2.5 py-1 text-[10px] font-mono rounded-md gap-1 cursor-pointer ${
+                            isActive
+                              ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                              : "text-[#555]"
+                          }`}
+                        >
+                          <span className="truncate max-w-[70px]">
+                            {file.split("/").pop()}
+                          </span>
+                          <button
+                            onClick={(e) => handleCloseFile(e, file)}
+                            className="text-[#444] p-0.5"
+                          >
+                            <X size={9} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={downloadProject}
+                    className="p-2 text-[#444]"
+                    title="Download ZIP"
+                  >
+                    <Download size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Explorer drawer */}
+              {mobileShowExplorer && (
+                <div className="flex-shrink-0 max-h-[40%] overflow-y-auto styled-scroll bg-[#111] border-b border-[#1e1e1e] py-2">
+                  {isAiThinking ? (
+                    <FileTreeSkeleton />
+                  ) : Object.keys(folderStructure).length === 0 ? (
+                    <p className="text-[10px] font-mono text-[#444] text-center py-6">
+                      No files yet
+                    </p>
+                  ) : (
+                    <div className="space-y-0.5 px-1">
+                      {Object.keys(folderStructure).map((key) => (
+                        <FileTreeNode
+                          key={key}
+                          fileName={key}
+                          nodes={folderStructure[key]}
+                          onSelect={handleFileSelect}
+                          onDelete={onRequestDelete}
+                          path={key}
+                          newFilePaths={newFilePaths}
+                          selectedFile={currentFile}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Editor */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {currentFile && fileTree[currentFile]?.file ? (
+                  <Editor
+                    height="100%"
+                    width="100%"
+                    path={currentFile}
+                    language={getLanguageFromFileName(currentFile)}
+                    theme="vs-dark"
+                    value={fileTree[currentFile].file.contents}
+                    onChange={handleFileContentChange}
+                    options={{
+                      fontSize: 13,
+                      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                      minimap: { enabled: false },
+                      lineNumbersMinChars: 2,
+                      padding: { top: 12 },
+                      scrollbar: {
+                        verticalScrollbarSize: 3,
+                        horizontalScrollbarSize: 3,
+                      },
+                      renderLineHighlight: "gutter",
+                      cursorBlinking: "smooth",
+                      smoothScrolling: true,
+                      wordWrap: "on",
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#141414]">
+                    <div className="text-center space-y-3 px-6">
+                      <div className="w-12 h-12 mx-auto border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                        <Code2 size={18} className="text-[#333]" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                          No file selected
+                        </p>
+                        <p className="text-[10px] font-mono text-[#333]">
+                          Tap Files above to browse
+                        </p>
+                      </div>
+                      {!mobileShowExplorer && (
+                        <button
+                          onClick={() => setMobileShowExplorer(true)}
+                          className="mt-2 text-[10px] font-mono text-[#666] border border-[#2a2a2a] px-3 py-1.5 rounded-md"
+                        >
+                          Open Explorer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ════ RUN TAB (Terminal + Browser) ════ */}
+          {mobileTab === "run" && (
+            <div className="absolute inset-0 flex flex-col bg-[#111]">
+              {/* Sub-tabs */}
+              <div className="flex-shrink-0 flex items-center justify-between bg-[#111] border-b border-[#1e1e1e] px-3 h-10">
+                <div className="flex gap-1">
+                  {[
+                    { id: "terminal", icon: Terminal, label: "Terminal" },
+                    { id: "browser", icon: Globe, label: "Browser" },
+                  ].map(({ id, icon: Icon, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => setMobileRunTab(id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-wide rounded-md ${
+                        mobileRunTab === id
+                          ? "bg-[#1e1e1e] text-[#ddd] border border-[#2e2e2e]"
+                          : "text-[#555]"
+                      }`}
+                    >
+                      <Icon size={11} />
+                      {label}
+                      {id === "terminal" && runProcess && (
+                        <StatusDot active pulse />
+                      )}
+                      {id === "browser" && iframeUrl && <StatusDot active />}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={handleClear} className="text-[#444] p-1.5">
+                  <X size={13} />
+                </button>
+              </div>
+
+              {mobileRunTab === "browser" && (
+                <div className="flex-1 bg-[#141414] relative flex items-center justify-center overflow-hidden">
+                  {iframeUrl ? (
+                    <>
+                      <div className="absolute top-0 left-0 right-0 z-10 bg-[#111]/95 border-b border-[#1e1e1e] px-3 py-1.5 flex items-center gap-2">
+                        <StatusDot active pulse />
+                        <span className="text-[9px] font-mono text-[#555] truncate">
+                          {iframeUrl}
+                        </span>
+                      </div>
+                      <iframe
+                        src={iframeUrl}
+                        className="w-full h-full border-none pt-7"
+                      />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-center px-6">
+                      <div className="w-12 h-12 border border-[#1e1e1e] bg-[#181818] rounded-xl flex items-center justify-center">
+                        <Globe size={18} className="text-[#333]" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-mono text-[#444] tracking-widest uppercase mb-1">
+                          No preview
+                        </p>
+                        <p className="text-[10px] font-mono text-[#333]">
+                          Run your project to see it here
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleRunClick}
+                        disabled={!webContainer}
+                        className="flex items-center gap-2 py-2.5 px-5 text-[11px] font-mono border border-[#2a2a2a] text-[#777] bg-[#1a1a1a] rounded-xl disabled:opacity-30"
+                      >
+                        <Play size={11} className="fill-[#777]" />
+                        Run Project
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {mobileRunTab === "terminal" && (
+                <div className="flex-1 bg-[#0e0e0e] flex flex-col overflow-hidden">
+                  <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1a1a1a] flex-shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a2a]" />
+                    <span className="ml-2 section-label">TERMINAL</span>
+                    {runProcess && (
+                      <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-[#555]">
+                        <StatusDot active pulse />
+                        running
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="styled-scroll flex-1 p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">
+                    {cleanTerminalOutput(terminalOutput) ? (
+                      <span className="text-[#aaa]">
+                        {cleanTerminalOutput(terminalOutput)}
+                      </span>
+                    ) : (
+                      <span className="text-[#333] flex items-center gap-2">
+                        <span className="text-[#3a3a3a]">$</span>
+                        <span className="terminal-cursor text-[#3a3a3a]">
+                          ▌
+                        </span>
+                        <span>Waiting for output...</span>
+                      </span>
+                    )}
+                    <div ref={mobileTerminalEndRef} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Mobile Bottom Navigation ── */}
+        <nav className="flex-shrink-0 h-[68px] bg-[#0e0e0e]/95 backdrop-blur-xl border-t border-[#1e1e1e] z-40 flex justify-around items-start pt-2.5 pb-safe px-2">
+          {[
+            { id: "chat", label: "Chat", Icon: MessageSquare },
+            { id: "code", label: "Code", Icon: Code2 },
+            { id: "run", label: "Run", Icon: Terminal },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setMobileTab(tab.id)}
+              className="flex flex-col items-center gap-1 w-20 relative"
+            >
+              <tab.Icon
+                size={18}
+                className={`transition-colors ${
+                  mobileTab === tab.id ? "text-[#ececec]" : "text-[#444]"
+                }`}
+              />
+              <span
+                className={`text-[10px] font-medium transition-colors ${
+                  mobileTab === tab.id ? "text-[#ececec]" : "text-[#444]"
+                }`}
+              >
+                {tab.label}
+              </span>
+              {mobileTab === tab.id && (
+                <div className="w-5 h-0.5 rounded-full bg-[#ececec] mt-0.5" />
+              )}
+              {/* Badge for unread-ish signals */}
+              {tab.id === "chat" && isAiThinking && (
+                <span className="absolute top-0 right-5 w-1.5 h-1.5 bg-[#888] rounded-full animate-pulse" />
+              )}
+              {tab.id === "run" && runProcess && (
+                <span className="absolute top-0 right-5 w-1.5 h-1.5 bg-emerald-400/80 rounded-full" />
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       {/* ══════════════════════════════════════
-          INVITE MODAL
+          SHARED MODALS (desktop + mobile)
       ══════════════════════════════════════ */}
+
+      {/* INVITE MODAL */}
       {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
             <div className="flex justify-between items-center px-5 py-4 border-b border-[#1e1e1e]">
               <div className="flex items-center gap-2.5">
@@ -1902,11 +2387,9 @@ const Project = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════
-          DELETE FILE MODAL
-      ══════════════════════════════════════ */}
+      {/* DELETE FILE MODAL */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#141414] border border-[#222] rounded-2xl w-full max-w-sm overflow-hidden relative shadow-2xl shadow-black/90 animate-scale-in">
             <div className="p-6 flex flex-col items-center text-center gap-4">
               <div className="w-12 h-12 border border-[#2a2a2a] bg-[#1c1c1c] rounded-xl flex items-center justify-center">
