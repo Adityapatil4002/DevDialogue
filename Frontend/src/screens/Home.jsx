@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import {
   motion,
   AnimatePresence,
-  useMotionValue,
   useSpring,
   useTransform,
   useInView,
@@ -43,7 +42,7 @@ const cellReveal = {
   },
 };
 
-/* ───────── Tooltip (Fixed positioning via portal-like approach) ───────── */
+/* ───────── Tooltip ───────── */
 const Tooltip = ({ label, children, position = "top" }) => {
   const [show, setShow] = useState(false);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
@@ -56,8 +55,7 @@ const Tooltip = ({ label, children, position = "top" }) => {
     let x = rect.left + rect.width / 2;
     let y = position === "top" ? rect.top - 8 : rect.bottom + 8;
 
-    // Clamp so tooltip never leaves viewport
-    const tipW = 120; // approximate
+    const tipW = 120;
     x = Math.max(tipW / 2 + 8, Math.min(window.innerWidth - tipW / 2 - 8, x));
     y = Math.max(32, Math.min(window.innerHeight - 32, y));
 
@@ -92,7 +90,7 @@ const Tooltip = ({ label, children, position = "top" }) => {
                   ? "translate(-50%, -100%)"
                   : "translate(-50%, 0%)",
             }}
-            className="z-[9999] pointer-events-none whitespace-nowrap bg-[#1a1a1a] text-white/90 text-[10px] font-medium tracking-wide px-2.5 py-1.5 rounded-lg border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
+            className="z-[9999] hidden md:block pointer-events-none whitespace-nowrap bg-[#1a1a1a] text-white/90 text-[10px] font-medium tracking-wide px-2.5 py-1.5 rounded-lg border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
           >
             {label}
           </motion.span>
@@ -161,7 +159,6 @@ const PlusIcon = ({ className = "w-5 h-5" }) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
-
 const FolderIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -175,7 +172,6 @@ const FolderIcon = ({ className = "w-4 h-4" }) => (
     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
   </svg>
 );
-
 const InboxIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -190,7 +186,6 @@ const InboxIcon = ({ className = "w-4 h-4" }) => (
     <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" />
   </svg>
 );
-
 const ChartIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -206,7 +201,6 @@ const ChartIcon = ({ className = "w-4 h-4" }) => (
     <line x1="6" y1="20" x2="6" y2="14" />
   </svg>
 );
-
 const UserIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -221,24 +215,6 @@ const UserIcon = ({ className = "w-4 h-4" }) => (
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
-
-const GridIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="14" y="14" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-  </svg>
-);
-
 const LogOutIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -254,7 +230,6 @@ const LogOutIcon = ({ className = "w-4 h-4" }) => (
     <line x1="21" y1="12" x2="9" y2="12" />
   </svg>
 );
-
 const CheckIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -268,7 +243,6 @@ const CheckIcon = ({ className = "w-4 h-4" }) => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
-
 const XIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -283,7 +257,6 @@ const XIcon = ({ className = "w-4 h-4" }) => (
     <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
-
 const ArrowRightIcon = ({ className = "w-4 h-4" }) => (
   <svg
     className={className}
@@ -298,7 +271,6 @@ const ArrowRightIcon = ({ className = "w-4 h-4" }) => (
     <polyline points="12 5 19 12 12 19" />
   </svg>
 );
-
 const TrashIcon = ({ className = "w-3.5 h-3.5" }) => (
   <svg
     className={className}
@@ -313,7 +285,6 @@ const TrashIcon = ({ className = "w-3.5 h-3.5" }) => (
     <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
   </svg>
 );
-
 const UsersIcon = ({ className = "w-3.5 h-3.5" }) => (
   <svg
     className={className}
@@ -330,21 +301,6 @@ const UsersIcon = ({ className = "w-3.5 h-3.5" }) => (
     <path d="M16 3.13a4 4 0 010 7.75" />
   </svg>
 );
-
-const ActivityIcon = ({ className = "w-3.5 h-3.5" }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-  </svg>
-);
-
 const TargetIcon = ({ className = "w-3.5 h-3.5" }) => (
   <svg
     className={className}
@@ -358,6 +314,83 @@ const TargetIcon = ({ className = "w-3.5 h-3.5" }) => (
     <circle cx="12" cy="12" r="10" />
     <circle cx="12" cy="12" r="6" />
     <circle cx="12" cy="12" r="2" />
+  </svg>
+);
+/* New Icons for Mobile */
+const BellIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+  </svg>
+);
+const HomeIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+  </svg>
+);
+const SettingsIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+);
+const SunIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="5"></circle>
+    <line x1="12" y1="1" x2="12" y2="3"></line>
+    <line x1="12" y1="21" x2="12" y2="23"></line>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+    <line x1="1" y1="12" x2="3" y2="12"></line>
+    <line x1="21" y1="12" x2="23" y2="12"></line>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+  </svg>
+);
+const ChevronRightIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="9 18 15 12 9 6"></polyline>
   </svg>
 );
 
@@ -378,6 +411,9 @@ const Home = () => {
   const [toDelete, setToDelete] = useState(null);
   const [projName, setProjName] = useState("");
   const [createErr, setCreateErr] = useState("");
+
+  // Mobile navigation state
+  const [mobileTab, setMobileTab] = useState("dashboard");
 
   useEffect(() => {
     let live = true;
@@ -476,15 +512,15 @@ const Home = () => {
   if (isLoading) return <Loader />;
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/15 flex flex-col relative">
+    <main className="h-[100dvh] w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/15 flex flex-col relative">
       <NoiseBG />
 
-      {/* ─── NAV ─── */}
+      {/* ─── DESKTOP NAV ─── */}
       <motion.nav
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="relative z-50 flex-shrink-0 flex items-center justify-between px-5 h-[52px] border-b border-white/[0.06] bg-[#050505]/80 backdrop-blur-md"
+        className="hidden md:flex relative z-50 flex-shrink-0 items-center justify-between px-5 h-[52px] border-b border-white/[0.06] bg-[#050505]/80 backdrop-blur-md"
       >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
@@ -517,14 +553,34 @@ const Home = () => {
         </div>
       </motion.nav>
 
-      {/* ─── BENTO GRID ─── */}
+      {/* ─── MOBILE NAV TOP ─── */}
+      <nav className="md:hidden relative z-50 flex-shrink-0 flex items-center justify-between px-5 h-16 bg-[#050505]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center">
+            <span className="text-[10px] font-black tracking-wider text-black">
+              DD
+            </span>
+          </div>
+          <span className="text-[15px] font-semibold tracking-tight">
+            DevDialogue
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <BellIcon className="w-5 h-5 text-white/70" />
+          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold">
+            {user?.email?.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </nav>
+
+      {/* ─── DESKTOP BENTO GRID ─── */}
       <motion.div
         variants={orchestrate}
         initial="hidden"
         animate="show"
-        className="relative z-10 flex-1 grid grid-cols-12 grid-rows-6 gap-2.5 p-2.5 min-h-0"
+        className="hidden md:grid relative z-10 flex-1 grid-cols-12 grid-rows-6 gap-2.5 p-2.5 min-h-0"
       >
-        {/* ┌─ 1. NEW PROJECT ─┐ */}
+        {/* 1. NEW PROJECT */}
         <Cell
           onClick={() => setModal(true)}
           span="col-span-3 row-span-3"
@@ -548,7 +604,7 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 2. ACTIVITY ─┐ */}
+        {/* 2. ACTIVITY */}
         <Cell span="col-span-3 row-span-3" className="flex flex-col">
           <CellLabel
             right={
@@ -571,11 +627,10 @@ const Home = () => {
                 <AnimNum value={total} />
               </div>
               <div className="text-[11px] text-white/35 mt-1 font-mono flex items-center gap-1.5">
-                <ChartIcon className="w-3 h-3 text-white/25" />
-                commits · 13 days
+                <ChartIcon className="w-3 h-3 text-white/25" /> commits · 13
+                days
               </div>
             </div>
-
             <div className="flex items-end gap-[3px] h-[60px] w-full mt-auto">
               {week.map((d, i) => {
                 const h = Math.max(10, ((d.count ?? 0) / maxVal) * 100);
@@ -607,7 +662,7 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 3. INBOX ─┐ */}
+        {/* 3. INBOX */}
         <Cell span="col-span-6 row-span-3">
           <CellLabel
             right={
@@ -690,7 +745,7 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 4. PROJECTS ─┐ */}
+        {/* 4. PROJECTS */}
         <Cell span="col-span-6 row-span-3">
           <CellLabel
             right={
@@ -742,7 +797,6 @@ const Home = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {/* Stacked avatars on hover */}
                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           {proj.users?.slice(0, 3).map((u, i) => (
                             <div
@@ -777,7 +831,7 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 5. OVERVIEW ─┐ */}
+        {/* 5. OVERVIEW */}
         <Cell span="col-span-3 row-span-3" className="flex flex-col">
           <CellLabel>Overview</CellLabel>
           <div className="grid grid-cols-2 grid-rows-2 gap-2 flex-1">
@@ -810,13 +864,12 @@ const Home = () => {
           </div>
         </Cell>
 
-        {/* ┌─ 6. PROFILE ─┐ */}
+        {/* 6. PROFILE */}
         <Cell
           span="col-span-3 row-span-3"
           className="flex flex-col justify-between"
         >
           <CellLabel>Profile</CellLabel>
-
           <div className="flex flex-col items-center justify-center flex-1 gap-3">
             <div className="w-14 h-14 rounded-2xl bg-white text-black text-[22px] font-bold flex items-center justify-center">
               {user?.email?.charAt(0).toUpperCase()}
@@ -830,7 +883,6 @@ const Home = () => {
               </div>
             </div>
           </div>
-
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -844,7 +896,385 @@ const Home = () => {
         </Cell>
       </motion.div>
 
-      {/* ─── CREATE MODAL ─── */}
+      {/* ─── MOBILE CONTENT AREA ─── */}
+      <div className="md:hidden relative z-10 flex-1 overflow-y-auto overflow-x-hidden px-4 pt-2 pb-28 [&::-webkit-scrollbar]:hidden">
+        {/* MOBILE: DASHBOARD TAB */}
+        {mobileTab === "dashboard" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="mb-2">
+              <h1 className="text-[22px] font-semibold tracking-tight text-white mb-1">
+                Welcome back, {user?.email?.split("@")[0]}{" "}
+                <span className="text-xl">👋</span>
+              </h1>
+              <p className="text-[13px] text-white/40">
+                Here's what's happening in your workspace.
+              </p>
+            </div>
+
+            {/* Create Project Card */}
+            <div
+              onClick={() => setModal(true)}
+              className="w-full bg-[#0a0a0a] border border-dashed border-white/[0.12] rounded-2xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="w-12 h-12 border border-white/10 rounded-2xl flex items-center justify-center text-white/40">
+                <PlusIcon className="w-6 h-6" />
+              </div>
+              <div className="text-center">
+                <div className="text-[15px] font-medium text-white/90">
+                  New Project
+                </div>
+                <div className="text-[10px] text-white/40 mt-1 tracking-widest uppercase">
+                  Click to initialize
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Card */}
+            <div className="w-full bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/45">
+                  Activity
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/40" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400/80" />
+                  </span>
+                  <span className="text-[9px] font-medium text-white/30 tracking-wider">
+                    LIVE
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[40px] font-semibold leading-none tracking-tight text-white">
+                  <AnimNum value={total} />
+                </div>
+                <div className="text-[11px] text-white/35 mt-1.5 font-mono flex items-center gap-1.5">
+                  <ChartIcon className="w-3.5 h-3.5 text-white/25" /> commits ·
+                  13 days
+                </div>
+              </div>
+              <div className="flex items-end gap-1 h-14 w-full mt-2">
+                {week.map((d, i) => {
+                  const h = Math.max(10, ((d.count ?? 0) / maxVal) * 100);
+                  const intensity = (d.count ?? 0) / maxVal;
+                  return (
+                    <motion.div
+                      key={i}
+                      className="flex-1 rounded-[2px]"
+                      style={{
+                        height: 6,
+                        background:
+                          intensity > 0.6
+                            ? "rgba(255,255,255,0.85)"
+                            : intensity > 0.3
+                              ? "rgba(255,255,255,0.4)"
+                              : "rgba(255,255,255,0.1)",
+                      }}
+                      animate={{ height: `${h}%` }}
+                      transition={{ delay: i * 0.04, duration: 0.6 }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Projects Snippet */}
+            <div className="w-full bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/45">
+                  Projects
+                </span>
+                <span className="text-[10px] font-medium text-white/40 tabular-nums">
+                  {project.length} total
+                </span>
+              </div>
+              {project.length === 0 ? (
+                <div className="py-4 text-center text-[12px] text-white/30">
+                  No projects yet
+                </div>
+              ) : (
+                project.slice(0, 3).map((proj) => (
+                  <div
+                    key={proj._id}
+                    onClick={() => navigate(`/project/${proj._id}`)}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-[11px] font-semibold text-white/60 flex-shrink-0">
+                        {proj.name?.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[13px] text-white/90 font-medium truncate">
+                          {proj.name}
+                        </div>
+                        <div className="text-[11px] text-white/40 mt-0.5 flex items-center gap-1">
+                          <UsersIcon className="w-3 h-3" />{" "}
+                          {proj.users?.length ?? 0} members
+                        </div>
+                      </div>
+                    </div>
+                    <ArrowRightIcon className="w-4 h-4 text-white/30" />
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* MOBILE: ACTIVITY/OVERVIEW TAB */}
+        {mobileTab === "activity" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="mb-2">
+              <h1 className="text-[22px] font-semibold tracking-tight text-white mb-1">
+                Overview
+              </h1>
+              <p className="text-[13px] text-white/40">
+                A quick look at your workspace.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { k: "Projects", v: project.length, Icon: FolderIcon },
+                { k: "Requests", v: invites.length, Icon: InboxIcon },
+                {
+                  k: "Members",
+                  v: project.reduce((a, p) => a + (p.users?.length ?? 0), 0),
+                  Icon: UsersIcon,
+                },
+                { k: "Active", v: project.length, Icon: TargetIcon },
+              ].map(({ k, v, Icon }) => (
+                <div
+                  key={k}
+                  className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-4 flex flex-col justify-center"
+                >
+                  <div className="text-[10px] font-medium tracking-[0.14em] uppercase text-white/45 mb-2 flex items-center gap-1.5">
+                    <Icon className="w-3.5 h-3.5 text-white/30" /> {k}
+                  </div>
+                  <div className="text-[28px] font-semibold text-white leading-none tracking-tight">
+                    <AnimNum value={v} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="w-full bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-4 mt-2">
+              <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/45">
+                Inbox
+              </span>
+              {invites.length === 0 ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+                    <InboxIcon className="w-5 h-5 text-white/30" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[13px] font-medium text-white/70">
+                      No pending invites
+                    </div>
+                    <div className="text-[11px] text-white/30 mt-1">
+                      You don't have any invite requests right now.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {invites.map((invite) => (
+                    <div
+                      key={invite._id}
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-white/[0.06] bg-white/[0.015]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-[12px] font-semibold text-white/70 flex-shrink-0">
+                          {invite.name?.[0]?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[13px] text-white/80 font-medium truncate">
+                            {invite.name}
+                          </div>
+                          <div className="text-[10px] text-white/30 mt-0.5 tracking-wider uppercase font-medium">
+                            Invite request
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAccept(invite._id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 text-white/60"
+                        >
+                          <CheckIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleReject(invite._id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 text-white/60"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* MOBILE: PROJECTS TAB */}
+        {mobileTab === "projects" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="mb-2">
+              <h1 className="text-[22px] font-semibold tracking-tight text-white mb-1">
+                Projects
+              </h1>
+              <p className="text-[13px] text-white/40">
+                Manage your repositories.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              {project.length === 0 ? (
+                <div className="py-10 text-center text-[13px] text-white/30">
+                  No projects yet
+                </div>
+              ) : (
+                project.map((proj) => (
+                  <div
+                    key={proj._id}
+                    onClick={() => navigate(`/project/${proj._id}`)}
+                    className="w-full bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-4 flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-[13px] font-semibold text-white/70 flex-shrink-0">
+                        {proj.name?.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[15px] text-white/90 font-medium truncate">
+                          {proj.name}
+                        </div>
+                        <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1.5">
+                          <UsersIcon className="w-3.5 h-3.5" />{" "}
+                          {proj.users?.length ?? 0} members
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={(e) => confirmDelete(e, proj)}
+                        className="w-8 h-8 flex items-center justify-center text-white/30 bg-white/5 rounded-lg"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* MOBILE: PROFILE TAB */}
+        {mobileTab === "profile" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="mb-4">
+              <h1 className="text-[22px] font-semibold tracking-tight text-white mb-1">
+                Profile
+              </h1>
+              <p className="text-[13px] text-white/40">
+                Manage your account and preferences.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-4 py-6">
+              <div className="w-20 h-20 rounded-[1.5rem] bg-white text-black text-[32px] font-bold flex items-center justify-center">
+                {user?.email?.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-center">
+                <div className="text-[20px] font-semibold text-white">
+                  {user?.email?.split("@")[0]}
+                </div>
+                <div className="mt-3 inline-flex items-center gap-2 border border-white/[0.08] bg-[#0a0a0a] rounded-full px-4 py-2">
+                  <InboxIcon className="w-3.5 h-3.5 text-white/40" />
+                  <span className="text-[12px] text-white/60">
+                    {user?.email}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between p-4 bg-[#0a0a0a] border border-white/[0.06] rounded-2xl">
+                <div className="flex items-center gap-3 text-white/80">
+                  <UserIcon className="w-4 h-4" />{" "}
+                  <span className="text-[14px]">Account Settings</span>
+                </div>
+                <ChevronRightIcon className="w-4 h-4 text-white/30" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[#0a0a0a] border border-white/[0.06] rounded-2xl">
+                <div className="flex items-center gap-3 text-white/80">
+                  <SunIcon className="w-4 h-4" />{" "}
+                  <span className="text-[14px]">Appearance</span>
+                </div>
+                <ChevronRightIcon className="w-4 h-4 text-white/30" />
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="mt-6 flex items-center justify-center gap-2 p-4 w-full border border-white/[0.08] bg-[#0a0a0a] rounded-2xl text-[13px] font-medium text-white/70"
+            >
+              <LogOutIcon className="w-4 h-4" /> Sign Out
+            </button>
+          </motion.div>
+        )}
+      </div>
+
+      {/* ─── MOBILE BOTTOM NAV ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-[#050505]/95 backdrop-blur-xl border-t border-white/[0.06] z-50 flex justify-around items-start pt-3 px-2 pb-safe">
+        {[
+          { id: "dashboard", label: "Dashboard", Icon: HomeIcon },
+          { id: "projects", label: "Projects", Icon: FolderIcon },
+          { id: "activity", label: "Activity", Icon: ChartIcon },
+          { id: "profile", label: "Profile", Icon: UserIcon },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setMobileTab(tab.id)}
+            className="flex flex-col items-center gap-1.5 w-16"
+          >
+            <tab.Icon
+              className={`w-5 h-5 transition-colors ${mobileTab === tab.id ? "text-white" : "text-white/30"}`}
+            />
+            <span
+              className={`text-[10px] font-medium transition-colors ${mobileTab === tab.id ? "text-white" : "text-white/30"}`}
+            >
+              {tab.label}
+            </span>
+            {mobileTab === tab.id && (
+              <motion.div
+                layoutId="mobileNavIndicator"
+                className="w-6 h-0.5 rounded-full bg-white absolute bottom-8"
+              />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── CREATE MODAL (Shared) ─── */}
       <AnimatePresence>
         {isModalOpen && (
           <div
@@ -871,8 +1301,7 @@ const Home = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-[11px] font-medium tracking-[0.15em] uppercase text-white/50 mb-6 flex items-center gap-2">
-                <FolderIcon className="w-3.5 h-3.5 text-white/40" />
-                New Project
+                <FolderIcon className="w-3.5 h-3.5 text-white/40" /> New Project
               </div>
               <form onSubmit={createProject}>
                 <div className="relative mb-6">
@@ -883,11 +1312,7 @@ const Home = () => {
                       setProjName(e.target.value);
                       setCreateErr("");
                     }}
-                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-3 text-white text-[14px] font-medium focus:outline-none placeholder-white/20 transition-colors duration-200 ${
-                      createErr
-                        ? "border-red-400/40 focus:border-red-400/60"
-                        : "border-white/[0.08] focus:border-white/[0.25]"
-                    }`}
+                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-3 text-white text-[14px] font-medium focus:outline-none placeholder-white/20 transition-colors duration-200 ${createErr ? "border-red-400/40 focus:border-red-400/60" : "border-white/[0.08] focus:border-white/[0.25]"}`}
                     placeholder="Enter project name..."
                     required
                     autoFocus
@@ -901,8 +1326,7 @@ const Home = () => {
                       exit={{ opacity: 0, height: 0 }}
                       className="text-[11px] text-red-400/80 font-mono mb-5 flex items-center gap-2 bg-red-400/[0.06] p-2.5 rounded-lg border border-red-400/[0.1]"
                     >
-                      <XIcon className="w-3 h-3 flex-shrink-0" />
-                      {createErr}
+                      <XIcon className="w-3 h-3 flex-shrink-0" /> {createErr}
                     </motion.p>
                   )}
                 </AnimatePresence>
@@ -931,7 +1355,7 @@ const Home = () => {
         )}
       </AnimatePresence>
 
-      {/* ─── DELETE MODAL ─── */}
+      {/* ─── DELETE MODAL (Shared) ─── */}
       <AnimatePresence>
         {isDeleteOpen && (
           <div
